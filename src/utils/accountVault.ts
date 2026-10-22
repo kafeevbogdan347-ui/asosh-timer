@@ -188,7 +188,8 @@ export function saveAccountVault(partial: Partial<AccountVault>): AccountVault {
       const myProf = getMyProfile(merged.studentName || 'Ученик', merged.cls || '8А');
       if (myProf) {
         myProf.fullName = merged.studentName || myProf.fullName;
-        myProf.className = merged.cls || myProf.className;
+        // Пустой класс тоже переносим: иначе профиль возвращает старый класс после «Сменить класс»
+        myProf.className = merged.cls ?? myProf.className;
         myProf.authProvider = merged.authProvider;
         myProf.authEmail = merged.authEmail;
         myProf.authPhotoUrl = merged.authPhotoUrl;

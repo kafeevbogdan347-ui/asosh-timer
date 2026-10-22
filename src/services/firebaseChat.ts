@@ -28,6 +28,8 @@ export const DEFAULT_FIREBASE_CONFIG = {
 
 const FIREBASE_STORAGE_KEY = 'asosh_custom_firebase_config';
 export const GLOBAL_CHAT_PATH = 'asosh_timer';
+// Правила базы запрещают удаление, поэтому «самоуничтожение» — это скрытие в приложении
+export const SELF_DESTRUCT_MS = 5 * 60 * 1000;
 
 export function getChatRoomPath(room: string = 'global') {
   if (!room || room === 'all' || room === 'global' || room === 'school') {
@@ -174,7 +176,10 @@ export function subscribeToFirebaseMessages(
   const knownMessages = new Map<string, ChatMessage>();
 
   const emitMerged = () => {
-    const list = Array.from(knownMessages.values());
+    const now = Date.now();
+    const list = Array.from(knownMessages.values()).filter(
+      (m) => !m.isSelfDestruct || !m.created_at || now - new Date(m.created_at).getTime() < SELF_DESTRUCT_MS
+    );
     list.sort((a, b) => {
       const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
       const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
@@ -204,6 +209,8 @@ export function subscribeToFirebaseMessages(
         firebaseUnsubscribe = onValue(
           recentQuery,
           (snapshot) => {
+            // Снимок содержит всю выборку: пересобираем список, чтобы удалённые сообщения пропадали
+            knownMessages.clear();
             if (snapshot.exists()) {
               const data = snapshot.val();
               Object.keys(data).forEach((key) => {
@@ -215,6 +222,8 @@ export function subscribeToFirebaseMessages(
                   avatar: item.avatar || '',
                   content: item.content || '',
                   created_at: item.created_at || (item.timestamp ? new Date(item.timestamp).toISOString() : new Date().toISOString()),
+                  isIncognito: !!item.isIncognito,
+                  isSelfDestruct: !!item.isSelfDestruct,
                 });
               });
             }
@@ -233,8 +242,13 @@ export function subscribeToFirebaseMessages(
     });
   }
 
+  const expiryTimer = setInterval(() => {
+    if (Array.from(knownMessages.values()).some((m) => m.isSelfDestruct)) emitMerged();
+  }, 15_000);
+
   return () => {
     cancelled = true;
+    clearInterval(expiryTimer);
     if (firebaseUnsubscribe) {
       try {
         firebaseUnsubscribe();
