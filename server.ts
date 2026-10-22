@@ -5,14 +5,40 @@ import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
+import rateLimit from "express-rate-limit";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
+// За прокси хостинга (Vercel, Cloud Run) реальный IP берётся из X-Forwarded-For
+app.set("trust proxy", 1);
+
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ limit: "25mb", extended: true }));
+
+const makeLimiter = (windowMs: number, max: number, message: string, skipWeather = false) =>
+  rateLimit({
+    windowMs,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: message },
+    skip: (req) => skipWeather && req.path === "/weather",
+  });
+
+// Платные AI-эндпоинты: защита квоты Gemini/Yandex
+app.use(
+  ["/api/ai", "/api/yandex/gpt"],
+  makeLimiter(60_000, 15, "Слишком много запросов к ИИ. Подожди минуту.", true)
+);
+// Защита от подбора пароля разработчика и кодов классов
+app.use(
+  ["/api/dev/verify", "/api/class/verify-code"],
+  makeLimiter(15 * 60_000, 10, "Слишком много попыток. Попробуй позже.")
+);
+app.use("/api/chat/send", makeLimiter(60_000, 20, "Слишком часто. Подожди немного."));
 
 // Lazy-initialized Gemini AI Client
 let aiClient: GoogleGenAI | null = null;
