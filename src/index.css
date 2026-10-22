@@ -1,0 +1,1119 @@
+@import "tailwindcss";
+
+:root {
+  --b1: #060d1f;
+  --b2: #0d214d;
+  --b3: #0a3d78;
+  --card: rgba(255, 255, 255, 0.12);
+  --card-hover: rgba(255, 255, 255, 0.18);
+  --line: rgba(255, 255, 255, 0.22);
+  --muted: rgba(255, 255, 255, 0.72);
+  --ink: #eaf8ff;
+  --txt: #ffffff;
+  --accent: #00f0ff;
+  --accent-rgb: 0, 240, 255;
+  --sh: 0 18px 44px rgba(0, 0, 0, 0.45);
+}
+
+/* FONT SIZE SCALING FIX: Scales rem units globally across Tailwind and standard CSS */
+html.font-sm, body.font-sm, #root.font-sm { font-size: 13.5px !important; }
+html.font-md, body.font-md, #root.font-md { font-size: 16px !important; }
+html.font-lg, body.font-lg, #root.font-lg { font-size: 18.5px !important; }
+html.font-xl, body.font-xl, #root.font-xl { font-size: 21px !important; }
+
+/* АНТИ-ВЫЛЕЗАНИЕ ТЕКСТА & ОПТИМИЗАЦИЯ ДЛЯ ANDROID APK (MCONVERTOR) И IPHONE */
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+html, body {
+  overscroll-behavior-y: contain;
+}
+
+button, a, input, select, textarea {
+  touch-action: manipulation;
+}
+
+body {
+  margin: 0;
+  color: var(--txt);
+  min-height: 100vh;
+  background: radial-gradient(circle at 15% 0%, rgba(var(--accent-rgb), 0.18), transparent 35%),
+              linear-gradient(160deg, var(--b1), var(--b2), var(--b3));
+  background-attachment: fixed;
+  transition: background 0.3s ease, color 0.3s ease, font-size 0.2s ease;
+  overflow-x: hidden;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* 22 ULTRA-DETAILED HIGH-CRAFT THEMES */
+
+/* 1. Классическая Тёмная (Neo-ASOSH Sapphire) */
+body.theme-dark {
+  --b1: #040916; --b2: #0a1b40; --b3: #082d5a;
+  --card: rgba(14, 28, 64, 0.65); --card-hover: rgba(20, 38, 85, 0.85);
+  --line: rgba(56, 189, 248, 0.28); --muted: #93c5fd;
+  --ink: #dff4ff; --txt: #ffffff; --accent: #00f0ff; --accent-rgb: 0, 240, 255;
+  --sh: 0 20px 48px rgba(0, 5, 25, 0.6);
+  background: radial-gradient(circle at 20% 0%, rgba(0, 240, 255, 0.18), transparent 40%),
+              radial-gradient(circle at 80% 80%, rgba(37, 99, 235, 0.15), transparent 50%),
+              linear-gradient(160deg, #040916, #091a3e, #06234b) !important;
+}
+
+/* 2. Чистая Светлая (Modern Executive Light) */
+body.theme-light {
+  --b1: #f8fafc; --b2: #f1f5f9; --b3: #e2e8f0;
+  --card: rgba(255, 255, 255, 0.95); --card-hover: rgba(255, 255, 255, 1);
+  --line: rgba(37, 99, 235, 0.25); --muted: #475569;
+  --ink: #0f172a; --txt: #0f172a; --accent: #2563eb; --accent-rgb: 37, 99, 235;
+  --sh: 0 14px 36px rgba(15, 23, 42, 0.08);
+  background: radial-gradient(circle at 10% 0%, rgba(37, 99, 235, 0.08), transparent 35%),
+              linear-gradient(160deg, #f8fafc, #edf2f7, #e2e8f0) !important;
+}
+body.theme-light .btn.darkBtn {
+  background: rgba(15, 23, 42, 0.06);
+  border-color: rgba(15, 23, 42, 0.18);
+  color: #0f172a;
+}
+body.theme-light input, body.theme-light select, body.theme-light textarea {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(15, 23, 42, 0.25);
+}
+
+/* 3. PlayStation Blue (PS Cosmic) */
+body.theme-ps {
+  --b1: #010614; --b2: #062058; --b3: #0c3e9c;
+  --card: rgba(8, 28, 80, 0.70); --card-hover: rgba(14, 42, 115, 0.85);
+  --line: rgba(96, 165, 250, 0.40); --muted: #93c5fd;
+  --ink: #eff6ff; --txt: #ffffff; --accent: #38bdf8; --accent-rgb: 56, 189, 248;
+  --sh: 0 20px 50px rgba(2, 10, 35, 0.7);
+  background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.22), transparent 45%),
+              radial-gradient(circle at 90% 100%, rgba(37, 99, 235, 0.25), transparent 50%),
+              linear-gradient(165deg, #010614, #041846, #092e7a) !important;
+}
+
+/* 4. Неоновый Кибер (Cyber Neon) */
+body.theme-neon {
+  --b1: #0a0214; --b2: #1e0536; --b3: #3b0764;
+  --card: rgba(35, 8, 60, 0.72); --card-hover: rgba(55, 14, 90, 0.88);
+  --line: rgba(244, 63, 94, 0.40); --muted: #f472b6;
+  --ink: #faf5ff; --txt: #ffffff; --accent: #f43f5e; --accent-rgb: 244, 63, 94;
+  --sh: 0 20px 48px rgba(30, 2, 50, 0.75);
+  background: radial-gradient(circle at 15% 10%, rgba(244, 63, 94, 0.22), transparent 40%),
+              radial-gradient(circle at 85% 90%, rgba(168, 85, 247, 0.22), transparent 50%),
+              linear-gradient(160deg, #0a0214, #1b0430, #2e0854) !important;
+}
+
+/* 5. Хакер Матрица (Hacker Terminal) */
+body.theme-cyber {
+  --b1: #020803; --b2: #051a08; --b3: #032b0a;
+  --card: rgba(4, 25, 8, 0.80); --card-hover: rgba(8, 40, 14, 0.92);
+  --line: rgba(34, 197, 94, 0.45); --muted: #86efac;
+  --ink: #bbf7d0; --txt: #86efac; --accent: #22c55e; --accent-rgb: 34, 197, 94;
+  --sh: 0 18px 45px rgba(0, 20, 4, 0.8);
+  background: radial-gradient(circle at 50% 0%, rgba(34, 197, 94, 0.20), transparent 45%),
+              linear-gradient(160deg, #010602, #041806, #032208) !important;
+}
+
+/* 6. Истинный AMOLED (Pure Black OLED) */
+body.theme-amoled {
+  --b1: #000000; --b2: #060606; --b3: #0e0e0e;
+  --card: rgba(18, 18, 18, 0.85); --card-hover: rgba(28, 28, 28, 0.95);
+  --line: rgba(255, 255, 255, 0.22); --muted: #a3a3a3;
+  --ink: #ffffff; --txt: #ffffff; --accent: #38bdf8; --accent-rgb: 56, 189, 248;
+  --sh: 0 16px 40px rgba(0, 0, 0, 0.95);
+  background: #000000 !important;
+}
+
+/* 7. Cyberpunk 2077 Night City */
+body.theme-cyberpunk {
+  --b1: #0c0714; --b2: #1e0d2c; --b3: #0a0312;
+  --card: rgba(28, 14, 40, 0.85); --card-hover: rgba(46, 22, 66, 0.95);
+  --line: #06b6d4; --muted: #67e8f9; --txt: #fde047;
+  --accent: #ec4899; --accent-rgb: 236, 72, 153;
+  --sh: 0 20px 50px rgba(236, 72, 153, 0.25);
+  background: radial-gradient(circle at 10% 0%, rgba(236, 72, 153, 0.25), transparent 35%),
+              radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.22), transparent 45%),
+              linear-gradient(160deg, #0c0714, #1b0929, #08020f) !important;
+}
+
+/* 8. Изумрудный Лес (Emerald Aurora) */
+body.theme-emerald {
+  --b1: #01140b; --b2: #032b18; --b3: #064e2c;
+  --card: rgba(4, 42, 24, 0.72); --card-hover: rgba(7, 65, 38, 0.88);
+  --line: rgba(52, 211, 153, 0.40); --muted: #6ee7b7; --txt: #ecfdf5;
+  --accent: #10b981; --accent-rgb: 16, 185, 129;
+  --sh: 0 20px 45px rgba(1, 20, 10, 0.7);
+  background: radial-gradient(circle at 30% 0%, rgba(16, 185, 129, 0.22), transparent 40%),
+              linear-gradient(160deg, #01140b, #032b18, #054024) !important;
+}
+
+/* 9. Закат (Sunset Horizon) */
+body.theme-sunset {
+  --b1: #1a0316; --b2: #430b35; --b3: #7c0d28;
+  --card: rgba(55, 12, 44, 0.72); --card-hover: rgba(85, 18, 68, 0.88);
+  --line: rgba(251, 146, 60, 0.45); --muted: #fed7aa; --txt: #ffffff;
+  --accent: #f97316; --accent-rgb: 249, 115, 22;
+  --sh: 0 20px 48px rgba(60, 8, 30, 0.7);
+  background: radial-gradient(circle at 10% 0%, rgba(249, 115, 22, 0.25), transparent 40%),
+              radial-gradient(circle at 90% 90%, rgba(244, 63, 94, 0.20), transparent 45%),
+              linear-gradient(160deg, #1a0316, #3b092f, #6b0b23) !important;
+}
+
+/* 10. Нордик Фрост (Nordic Ice) */
+body.theme-nordic {
+  --b1: #f0f4f8; --b2: #e1e8f0; --b3: #cbd5e1;
+  --card: rgba(255, 255, 255, 0.94); --card-hover: rgba(255, 255, 255, 1);
+  --line: rgba(59, 130, 246, 0.28); --muted: #475569; --txt: #0f172a;
+  --accent: #3b82f6; --accent-rgb: 59, 130, 246;
+  --sh: 0 14px 34px rgba(59, 130, 246, 0.10);
+  background: radial-gradient(circle at 15% 0%, rgba(59, 130, 246, 0.12), transparent 40%),
+              linear-gradient(160deg, #f0f4f8, #e2e8f0, #cbd5e1) !important;
+}
+body.theme-nordic .btn.darkBtn {
+  background: rgba(30, 41, 59, 0.08);
+  border-color: rgba(30, 41, 59, 0.20);
+  color: #1e293b;
+}
+
+/* 11. Сакура (Sakura Blossom) */
+body.theme-sakura {
+  --b1: #1a0814; --b2: #341028; --b3: #52133c;
+  --card: rgba(45, 15, 36, 0.72); --card-hover: rgba(70, 24, 56, 0.88);
+  --line: rgba(244, 114, 182, 0.40); --muted: #fbcfe8; --txt: #fff1f2;
+  --accent: #fb7185; --accent-rgb: 251, 113, 133;
+  --sh: 0 20px 46px rgba(45, 10, 35, 0.7);
+  background: radial-gradient(circle at 20% 0%, rgba(251, 113, 133, 0.22), transparent 40%),
+              radial-gradient(circle at 80% 80%, rgba(244, 114, 182, 0.18), transparent 45%),
+              linear-gradient(160deg, #1a0814, #2f0e24, #481134) !important;
+}
+
+/* 12. Токио Ночь (Tokyo Night) */
+body.theme-tokyo {
+  --b1: #070a16; --b2: #10162e; --b3: #1a2347;
+  --card: rgba(18, 26, 54, 0.72); --card-hover: rgba(28, 40, 80, 0.88);
+  --line: rgba(168, 85, 247, 0.38); --muted: #c7d2fe; --txt: #ffffff;
+  --accent: #a855f7; --accent-rgb: 168, 85, 247;
+  --sh: 0 20px 48px rgba(10, 15, 35, 0.7);
+  background: radial-gradient(circle at 10% 0%, rgba(168, 85, 247, 0.22), transparent 40%),
+              radial-gradient(circle at 90% 80%, rgba(56, 189, 248, 0.18), transparent 45%),
+              linear-gradient(160deg, #070a16, #0e1429, #171f3f) !important;
+}
+
+/* 13. Королевское Золото (Royal Obsidian Gold) */
+body.theme-gold {
+  --b1: #0a0803; --b2: #1f1807; --b3: #382c0b;
+  --card: rgba(30, 24, 7, 0.80); --card-hover: rgba(50, 40, 12, 0.92);
+  --line: rgba(234, 179, 8, 0.45); --muted: #fde047; --txt: #fef9c3;
+  --accent: #eab308; --accent-rgb: 234, 179, 8;
+  --sh: 0 20px 48px rgba(35, 28, 5, 0.8);
+  background: radial-gradient(circle at 25% 0%, rgba(234, 179, 8, 0.25), transparent 40%),
+              linear-gradient(160deg, #0a0803, #1a1406, #2d2309) !important;
+}
+
+/* 14. Кровавая Луна (Crimson Moon) */
+body.theme-crimson {
+  --b1: #100305; --b2: #25070d; --b3: #420a16;
+  --card: rgba(38, 8, 14, 0.75); --card-hover: rgba(62, 13, 23, 0.90);
+  --line: rgba(239, 68, 68, 0.42); --muted: #fca5a5; --txt: #ffffff;
+  --accent: #ef4444; --accent-rgb: 239, 68, 68;
+  --sh: 0 20px 48px rgba(35, 5, 10, 0.75);
+  background: radial-gradient(circle at 20% 0%, rgba(239, 68, 68, 0.24), transparent 40%),
+              linear-gradient(160deg, #100305, #20060b, #380812) !important;
+}
+
+/* 15. Космос & Туманность (Deep Space Nebula) */
+body.theme-space {
+  --b1: #050212; --b2: #10062c; --b3: #220738;
+  --card: rgba(22, 8, 48, 0.72); --card-hover: rgba(38, 14, 80, 0.88);
+  --line: rgba(192, 132, 252, 0.42); --muted: #e9d5ff; --txt: #fbfbfe;
+  --accent: #c084fc; --accent-rgb: 192, 132, 252;
+  --sh: 0 22px 52px rgba(25, 6, 60, 0.8);
+  background: radial-gradient(circle at 15% 10%, rgba(192, 132, 252, 0.25), transparent 40%),
+              radial-gradient(circle at 85% 85%, rgba(99, 102, 241, 0.22), transparent 45%),
+              linear-gradient(160deg, #050212, #0d0524, #1b052f) !important;
+}
+
+/* 16. Неоновый Дрифт (Synthwave 80s) */
+body.theme-synthwave {
+  --b1: #14051e; --b2: #2b0833; --b3: #08122f;
+  --card: rgba(36, 10, 48, 0.75); --card-hover: rgba(58, 16, 76, 0.90);
+  --line: rgba(244, 114, 182, 0.45); --muted: #fbcfe8; --txt: #fff0f9;
+  --accent: #06b6d4; --accent-rgb: 6, 182, 212;
+  --sh: 0 22px 52px rgba(36, 8, 50, 0.8);
+  background: radial-gradient(circle at 80% 0%, rgba(6, 182, 212, 0.25), transparent 40%),
+              radial-gradient(circle at 10% 90%, rgba(236, 72, 153, 0.25), transparent 45%),
+              linear-gradient(160deg, #14051e, #24072b, #09102b) !important;
+}
+
+/* 17. Карамельный Латте (Caramel Coffee) */
+body.theme-coffee {
+  --b1: #140c06; --b2: #2c1d13; --b3: #422b1c;
+  --card: rgba(38, 25, 17, 0.75); --card-hover: rgba(60, 40, 27, 0.90);
+  --line: rgba(212, 163, 115, 0.42); --muted: #e6ccb2; --txt: #faf0e6;
+  --accent: #d4a373; --accent-rgb: 212, 163, 115;
+  --sh: 0 20px 48px rgba(30, 18, 10, 0.75);
+  background: radial-gradient(circle at 20% 0%, rgba(212, 163, 115, 0.22), transparent 40%),
+              linear-gradient(160deg, #140c06, #24170f, #382417) !important;
+}
+
+/* 18. Мятная Матча (Matcha Mint) */
+body.theme-mint {
+  --b1: #041613; --b2: #092a24; --b3: #0e3f36;
+  --card: rgba(10, 38, 33, 0.72); --card-hover: rgba(16, 58, 50, 0.88);
+  --line: rgba(45, 212, 191, 0.42); --muted: #99f6e4; --txt: #f0fdfa;
+  --accent: #2dd4bf; --accent-rgb: 45, 212, 191;
+  --sh: 0 20px 48px rgba(4, 25, 20, 0.75);
+  background: radial-gradient(circle at 25% 0%, rgba(45, 212, 191, 0.24), transparent 40%),
+              linear-gradient(160deg, #041613, #08241f, #0d362e) !important;
+}
+
+/* 19. Вулканическая Лава (Volcano Magma) */
+body.theme-magma {
+  --b1: #0e0202; --b2: #280705; --b3: #460c07;
+  --card: rgba(38, 7, 5, 0.78); --card-hover: rgba(62, 11, 8, 0.92);
+  --line: rgba(234, 88, 12, 0.45); --muted: #fed7aa; --txt: #fff7ed;
+  --accent: #ea580c; --accent-rgb: 234, 88, 12;
+  --sh: 0 22px 50px rgba(40, 6, 4, 0.8);
+  background: radial-gradient(circle at 20% 0%, rgba(234, 88, 12, 0.28), transparent 40%),
+              linear-gradient(160deg, #0e0202, #200504, #3a0a06) !important;
+}
+
+/* 20. GameBoy 8-Bit Retro */
+body.theme-retro {
+  --b1: #0e140b; --b2: #162211; --b3: #22351b;
+  --card: rgba(20, 32, 15, 0.80); --card-hover: rgba(32, 50, 24, 0.92);
+  --line: rgba(132, 204, 22, 0.45); --muted: #bef264; --txt: #ecfccb;
+  --accent: #84cc16; --accent-rgb: 132, 204, 22;
+  --sh: 0 20px 48px rgba(15, 25, 10, 0.8);
+  background: radial-gradient(circle at 25% 0%, rgba(132, 204, 22, 0.22), transparent 40%),
+              linear-gradient(160deg, #0e140b, #141e0f, #1e2e17) !important;
+}
+
+/* 21. Северное Сияние (Nordic Aurora) */
+body.theme-aurora {
+  --b1: #020e17; --b2: #03222e; --b3: #083c4d;
+  --card: rgba(4, 32, 44, 0.72); --card-hover: rgba(7, 50, 68, 0.88);
+  --line: rgba(56, 189, 248, 0.42); --muted: #bae6fd; --txt: #f0f9ff;
+  --accent: #38bdf8; --accent-rgb: 56, 189, 248;
+  --sh: 0 20px 48px rgba(2, 18, 28, 0.75);
+  background: radial-gradient(circle at 30% 0%, rgba(56, 189, 248, 0.24), transparent 40%),
+              radial-gradient(circle at 80% 80%, rgba(45, 212, 191, 0.18), transparent 45%),
+              linear-gradient(160deg, #020e17, #031b25, #063140) !important;
+}
+
+/* 22. Ультрафиолет (Ultra Violet) */
+body.theme-violet {
+  --b1: #0d021c; --b2: #1c053a; --b3: #360b64;
+  --card: rgba(28, 6, 56, 0.75); --card-hover: rgba(46, 10, 90, 0.90);
+  --line: rgba(168, 85, 247, 0.42); --muted: #e9d5ff; --txt: #faf5ff;
+  --accent: #a855f7; --accent-rgb: 168, 85, 247;
+  --sh: 0 22px 50px rgba(25, 4, 50, 0.8);
+  background: radial-gradient(circle at 20% 0%, rgba(168, 85, 247, 0.25), transparent 40%),
+              linear-gradient(160deg, #0d021c, #16042e, #29084d) !important;
+}
+
+/* 23. iOS Dynamic Glass (Стеклянный Нео-Морфизм) */
+body.theme-dynamic_glass {
+  --b1: #080d1a; --b2: #0f1c38; --b3: #182e5c;
+  --card: rgba(255, 255, 255, 0.08); --card-hover: rgba(255, 255, 255, 0.16);
+  --line: rgba(255, 255, 255, 0.30); --muted: #cbd5e1; --txt: #ffffff;
+  --accent: #38bdf8; --accent-rgb: 56, 189, 248;
+  --sh: 0 24px 60px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(28px);
+  background: radial-gradient(circle at 15% 0%, rgba(56, 189, 248, 0.22), transparent 40%),
+              radial-gradient(circle at 85% 70%, rgba(139, 92, 246, 0.20), transparent 50%),
+              linear-gradient(160deg, #070c18, #0e1b36, #14274e) !important;
+}
+
+/* 24. GTA Vice City Neon (Майами 80-х) */
+body.theme-vice_city {
+  --b1: #150322; --b2: #2e0638; --b3: #081d3d;
+  --card: rgba(45, 8, 58, 0.78); --card-hover: rgba(70, 14, 90, 0.92);
+  --line: rgba(244, 63, 94, 0.48); --muted: #f9a8d4; --txt: #fff5fb;
+  --accent: #06b6d4; --accent-rgb: 6, 182, 212;
+  --sh: 0 24px 55px rgba(45, 4, 60, 0.85);
+  background: radial-gradient(circle at 80% 0%, rgba(6, 182, 212, 0.28), transparent 40%),
+              radial-gradient(circle at 10% 90%, rgba(244, 63, 94, 0.28), transparent 45%),
+              linear-gradient(160deg, #150322, #260530, #0a1835) !important;
+}
+
+/* 25. Кибер-Сапфир Ultra (Electric Sapphire) */
+body.theme-cyber_sapphire {
+  --b1: #020617; --b2: #021a44; --b3: #043884;
+  --card: rgba(3, 27, 72, 0.78); --card-hover: rgba(5, 42, 110, 0.92);
+  --line: rgba(56, 189, 248, 0.50); --muted: #93c5fd; --txt: #f0f9ff;
+  --accent: #0284c7; --accent-rgb: 2, 132, 199;
+  --sh: 0 24px 56px rgba(2, 14, 45, 0.85);
+  background: radial-gradient(circle at 20% 0%, rgba(56, 189, 248, 0.28), transparent 40%),
+              radial-gradient(circle at 80% 80%, rgba(37, 99, 235, 0.22), transparent 45%),
+              linear-gradient(160deg, #020617, #031c4b, #053377) !important;
+}
+
+/* 26. Драконье Пламя (Dragon Fire) */
+body.theme-dragon_fire {
+  --b1: #120202; --b2: #2b0505; --b3: #4e0a0a;
+  --card: rgba(46, 7, 7, 0.80); --card-hover: rgba(72, 12, 12, 0.94);
+  --line: rgba(239, 68, 68, 0.48); --muted: #fca5a5; --txt: #fff5f5;
+  --accent: #f97316; --accent-rgb: 249, 115, 22;
+  --sh: 0 24px 55px rgba(45, 4, 4, 0.85);
+  background: radial-gradient(circle at 15% 0%, rgba(249, 115, 22, 0.30), transparent 40%),
+              radial-gradient(circle at 85% 85%, rgba(225, 29, 72, 0.25), transparent 45%),
+              linear-gradient(160deg, #120202, #240505, #3e0707) !important;
+}
+
+/* 27. Полярный Неон (Arctic Blue) */
+body.theme-arctic_neon {
+  --b1: #030f18; --b2: #05263a; --b3: #084364;
+  --card: rgba(6, 38, 58, 0.76); --card-hover: rgba(10, 58, 88, 0.90);
+  --line: rgba(34, 211, 238, 0.48); --muted: #a5f3fc; --txt: #f0fdfa;
+  --accent: #06b6d4; --accent-rgb: 6, 182, 212;
+  --sh: 0 22px 52px rgba(3, 20, 32, 0.8);
+  background: radial-gradient(circle at 25% 0%, rgba(34, 211, 238, 0.26), transparent 40%),
+              radial-gradient(circle at 80% 80%, rgba(14, 165, 233, 0.20), transparent 45%),
+              linear-gradient(160deg, #030f18, #052133, #073854) !important;
+}
+
+/* 28. Сатурн & Золотой Млечный Путь (Saturn Gold) */
+body.theme-saturn_gold {
+  --b1: #0d0a04; --b2: #241c09; --b3: #42320e;
+  --card: rgba(36, 28, 9, 0.80); --card-hover: rgba(58, 45, 15, 0.94);
+  --line: rgba(234, 179, 8, 0.50); --muted: #fef08a; --txt: #fefce8;
+  --accent: #eab308; --accent-rgb: 234, 179, 8;
+  --sh: 0 24px 56px rgba(30, 24, 6, 0.85);
+  background: radial-gradient(circle at 20% 0%, rgba(234, 179, 8, 0.28), transparent 40%),
+              radial-gradient(circle at 85% 85%, rgba(245, 158, 11, 0.22), transparent 45%),
+              linear-gradient(160deg, #0d0a04, #1d1607, #32260b) !important;
+}
+
+/* 29. Огненный Уголь (Fire Ember) */
+body.theme-fire_ember {
+  --b1: #160401; --b2: #2f0802; --b3: #521105;
+  --card: rgba(48, 10, 4, 0.82); --card-hover: rgba(74, 18, 8, 0.94);
+  --line: rgba(251, 146, 60, 0.52); --muted: #ffedd5; --txt: #fff7ed;
+  --accent: #f97316; --accent-rgb: 249, 115, 22;
+  --sh: 0 24px 56px rgba(45, 8, 2, 0.85);
+  background: radial-gradient(circle at 10% 10%, rgba(251, 146, 60, 0.32), transparent 40%),
+              radial-gradient(circle at 90% 90%, rgba(239, 68, 68, 0.28), transparent 45%),
+              linear-gradient(160deg, #160401, #280702, #440c04) !important;
+}
+
+/* 30. Бездна Океана (Ocean Abyss) */
+body.theme-ocean_abyss {
+  --b1: #020817; --b2: #051638; --b3: #08295e;
+  --card: rgba(4, 22, 56, 0.80); --card-hover: rgba(7, 34, 86, 0.94);
+  --line: rgba(56, 189, 248, 0.48); --muted: #bae6fd; --txt: #f0f9ff;
+  --accent: #38bdf8; --accent-rgb: 56, 189, 248;
+  --sh: 0 24px 56px rgba(2, 14, 40, 0.85);
+  background: radial-gradient(circle at 20% 0%, rgba(56, 189, 248, 0.28), transparent 40%),
+              radial-gradient(circle at 80% 80%, rgba(14, 165, 233, 0.24), transparent 45%),
+              linear-gradient(160deg, #020817, #041433, #072252) !important;
+}
+
+/* 31. Изумрудный Нео-Кристалл (Emerald Matrix Crystal) */
+body.theme-emerald_matrix {
+  --b1: #021209; --b2: #052615; --b3: #0a4427;
+  --card: rgba(6, 38, 21, 0.82); --card-hover: rgba(10, 58, 32, 0.94);
+  --line: rgba(52, 211, 153, 0.50); --muted: #a7f3d0; --txt: #ecfdf5;
+  --accent: #10b981; --accent-rgb: 16, 185, 129;
+  --sh: 0 24px 56px rgba(2, 24, 12, 0.85);
+  background: radial-gradient(circle at 15% 15%, rgba(52, 211, 153, 0.28), transparent 40%),
+              radial-gradient(circle at 85% 85%, rgba(16, 185, 129, 0.24), transparent 45%),
+              linear-gradient(160deg, #021209, #042011, #08381f) !important;
+}
+
+/* 32. Гипер-Золото 24K (Hyper Gold 24K) */
+body.theme-hyper_gold {
+  --b1: #100b02; --b2: #2b1e06; --b3: #4d360b;
+  --card: rgba(42, 30, 7, 0.84); --card-hover: rgba(68, 48, 12, 0.96);
+  --line: rgba(250, 204, 21, 0.55); --muted: #fef08a; --txt: #fefce8;
+  --accent: #facc15; --accent-rgb: 250, 204, 21;
+  --sh: 0 24px 58px rgba(35, 26, 4, 0.88);
+  background: radial-gradient(circle at 25% 0%, rgba(250, 204, 21, 0.32), transparent 40%),
+              radial-gradient(circle at 80% 80%, rgba(234, 179, 8, 0.25), transparent 45%),
+              linear-gradient(160deg, #100b02, #221804, #3a2908) !important;
+}
+
+/* 33. Сверхновая Галактика (Galaxy Supernova) */
+body.theme-galaxy_supernova {
+  --b1: #09021a; --b2: #1e053a; --b3: #3b0a66;
+  --card: rgba(32, 6, 62, 0.82); --card-hover: rgba(54, 12, 98, 0.94);
+  --line: rgba(217, 70, 239, 0.52); --muted: #f5d0fe; --txt: #faf5ff;
+  --accent: #d946ef; --accent-rgb: 217, 70, 239;
+  --sh: 0 24px 58px rgba(30, 4, 60, 0.88);
+  background: radial-gradient(circle at 10% 10%, rgba(217, 70, 239, 0.32), transparent 40%),
+              radial-gradient(circle at 90% 90%, rgba(99, 102, 241, 0.30), transparent 45%),
+              linear-gradient(160deg, #09021a, #1a0433, #2b0652) !important;
+}
+
+/* 34. Неоновый Токио Дрифт (Neon Tokyo Drift) */
+body.theme-neon_tokyo_drift {
+  --b1: #03081a; --b2: #091738; --b3: #1a052b;
+  --card: rgba(10, 22, 54, 0.82); --card-hover: rgba(18, 38, 88, 0.94);
+  --line: rgba(244, 63, 94, 0.50); --muted: #fed7aa; --txt: #ffffff;
+  --accent: #f43f5e; --accent-rgb: 244, 63, 94;
+  --sh: 0 24px 58px rgba(8, 16, 45, 0.88);
+  background: radial-gradient(circle at 80% 15%, rgba(244, 63, 94, 0.30), transparent 40%),
+              radial-gradient(circle at 15% 85%, rgba(6, 182, 212, 0.30), transparent 45%),
+              linear-gradient(160deg, #03081a, #0b1532, #180927) !important;
+}
+
+/* 35. Голографический Лед (Holographic Ice) */
+body.theme-holographic_ice {
+  --b1: #020d18; --b2: #05223a; --b3: #083c5e;
+  --card: rgba(6, 32, 56, 0.80); --card-hover: rgba(10, 52, 90, 0.94);
+  --line: rgba(45, 212, 191, 0.50); --muted: #ccfbf1; --txt: #f0fdfa;
+  --accent: #2dd4bf; --accent-rgb: 45, 212, 191;
+  --sh: 0 24px 58px rgba(2, 20, 36, 0.85);
+  background: radial-gradient(circle at 15% 15%, rgba(45, 212, 191, 0.30), transparent 40%),
+              radial-gradient(circle at 85% 85%, rgba(56, 189, 248, 0.28), transparent 45%),
+              linear-gradient(160deg, #020d18, #041b30, #083050) !important;
+}
+
+/* 36. Рубиновый Обсидиан (Ruby Obsidian) */
+body.theme-ruby_obsidian {
+  --b1: #0f0204; --b2: #24050a; --b3: #420812;
+  --card: rgba(36, 6, 11, 0.84); --card-hover: rgba(60, 10, 18, 0.96);
+  --line: rgba(244, 63, 94, 0.52); --muted: #fecdd3; --txt: #fff1f2;
+  --accent: #e11d48; --accent-rgb: 225, 29, 72;
+  --sh: 0 24px 58px rgba(32, 4, 8, 0.88);
+  background: radial-gradient(circle at 20% 0%, rgba(225, 29, 72, 0.32), transparent 40%),
+              radial-gradient(circle at 80% 80%, rgba(249, 115, 22, 0.24), transparent 45%),
+              linear-gradient(160deg, #0f0204, #1c0307, #30060e) !important;
+}
+
+/* 37. Уральский Аргаяш (Argayash Ural Pine) */
+body.theme-argayash_ural {
+  --b1: #011409; --b2: #032b14; --b3: #064521;
+  --card: rgba(4, 38, 18, 0.84); --card-hover: rgba(8, 56, 27, 0.95);
+  --line: rgba(74, 222, 128, 0.52); --muted: #bbf7d0; --txt: #f0fdf4;
+  --accent: #22c55e; --accent-rgb: 34, 197, 94;
+  --sh: 0 24px 58px rgba(1, 25, 12, 0.88);
+  background: radial-gradient(circle at 15% 15%, rgba(34, 197, 94, 0.35), transparent 45%),
+              radial-gradient(circle at 85% 85%, rgba(20, 184, 166, 0.28), transparent 50%),
+              linear-gradient(160deg, #011409, #022010, #04361b) !important;
+}
+
+/* 38. Квантовый Аметист (Quantum Amethyst) */
+body.theme-quantum_amethyst {
+  --b1: #0b0217; --b2: #1c0638; --b3: #350c66;
+  --card: rgba(32, 8, 62, 0.85); --card-hover: rgba(54, 14, 98, 0.96);
+  --line: rgba(192, 132, 252, 0.55); --muted: #f3e8ff; --txt: #faf5ff;
+  --accent: #a855f7; --accent-rgb: 168, 85, 247;
+  --sh: 0 24px 58px rgba(28, 4, 55, 0.9);
+  background: radial-gradient(circle at 25% 10%, rgba(192, 132, 252, 0.35), transparent 45%),
+              radial-gradient(circle at 75% 90%, rgba(236, 72, 153, 0.28), transparent 45%),
+              linear-gradient(160deg, #0b0217, #180432, #290750) !important;
+}
+
+/* 39. Солнечная Вспышка (Solar Flare Ultra) */
+body.theme-solar_flare {
+  --b1: #1a0800; --b2: #381200; --b3: #612100;
+  --card: rgba(58, 20, 2, 0.85); --card-hover: rgba(88, 30, 4, 0.96);
+  --line: rgba(251, 146, 60, 0.55); --muted: #ffedd5; --txt: #fff7ed;
+  --accent: #ea580c; --accent-rgb: 234, 88, 12;
+  --sh: 0 24px 58px rgba(50, 15, 0, 0.9);
+  background: radial-gradient(circle at 20% 0%, rgba(251, 146, 60, 0.38), transparent 45%),
+              radial-gradient(circle at 80% 85%, rgba(234, 179, 8, 0.30), transparent 45%),
+              linear-gradient(160deg, #1a0800, #301000, #4d1800) !important;
+}
+
+/* 40. Фантомный Кибер-Глитч (Phantom Cyber Glitch) */
+body.theme-phantom_glitch {
+  --b1: #030814; --b2: #091a38; --b3: #1a062d;
+  --card: rgba(12, 24, 54, 0.85); --card-hover: rgba(22, 42, 92, 0.96);
+  --line: rgba(6, 182, 212, 0.55); --muted: #e0f2fe; --txt: #ffffff;
+  --accent: #00f0ff; --accent-rgb: 0, 240, 255;
+  --sh: 0 24px 60px rgba(0, 18, 45, 0.9);
+  background: radial-gradient(circle at 10% 20%, rgba(0, 240, 255, 0.30), transparent 40%),
+              radial-gradient(circle at 90% 80%, rgba(244, 63, 94, 0.32), transparent 45%),
+              linear-gradient(160deg, #030814, #0b1530, #1b0728) !important;
+}
+
+/* 41. Глубокий Вакуум (Deep Cosmic Void) */
+body.theme-deep_void {
+  --b1: #000208; --b2: #020919; --b3: #051433;
+  --card: rgba(3, 12, 35, 0.88); --card-hover: rgba(5, 20, 55, 0.98);
+  --line: rgba(99, 102, 241, 0.52); --muted: #e0e7ff; --txt: #f8fafc;
+  --accent: #6366f1; --accent-rgb: 99, 102, 241;
+  --sh: 0 24px 64px rgba(0, 0, 0, 0.95);
+  background: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.25), transparent 50%),
+              radial-gradient(circle at 80% 90%, rgba(139, 92, 246, 0.20), transparent 50%),
+              linear-gradient(160deg, #000208, #010614, #030e25) !important;
+}
+
+/* 42. Кварцевая Туманность (Nebula Quartz) */
+body.theme-nebula_quartz {
+  --b1: #0f031b; --b2: #240540; --b3: #430973;
+  --card: rgba(38, 7, 68, 0.85); --card-hover: rgba(62, 12, 108, 0.96);
+  --line: rgba(232, 121, 249, 0.52); --muted: #f5d0fe; --txt: #faf5ff;
+  --accent: #e879f9; --accent-rgb: 232, 121, 249;
+  --sh: 0 24px 62px rgba(35, 4, 65, 0.9);
+  background: radial-gradient(circle at 20% 10%, rgba(232, 121, 249, 0.35), transparent 45%),
+              radial-gradient(circle at 80% 85%, rgba(168, 85, 247, 0.28), transparent 45%),
+              linear-gradient(160deg, #0f031b, #1e0436, #300654) !important;
+}
+
+/* 43. Нео-Изумруд 2099 (Cyber Emerald 2099) */
+body.theme-cyber_emerald_99 {
+  --b1: #010d06; --b2: #032010; --b3: #06381d;
+  --card: rgba(4, 32, 16, 0.85); --card-hover: rgba(8, 52, 26, 0.96);
+  --line: rgba(74, 222, 128, 0.55); --muted: #dcfce7; --txt: #f0fdf4;
+  --accent: #4ade80; --accent-rgb: 74, 222, 128;
+  --sh: 0 24px 60px rgba(0, 25, 10, 0.9);
+  background: radial-gradient(circle at 10% 15%, rgba(74, 222, 128, 0.36), transparent 40%),
+              radial-gradient(circle at 90% 85%, rgba(6, 182, 212, 0.28), transparent 45%),
+              linear-gradient(160deg, #010d06, #021a0d, #042d17) !important;
+}
+
+/* 44. Ретро Пиксель 16-Bit (Super Mario Retro) */
+body.theme-super_mario_retro {
+  --b1: #150808; --b2: #2e0e0e; --b3: #4a1515;
+  --card: rgba(46, 14, 14, 0.85); --card-hover: rgba(72, 22, 22, 0.96);
+  --line: rgba(239, 68, 68, 0.52); --muted: #fee2e2; --txt: #fef2f2;
+  --accent: #ef4444; --accent-rgb: 239, 68, 68;
+  --sh: 0 24px 60px rgba(40, 8, 8, 0.88);
+  background: radial-gradient(circle at 25% 10%, rgba(239, 68, 68, 0.32), transparent 40%),
+              radial-gradient(circle at 80% 80%, rgba(245, 158, 11, 0.28), transparent 45%),
+              linear-gradient(160deg, #150808, #260a0a, #3c1010) !important;
+}
+
+/* 45. Морозный Бриллиант (Frost Diamond) */
+body.theme-frost_diamond {
+  --b1: #030d17; --b2: #082136; --b3: #0e3b5e;
+  --card: rgba(8, 33, 54, 0.84); --card-hover: rgba(14, 52, 85, 0.96);
+  --line: rgba(56, 189, 248, 0.55); --muted: #e0f2fe; --txt: #f0f9ff;
+  --accent: #38bdf8; --accent-rgb: 56, 189, 248;
+  --sh: 0 24px 60px rgba(2, 20, 35, 0.9);
+  background: radial-gradient(circle at 20% 0%, rgba(56, 189, 248, 0.36), transparent 45%),
+              radial-gradient(circle at 80% 85%, rgba(125, 211, 252, 0.25), transparent 45%),
+              linear-gradient(160deg, #030d17, #06192b, #0c2d49) !important;
+}
+
+/* 46. Нео-Самурай Киото (Blood Samurai Kyoto) */
+body.theme-blood_samurai {
+  --b1: #100205; --b2: #24040a; --b3: #3f0813;
+  --card: rgba(36, 4, 10, 0.86); --card-hover: rgba(60, 8, 18, 0.96);
+  --line: rgba(225, 29, 72, 0.55); --muted: #ffe4e6; --txt: #fff1f2;
+  --accent: #e11d48; --accent-rgb: 225, 29, 72;
+  --sh: 0 24px 64px rgba(32, 2, 8, 0.92);
+  background: radial-gradient(circle at 15% 15%, rgba(225, 29, 72, 0.36), transparent 40%),
+              radial-gradient(circle at 85% 85%, rgba(245, 158, 11, 0.25), transparent 45%),
+              linear-gradient(160deg, #100205, #1d0308, #30060e) !important;
+}
+
+/* 47. Яндекс Нео-Золото (Yandex Neo Gold) */
+body.theme-yandex_neo_gold {
+  --b1: #0a0800; --b2: #1c1500; --b3: #332600;
+  --card: rgba(28, 22, 2, 0.88); --card-hover: rgba(48, 38, 4, 0.96);
+  --line: rgba(250, 204, 21, 0.55); --muted: #fef9c3; --txt: #ffffff;
+  --accent: #fc3f1d; --accent-rgb: 252, 63, 29;
+  --sh: 0 24px 62px rgba(25, 18, 0, 0.92);
+  background: radial-gradient(circle at 20% 10%, rgba(250, 204, 21, 0.35), transparent 45%),
+              radial-gradient(circle at 80% 85%, rgba(252, 63, 29, 0.30), transparent 45%),
+              linear-gradient(160deg, #0d0a00, #191402, #292000) !important;
+}
+
+/* 48. Уральский Малахит (Ural Malachite) */
+body.theme-ural_malachite {
+  --b1: #021209; --b2: #052615; --b3: #084024;
+  --card: rgba(4, 34, 18, 0.88); --card-hover: rgba(8, 54, 28, 0.96);
+  --line: rgba(52, 211, 153, 0.52); --muted: #d1fae5; --txt: #f0fdf4;
+  --accent: #10b981; --accent-rgb: 16, 185, 129;
+  --sh: 0 24px 60px rgba(1, 20, 10, 0.9);
+  background: radial-gradient(circle at 25% 15%, rgba(52, 211, 153, 0.32), transparent 42%),
+              radial-gradient(circle at 75% 85%, rgba(245, 158, 11, 0.22), transparent 45%),
+              linear-gradient(160deg, #021209, #042011, #08381e) !important;
+}
+
+/* 49. Атомная Плазма (Atomic Plasma) */
+body.theme-atomic_plasma {
+  --b1: #060114; --b2: #11052c; --b3: #1c084a;
+  --card: rgba(18, 6, 46, 0.88); --card-hover: rgba(32, 10, 78, 0.96);
+  --line: rgba(168, 85, 247, 0.55); --muted: #f3e8ff; --txt: #faf5ff;
+  --accent: #00f0ff; --accent-rgb: 0, 240, 255;
+  --sh: 0 24px 64px rgba(12, 2, 35, 0.94);
+  background: radial-gradient(circle at 15% 15%, rgba(0, 240, 255, 0.35), transparent 42%),
+              radial-gradient(circle at 85% 80%, rgba(168, 85, 247, 0.32), transparent 45%),
+              linear-gradient(160deg, #060114, #0f0322, #1b073c) !important;
+}
+
+/* 50. Киберпанк Токио 2099 (Tokyo Cyber 2099) */
+body.theme-tokyo_cyber_2099 {
+  --b1: #070014; --b2: #140130; --b3: #260356;
+  --card: rgba(22, 2, 50, 0.88); --card-hover: rgba(40, 4, 90, 0.96);
+  --line: rgba(244, 63, 94, 0.55); --muted: #ffe4e6; --txt: #ffffff;
+  --accent: #f43f5e; --accent-rgb: 244, 63, 94;
+  --sh: 0 24px 64px rgba(18, 0, 38, 0.95);
+  background: radial-gradient(circle at 20% 10%, rgba(244, 63, 94, 0.35), transparent 42%),
+              radial-gradient(circle at 80% 85%, rgba(6, 182, 212, 0.30), transparent 45%),
+              linear-gradient(160deg, #070014, #120126, #200244) !important;
+}
+
+/* 51. Сакура Весна (Spring Sakura Bloom) */
+body.theme-spring_sakura_bloom {
+  --b1: #170410; --b2: #2e0821; --b3: #4a0f37;
+  --card: rgba(48, 10, 36, 0.86); --card-hover: rgba(72, 16, 54, 0.96);
+  --line: rgba(251, 113, 133, 0.52); --muted: #ffe4e6; --txt: #fff1f2;
+  --accent: #fb7185; --accent-rgb: 251, 113, 133;
+  --sh: 0 24px 60px rgba(35, 4, 25, 0.9);
+  background: radial-gradient(circle at 15% 15%, rgba(251, 113, 133, 0.35), transparent 42%),
+              radial-gradient(circle at 85% 85%, rgba(244, 114, 182, 0.28), transparent 45%),
+              linear-gradient(160deg, #170410, #25061b, #380a29) !important;
+}
+
+/* 52. Гравитон Deep Space (Graviton Deep Space) */
+body.theme-graviton_deep_space {
+  --b1: #00040d; --b2: #020b1f; --b3: #05163d;
+  --card: rgba(3, 14, 42, 0.88); --card-hover: rgba(6, 24, 70, 0.96);
+  --line: rgba(99, 102, 241, 0.55); --muted: #e0e7ff; --txt: #f8fafc;
+  --accent: #818cf8; --accent-rgb: 129, 140, 248;
+  --sh: 0 24px 64px rgba(0, 3, 15, 0.95);
+  background: radial-gradient(circle at 50% 10%, rgba(99, 102, 241, 0.28), transparent 48%),
+              radial-gradient(circle at 80% 85%, rgba(139, 92, 246, 0.22), transparent 48%),
+              linear-gradient(160deg, #00040d, #020917, #04102c) !important;
+}
+
+/* 53. Яндекс Алиса Неон (Yandex Alice Purple) */
+body.theme-yandex_alice_purple {
+  --b1: #0e021a; --b2: #1e0536; --b3: #3b0764;
+  --card: rgba(32, 6, 56, 0.88); --card-hover: rgba(56, 12, 96, 0.96);
+  --line: rgba(192, 132, 252, 0.55); --muted: #f3e8ff; --txt: #faf5ff;
+  --accent: #a855f7; --accent-rgb: 168, 85, 247;
+  --sh: 0 24px 64px rgba(22, 2, 40, 0.94);
+  background: radial-gradient(circle at 20% 10%, rgba(168, 85, 247, 0.38), transparent 42%),
+              radial-gradient(circle at 80% 85%, rgba(236, 72, 153, 0.28), transparent 45%),
+              linear-gradient(160deg, #0e021a, #1a0430, #2c064e) !important;
+}
+
+/* 54. Озеро Увильды Аргаяш (Ural Uvildy Lake) */
+body.theme-ural_uvildy_lake {
+  --b1: #010c14; --b2: #032034; --b3: #06395b;
+  --card: rgba(4, 28, 48, 0.88); --card-hover: rgba(8, 46, 78, 0.96);
+  --line: rgba(34, 211, 238, 0.52); --muted: #cffafe; --txt: #f0fdfa;
+  --accent: #06b6d4; --accent-rgb: 6, 182, 212;
+  --sh: 0 24px 60px rgba(1, 15, 25, 0.9);
+  background: radial-gradient(circle at 15% 15%, rgba(6, 182, 212, 0.35), transparent 42%),
+              radial-gradient(circle at 85% 80%, rgba(20, 184, 166, 0.26), transparent 45%),
+              linear-gradient(160deg, #010c14, #031c2d, #06334f) !important;
+}
+
+/* 55. Лазерный Synth-Grid 80s */
+body.theme-laser_grid_80s {
+  --b1: #12001e; --b2: #280142; --b3: #4a037b;
+  --card: rgba(42, 2, 70, 0.88); --card-hover: rgba(70, 5, 115, 0.96);
+  --line: rgba(244, 114, 182, 0.55); --muted: #fce7f3; --txt: #fff0f9;
+  --accent: #ec4899; --accent-rgb: 236, 72, 153;
+  --sh: 0 24px 64px rgba(28, 0, 48, 0.95);
+  background: radial-gradient(circle at 20% 10%, rgba(236, 72, 153, 0.38), transparent 40%),
+              radial-gradient(circle at 80% 85%, rgba(14, 165, 233, 0.30), transparent 45%),
+              linear-gradient(160deg, #12001e, #200134, #39025c) !important;
+}
+
+/* 56. Золотая Осень Урала (Golden Autumn Ural) */
+body.theme-golden_autumn_ural {
+  --b1: #140801; --b2: #2b1202; --b3: #4a2104;
+  --card: rgba(46, 20, 4, 0.88); --card-hover: rgba(72, 32, 6, 0.96);
+  --line: rgba(245, 158, 11, 0.55); --muted: #fef3c7; --txt: #fffbeb;
+  --accent: #f59e0b; --accent-rgb: 245, 158, 11;
+  --sh: 0 24px 62px rgba(30, 12, 1, 0.92);
+  background: radial-gradient(circle at 20% 10%, rgba(245, 158, 11, 0.36), transparent 42%),
+              radial-gradient(circle at 80% 85%, rgba(234, 88, 12, 0.30), transparent 45%),
+              linear-gradient(160deg, #140801, #220e02, #3c1803) !important;
+}
+
+/* 57. Пульсар Тёмной Материи (Dark Matter Pulsar) */
+body.theme-dark_matter_pulsar {
+  --b1: #000008; --b2: #040618; --b3: #080f33;
+  --card: rgba(5, 10, 36, 0.88); --card-hover: rgba(10, 20, 64, 0.96);
+  --line: rgba(96, 165, 250, 0.52); --muted: #dbeafe; --txt: #f8fafc;
+  --accent: #3b82f6; --accent-rgb: 59, 130, 246;
+  --sh: 0 24px 64px rgba(0, 2, 18, 0.96);
+  background: radial-gradient(circle at 50% 10%, rgba(59, 130, 246, 0.32), transparent 45%),
+              radial-gradient(circle at 80% 85%, rgba(147, 51, 234, 0.24), transparent 45%),
+              linear-gradient(160deg, #000008, #030412, #070a24) !important;
+}
+
+/* 58. Ядерный Изумруд (Cyber Emerald Core) */
+body.theme-cyber_emerald_core {
+  --b1: #001006; --b2: #02230e; --b3: #053b19;
+  --card: rgba(3, 35, 14, 0.88); --card-hover: rgba(6, 56, 24, 0.96);
+  --line: rgba(16, 185, 129, 0.55); --muted: #d1fae5; --txt: #ecfdf5;
+  --accent: #10b981; --accent-rgb: 16, 185, 129;
+  --sh: 0 24px 62px rgba(1, 22, 8, 0.92);
+  background: radial-gradient(circle at 15% 15%, rgba(16, 185, 129, 0.38), transparent 40%),
+              radial-gradient(circle at 85% 85%, rgba(52, 211, 153, 0.28), transparent 45%),
+              linear-gradient(160deg, #001006, #011b0b, #032b12) !important;
+}
+
+/* 37. Пасхалка: Первый (АСОШ 5Б Classic Koder Vintage) */
+body.theme-first {
+  --b1: #0f172a; --b2: #1e293b; --b3: #0f172a;
+  --card: rgba(255, 255, 255, 0.08); --card-hover: rgba(255, 255, 255, 0.14);
+  --line: rgba(255, 255, 255, 0.16); --muted: #cbd5e1; --txt: #f8fafc;
+  --accent: #38bdf8; --accent-rgb: 56, 189, 248;
+  --sh: 0 12px 30px rgba(0, 0, 0, 0.35);
+  background: radial-gradient(circle at top, #1d4ed8 0%, transparent 25%),
+              radial-gradient(circle at bottom right, #0ea5e9 0%, transparent 20%),
+              linear-gradient(160deg, #0f172a, #1e293b) !important;
+}
+
+/* ДИНАМИЧЕСКИЙ ОСТРОВОК (iOS Dynamic Island Live Banner) */
+.dynamic-island-banner {
+  background: #000000;
+  color: #ffffff;
+  border-radius: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7), 0 0 18px rgba(0, 240, 255, 0.15);
+  padding: 8px 16px;
+  margin: 0 auto 12px;
+  max-width: 380px;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.dynamic-island-banner:active {
+  transform: scale(0.98);
+}
+
+/* РЕЖИМЫ ЭКРАНА И ПРОИЗВОДИТЕЛЬНОСТИ */
+body.low .card, body.low .btn, body.low .nav-bar {
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+body.no-anim * {
+  animation: none !important;
+  transition: none !important;
+}
+
+body.compact .app-container {
+  max-width: 440px;
+  padding: 10px 10px 95px;
+}
+body.compact .card {
+  border-radius: 18px;
+  padding: 14px;
+  margin: 8px 0;
+}
+body.compact h1 { font-size: 24px; }
+body.compact h2 { font-size: 20px; }
+body.compact .btn {
+  padding: 12px 14px;
+  font-size: 15px;
+  border-radius: 16px;
+}
+
+body.device-pc .app-container {
+  max-width: 1050px;
+}
+body.device-pc .nav-bar {
+  max-width: 650px;
+}
+
+.app-container {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 14px 12px calc(110px + env(safe-area-inset-bottom, 0px));
+  transition: max-width 0.3s;
+}
+
+.card {
+  background: linear-gradient(180deg, var(--card), rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 18px;
+  margin: 12px 0;
+  box-shadow: var(--sh);
+  backdrop-filter: blur(20px);
+  position: relative;
+}
+
+/* MINECRAFT SPLASH */
+.mc-splash {
+  position: absolute;
+  top: 14px;
+  right: -6px;
+  color: #ffff00;
+  font-family: 'Comic Sans MS', sans-serif, system-ui;
+  font-size: 13px;
+  font-weight: 800;
+  transform: rotate(-15deg);
+  text-shadow: 2px 2px 0px #000;
+  animation: pulseMC 0.6s infinite alternate;
+  z-index: 10;
+  pointer-events: none;
+  max-width: 220px;
+  text-align: center;
+}
+
+@keyframes pulseMC {
+  from { transform: rotate(-15deg) scale(0.96); }
+  to { transform: rotate(-15deg) scale(1.08); }
+}
+
+.motivator {
+  text-align: center;
+  font-style: italic;
+  color: var(--accent);
+  margin-bottom: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.45;
+  padding: 0 10px;
+}
+
+body.hide-splash .mc-splash { display: none !important; }
+body.hide-mot .motivator { display: none !important; }
+
+/* КНОПКИ */
+.btn {
+  border: 0;
+  border-radius: 18px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #0072ff, #00c6ff);
+  box-shadow: var(--sh);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.1s ease, filter 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.btn.w-full {
+  width: 100%;
+}
+
+.btn:active { transform: scale(0.985); }
+.btn:hover { filter: brightness(1.06); }
+
+.btn.green { background: linear-gradient(135deg, #11998e, #38ef7d); }
+.btn.orange { background: linear-gradient(135deg, #ff8008, #ffc837); }
+.btn.purple { background: linear-gradient(135deg, #8a2387, #e94057); }
+.btn.cyan { background: linear-gradient(135deg, #0284c7, #06b6d4); }
+.btn.rose { background: linear-gradient(135deg, #e11d48, #fb7185); }
+.btn.gold { background: linear-gradient(135deg, #d97706, #fbbf24); color: #1c1917; }
+.btn.darkBtn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--line);
+  color: var(--txt);
+  box-shadow: none;
+}
+.btn.darkBtn:hover { background: rgba(255, 255, 255, 0.15); }
+
+.choice, .classBtn, .themeBtn {
+  border: 0;
+  border-radius: 20px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: transform 0.1s, background 0.2s, border-color 0.2s;
+  text-align: center;
+  box-sizing: border-box;
+}
+.choice:active, .classBtn:active, .themeBtn:active { transform: scale(0.97); }
+.choice.active {
+  background: #ffffff;
+  color: #0a1128;
+  border-color: #ffffff;
+  font-weight: 900;
+}
+
+/* УРОКИ & ВИДЖЕТЫ */
+.lesson {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 12px;
+  padding: 12px;
+  margin: 8px 0;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid var(--line);
+  align-items: center;
+}
+
+.lesson.current {
+  background: rgba(var(--accent-rgb), 0.16);
+  border-color: var(--accent);
+}
+
+.num {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #00c6ff, #0072ff);
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  color: #fff;
+  font-size: 16px;
+}
+
+.bellWidget {
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.2), rgba(0, 114, 255, 0.2));
+  border: 1px solid var(--accent);
+  border-radius: 20px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.bellWidget.urgent {
+  background: linear-gradient(135deg, rgba(255, 68, 68, 0.3), rgba(255, 120, 0, 0.3));
+  border-color: #ff4444;
+  animation: pulseBell 0.9s infinite alternate;
+}
+
+@keyframes pulseBell {
+  from { transform: scale(1); }
+  to { transform: scale(1.02); }
+}
+
+.cleanNext {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--line);
+  margin-top: 10px;
+  font-weight: 800;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--line);
+  font-weight: 800;
+  font-size: 11px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+/* ФОРМЫ */
+input, select, textarea {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px 14px;
+  font-size: 15px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.4);
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+body.theme-light input, body.theme-light select, body.theme-light textarea {
+  color: #112233;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+body.theme-nordic input, body.theme-nordic select, body.theme-nordic textarea {
+  color: #2e3440;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+}
+
+label {
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--muted);
+  display: block;
+  margin: 8px 0 4px;
+}
+
+.nav-bar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  width: min(860px, calc(100% - 20px));
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  background: rgba(10, 17, 40, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 6px 4px;
+  z-index: 50;
+  box-shadow: var(--sh);
+  backdrop-filter: blur(20px);
+}
+
+.nav-bar button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 9.5px;
+  font-weight: 800;
+  border-radius: 16px;
+  padding: 6px 1px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.nav-bar button.active {
+  background: rgba(var(--accent-rgb), 0.18);
+  color: var(--accent);
+}
+
+.nav-bar span {
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+/* ПЛАВНЫЕ АНИМАЦИИ */
+@keyframes showScreen {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.screen-enter {
+  animation: showScreen 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* РЕЖИМ «АНТИ-ШПИОН» И КОНФИДЕНЦИАЛЬНОСТЬ */
+html.privacy-blur-active .sensitive-data,
+.privacy-blur-active .sensitive-data {
+  filter: blur(6px);
+  transition: filter 0.2s ease;
+  user-select: none;
+}
+html.privacy-blur-active .sensitive-data:hover,
+.privacy-blur-active .sensitive-data:hover,
+html.privacy-blur-active .sensitive-data:active,
+.privacy-blur-active .sensitive-data:active {
+  filter: blur(0px);
+}
