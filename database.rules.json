@@ -1,0 +1,22 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "asosh_timer": {
+      ".read": "auth != null",
+      "$msg": {
+        ".write": "auth != null && !data.exists()",
+        ".validate": "newData.hasChildren(['content', 'created_at']) && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 400 && (!newData.child('username').exists() || (newData.child('username').isString() && newData.child('username').val().length <= 60))"
+      }
+    },
+    "asosh_rooms": {
+      "$room": {
+        ".read": "auth != null",
+        "$msg": {
+          ".write": "auth != null && !data.exists()",
+          ".validate": "newData.hasChildren(['content', 'created_at']) && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 400 && (!newData.child('username').exists() || (newData.child('username').isString() && newData.child('username').val().length <= 60))"
+        }
+      }
+    }
+  }
+}
