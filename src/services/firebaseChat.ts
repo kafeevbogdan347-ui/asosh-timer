@@ -12,19 +12,17 @@ import {
 } from 'firebase/database';
 import { ChatMessage } from '../types';
 
-// Конфиг Firebase берётся из окружения, а не хранится в коде:
-// на хостинге его подставляет сервер (window.__APP_CONFIG__), локально — Vite из .env
+// Конфиг Firebase берётся из .env (VITE_FIREBASE_*) при сборке, а не хранится в коде
 const env = import.meta.env;
-const runtime = ((window as any).__APP_CONFIG__?.firebase || {}) as Record<string, string>;
 export const DEFAULT_FIREBASE_CONFIG = {
-  apiKey: runtime.apiKey || env.VITE_FIREBASE_API_KEY || '',
-  authDomain: runtime.authDomain || env.VITE_FIREBASE_AUTH_DOMAIN || '',
-  databaseURL: runtime.databaseURL || env.VITE_FIREBASE_DATABASE_URL || '',
-  projectId: runtime.projectId || env.VITE_FIREBASE_PROJECT_ID || '',
-  storageBucket: runtime.storageBucket || env.VITE_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: runtime.messagingSenderId || env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: runtime.appId || env.VITE_FIREBASE_APP_ID || '',
-  measurementId: runtime.measurementId || env.VITE_FIREBASE_MEASUREMENT_ID || '',
+  apiKey: env.VITE_FIREBASE_API_KEY || '',
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || '',
+  databaseURL: env.VITE_FIREBASE_DATABASE_URL || '',
+  projectId: env.VITE_FIREBASE_PROJECT_ID || '',
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: env.VITE_FIREBASE_APP_ID || '',
+  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || '',
 };
 
 const FIREBASE_STORAGE_KEY = 'asosh_custom_firebase_config';
@@ -90,7 +88,7 @@ export function initFirebase() {
 }
 
 /**
- * Send message to Firebase Realtime Database and internal Server Chat (No VPN required)
+ * Send message to Firebase Realtime Database
  */
 export async function sendFirebaseMessage(
   username: string,
@@ -112,35 +110,10 @@ export async function sendFirebaseMessage(
     return { success: false, error: 'Сообщение не может быть пустым' };
   }
 
-  let serverSuccess = false;
   let firebaseSuccess = false;
   let createdId = '';
 
-  // 1. Direct Server Chat (Always works in Russia without VPN)
-  try {
-    const res = await fetch('/api/chat/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: trimmedUser,
-        content: trimmedContent,
-        room,
-        userId: finalUserId,
-        avatar: finalAvatar,
-        isIncognito,
-        isSelfDestruct,
-      }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      serverSuccess = true;
-      createdId = data.message?.id || '';
-    }
-  } catch (err) {
-    console.warn('Server chat send warning:', err);
-  }
-
-  // 2. Firebase Realtime DB (when accessible)
+  // Firebase Realtime DB
   try {
     const { db } = initFirebase();
     if (db) {
@@ -161,10 +134,10 @@ export async function sendFirebaseMessage(
       if (!createdId) createdId = newMsgRef.key || '';
     }
   } catch (err: any) {
-    console.warn('Firebase chat send error (falling back to server chat):', err?.message);
+    console.warn('Firebase chat send error:', err?.message);
   }
 
-  if (serverSuccess || firebaseSuccess) {
+  if (firebaseSuccess) {
     return { success: true, id: createdId || undefined };
   }
 
@@ -172,7 +145,7 @@ export async function sendFirebaseMessage(
 }
 
 /**
- * Subscribe to Realtime messages with automatic Server fallback (Guaranteed no-VPN support)
+ * Subscribe to Realtime messages
  */
 export function subscribeToFirebaseMessages(
   onMessagesUpdate: (messages: ChatMessage[]) => void,
@@ -191,37 +164,7 @@ export function subscribeToFirebaseMessages(
     onMessagesUpdate(list.slice(-limitCount));
   };
 
-  // 1. Initial and periodic load from direct server chat (Works 100% in Russia without VPN)
-  const fetchServerMessages = async () => {
-    try {
-      const res = await fetch(`/api/chat/messages?room=${encodeURIComponent(room)}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data.messages)) {
-          data.messages.forEach((item: any) => {
-            if (item && item.id) {
-              knownMessages.set(item.id, {
-                id: item.id,
-                username: item.username || 'Ученик',
-                userId: item.userId || '',
-                avatar: item.avatar || '',
-                content: item.content || '',
-                created_at: item.created_at || new Date().toISOString(),
-              });
-            }
-          });
-          emitMerged();
-        }
-      }
-    } catch (e) {
-      // server poll failed
-    }
-  };
-
-  fetchServerMessages();
-  const pollInterval = setInterval(fetchServerMessages, 3500);
-
-  // 2. Firebase Realtime subscription
+  // Firebase Realtime subscription
   let firebaseUnsubscribe: Unsubscribe | null = null;
   try {
     const { db } = initFirebase();
@@ -246,20 +189,22 @@ export function subscribeToFirebaseMessages(
                 created_at: item.created_at || (item.timestamp ? new Date(item.timestamp).toISOString() : new Date().toISOString()),
               });
             });
-            emitMerged();
           }
+          // Пустая комната — тоже ответ: сообщаем экрану, что подключение есть
+          emitMerged();
         },
         (error) => {
-          console.warn('Firebase subscription warning (using server chat relay):', error);
+          console.warn('Firebase subscription warning:', error);
+          // Без доступа к базе показываем пустую комнату, а не вечное «Подключение…»
+          emitMerged();
         }
       );
     }
   } catch (err) {
-    console.warn('Firebase init error for subscription, using server chat:', err);
+    console.warn('Firebase init error for subscription:', err);
   }
 
   return () => {
-    clearInterval(pollInterval);
     if (firebaseUnsubscribe) {
       try {
         firebaseUnsubscribe();
