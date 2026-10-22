@@ -12,17 +12,19 @@ import {
 } from 'firebase/database';
 import { ChatMessage } from '../types';
 
-// Конфиг Firebase берётся из .env (VITE_FIREBASE_*), а не хранится в коде
+// Конфиг Firebase берётся из окружения, а не хранится в коде:
+// на хостинге его подставляет сервер (window.__APP_CONFIG__), локально — Vite из .env
 const env = import.meta.env;
+const runtime = ((window as any).__APP_CONFIG__?.firebase || {}) as Record<string, string>;
 export const DEFAULT_FIREBASE_CONFIG = {
-  apiKey: env.VITE_FIREBASE_API_KEY || '',
-  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || '',
-  databaseURL: env.VITE_FIREBASE_DATABASE_URL || '',
-  projectId: env.VITE_FIREBASE_PROJECT_ID || '',
-  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: env.VITE_FIREBASE_APP_ID || '',
-  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || '',
+  apiKey: runtime.apiKey || env.VITE_FIREBASE_API_KEY || '',
+  authDomain: runtime.authDomain || env.VITE_FIREBASE_AUTH_DOMAIN || '',
+  databaseURL: runtime.databaseURL || env.VITE_FIREBASE_DATABASE_URL || '',
+  projectId: runtime.projectId || env.VITE_FIREBASE_PROJECT_ID || '',
+  storageBucket: runtime.storageBucket || env.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: runtime.messagingSenderId || env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: runtime.appId || env.VITE_FIREBASE_APP_ID || '',
+  measurementId: runtime.measurementId || env.VITE_FIREBASE_MEASUREMENT_ID || '',
 };
 
 const FIREBASE_STORAGE_KEY = 'asosh_custom_firebase_config';
