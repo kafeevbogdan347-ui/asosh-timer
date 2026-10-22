@@ -102,15 +102,24 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     setErrorStatus(null);
     isInitialLoadRef.current = true;
 
+    let lastSeenId: string | undefined;
     const unsubscribe = subscribeToFirebaseMessages(
       (updatedMessages) => {
         setMessages(updatedMessages);
         setLoading(false);
 
-        if (!isInitialLoadRef.current && updatedMessages.length > 0) {
-          playSound('bell', soundProfile);
-          doVibro(vibro, 20);
-          setTimeout(() => scrollToBottom(true), 60);
+        const newest = updatedMessages[updatedMessages.length - 1];
+        const newestId = newest?.id !== undefined ? String(newest.id) : undefined;
+        const hasNewMessage = newestId !== undefined && newestId !== lastSeenId;
+        lastSeenId = newestId;
+
+        if (!isInitialLoadRef.current) {
+          // Звук только на чужое новое сообщение, а не на своё и не на исчезновение старых
+          if (hasNewMessage && newest.userId !== getMyProfile().id) {
+            playSound('bell', soundProfile);
+            doVibro(vibro, 20);
+          }
+          if (hasNewMessage) setTimeout(() => scrollToBottom(true), 60);
         } else {
           isInitialLoadRef.current = false;
           setTimeout(() => scrollToBottom(false), 120);
@@ -182,7 +191,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   };
 
   const handleCopyText = (content: string, id?: string | number) => {
-    navigator.clipboard.writeText(content);
+    // clipboard недоступен на http и в части WebView
+    if (!navigator.clipboard) return;
+    navigator.clipboard.writeText(content).catch(() => {});
     if (id) {
       setCopiedId(id);
       setTimeout(() => setCopiedId(null), 1500);
@@ -428,13 +439,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
             <span className="truncate">{errorStatus}</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsConfigOpen(true)}
-            className="text-[10px] font-bold underline text-cyan-300 shrink-0"
-          >
-            Настройки
-          </button>
+          {localStorage.getItem('asosh_dev_unlocked') === 'true' && (
+            <button
+              type="button"
+              onClick={() => setIsConfigOpen(true)}
+              className="text-[10px] font-bold underline text-cyan-300 shrink-0"
+            >
+              Настройки
+            </button>
+          )}
         </div>
       )}
 

@@ -34,25 +34,23 @@ export const PomodoroScreen: React.FC<PomodoroScreenProps> = ({
     localStorage.setItem('asosh_tomatoes_v11', String(count));
   };
 
+  // Считаем от момента окончания, а не тиками: в фоне браузер замедляет setInterval
   useEffect(() => {
-    if (isRunning) {
-      timerRef.current = setInterval(() => {
-        setTimeLeftSec((prev) => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current!);
-            handleFinishInterval();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
+    if (!isRunning) return;
+    const endAt = Date.now() + timeLeftSec * 1000;
+    timerRef.current = setInterval(() => {
+      const left = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+      setTimeLeftSec(left);
+      if (left === 0) {
+        clearInterval(timerRef.current!);
+        handleFinishInterval();
+      }
+    }, 500);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRunning, mode, durationMin]);
 
   const handleFinishInterval = () => {

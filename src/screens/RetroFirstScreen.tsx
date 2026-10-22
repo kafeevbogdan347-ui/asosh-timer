@@ -62,6 +62,15 @@ const STORAGE_KEYS = {
   reminders: 'school5b_reminders'
 };
 
+function readJson<T>(key: string, fallback: T): T {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export const RetroFirstScreen: React.FC<RetroFirstScreenProps> = ({
   onBackToModern,
   onShowToast,
@@ -82,20 +91,13 @@ export const RetroFirstScreen: React.FC<RetroFirstScreenProps> = ({
     return BASE_SCHEDULE[today] ? today : 'Понедельник';
   });
 
-  const [schedule, setSchedule] = useState<Record<string, string[]>>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.schedule);
-    return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(BASE_SCHEDULE));
-  });
+  const [schedule, setSchedule] = useState<Record<string, string[]>>(() =>
+    readJson(STORAGE_KEYS.schedule, JSON.parse(JSON.stringify(BASE_SCHEDULE)))
+  );
 
-  const [homeworkList, setHomeworkList] = useState<HomeworkItem[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.homework);
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [homeworkList, setHomeworkList] = useState<HomeworkItem[]>(() => readJson(STORAGE_KEYS.homework, []));
 
-  const [reminderList, setReminderList] = useState<ReminderItem[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.reminders);
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [reminderList, setReminderList] = useState<ReminderItem[]>(() => readJson(STORAGE_KEYS.reminders, []));
 
   // UI state
   const [isEditPanelOpen, setIsEditPanelOpen] = useState(false);

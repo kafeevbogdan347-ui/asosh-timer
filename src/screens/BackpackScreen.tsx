@@ -42,7 +42,7 @@ export const BackpackScreen: React.FC<BackpackScreenProps> = ({
     uniqueSubs.forEach((sub: string) => {
       let itemName = `Учебник и тетрадь: ${sub}`;
       const lower = sub.toLowerCase();
-      if (lower.includes('физ')) {
+      if (lower.includes('физкульт') || lower.includes('физ-ра') || lower.includes('физическая культура')) {
         itemName = `👟 Спортивная форма и кроссовки (${sub})`;
       } else if (lower.includes('геом') || lower.includes('черч')) {
         itemName = `📐 Линейка, циркуль, тетрадь: ${sub}`;
@@ -87,7 +87,9 @@ export const BackpackScreen: React.FC<BackpackScreenProps> = ({
     }
 
     setItems(newItems);
-  }, [tomorrowLessons]);
+    // App пересоздаёт массив уроков каждую секунду, поэтому зависим от содержимого, а не от ссылки
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(tomorrowLessons)]);
 
   const saveBackpack = (updated: BackpackItem[]) => {
     setItems(updated);

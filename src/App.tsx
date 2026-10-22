@@ -372,28 +372,54 @@ export default function App() {
   // Android APK (MConvertor) & Browser Hardware Back Button Handler
   const lastBackPressRef = useRef<number>(0);
 
+  // История браузера: [guard] → [корневой экран] → [вложенный экран].
+  // Без отдельной записи для вложенного экрана «Назад» на Android закрывал PWA вместо возврата на главную.
+  const isRootScreen = (s: ScreenId) => s === 'main' || s === 'select' || s === 'onboarding' || s === 'maintenance';
+
   useEffect(() => {
-    // Keep history state synchronized
-    if (typeof window !== 'undefined' && window.history) {
+    if (!window.history.state?.screen) {
+      window.history.replaceState({ guard: true }, '', `#${currentScreen}`);
+      window.history.pushState({ screen: currentScreen }, '', `#${currentScreen}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const state = window.history.state;
+    if (state?.screen === currentScreen) return;
+    if (!isRootScreen(currentScreen) && (!state?.screen || isRootScreen(state.screen))) {
+      window.history.pushState({ screen: currentScreen }, '', `#${currentScreen}`);
+    } else {
       window.history.replaceState({ screen: currentScreen }, '', `#${currentScreen}`);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentScreen]);
 
-    const handleBackAction = () => {
+  useEffect(() => {
+    // fromHistory: браузер уже снял запись из истории, и её нужно вернуть, если мы остаёмся на экране
+    const handleBackAction = (fromHistory: boolean) => {
+      const stay = () => {
+        if (fromHistory) window.history.pushState({ screen: currentScreen }, '', `#${currentScreen}`);
+      };
+
       // If PIN lock is active, do not allow backing out
-      if (isPinLocked) return;
+      if (isPinLocked) { stay(); return; }
 
       // 1. If any modal is open, close modal first
-      if (isCalcOpen) { setIsCalcOpen(false); return; }
-      if (isPanicOpen) { setIsPanicOpen(false); return; }
-      if (isDevOpen) { setIsDevOpen(false); return; }
-      if (isPinSetupOpen) { setIsPinSetupOpen(false); return; }
+      if (isCalcOpen) { setIsCalcOpen(false); stay(); return; }
+      if (isPanicOpen) { setIsPanicOpen(false); stay(); return; }
+      if (isDevOpen) { setIsDevOpen(false); stay(); return; }
+      if (isPinSetupOpen) { setIsPinSetupOpen(false); stay(); return; }
 
       // 2. If on sub-screen, return to 'main'
-      if (currentScreen !== 'main' && currentScreen !== 'select' && currentScreen !== 'onboarding') {
-        setCurrentScreen('main');
-        if (typeof window !== 'undefined' && window.history) {
-          window.history.pushState({ screen: 'main' }, '', '#main');
+      if (!isRootScreen(currentScreen)) {
+        const target: ScreenId | undefined = fromHistory ? window.history.state?.screen : undefined;
+        if (target && isRootScreen(target)) {
+          setCurrentScreen(target);
+          return;
         }
+        if (fromHistory) window.history.pushState({ screen: 'main' }, '', '#main');
+        setCurrentScreen('main');
         return;
       }
 
@@ -404,24 +430,24 @@ export default function App() {
         const win = window as unknown as { navigator?: { app?: { exitApp?: () => void } } };
         if (win.navigator?.app?.exitApp) {
           win.navigator.app.exitApp();
+        } else if (fromHistory) {
+          window.history.back();
         }
       } else {
         lastBackPressRef.current = now;
         showToast('Нажмите «Назад» ещё раз для выхода');
         triggerAndroidVibrate(35);
-        if (typeof window !== 'undefined' && window.history) {
-          window.history.pushState({ screen: currentScreen }, '', `#${currentScreen}`);
-        }
+        stay();
       }
     };
 
     const onPopState = () => {
-      handleBackAction();
+      handleBackAction(true);
     };
 
     const onBackButton = (e: Event) => {
       e.preventDefault();
-      handleBackAction();
+      handleBackAction(false);
     };
 
     window.addEventListener('popstate', onPopState);
@@ -913,7 +939,7 @@ export default function App() {
     const demoUpdates: LessonUpdate[] = [
       { id: 'd1', cls: cls || '8А', day: 'Понедельник', num: 1, sub: 'Алгебра', room: '324' },
       { id: 'd2', cls: cls || '8А', day: 'Понедельник', num: 2, sub: 'Русский язык', room: '208' },
-      { id: 'd3', cls: cls || 'Понедельник', day: 'Понедельник', num: 3, sub: 'Физика', room: '315' },
+      { id: 'd3', cls: cls || '8А', day: 'Понедельник', num: 3, sub: 'Физика', room: '315' },
       { id: 'd4', cls: cls || '8А', day: 'Понедельник', num: 4, sub: 'История', room: '214' },
       { id: 'd5', cls: cls || '8А', day: 'Понедельник', num: 5, sub: 'Английский язык', room: '301/302' },
       { id: 'd6', cls: cls || '8А', day: 'Вторник', num: 1, sub: 'Геометрия', room: '324' },
@@ -978,13 +1004,15 @@ export default function App() {
   const handleImportData = (rawJson: string) => {
     try {
       const d = JSON.parse(rawJson);
-      if (d.cls) { setCls(d.cls); localStorage.setItem('asosh_class_v105', d.cls); }
-      if (d.shift) { setShift(d.shift); localStorage.setItem('asosh_shift_v105', d.shift); }
-      if (d.subgroup) { setSubGroup(Number(d.subgroup)); localStorage.setItem('asosh_subgroup_v105', String(d.subgroup)); }
-      if (d.studentName) { setStudentName(d.studentName); localStorage.setItem('studentName', d.studentName); }
-      if (d.parentName) { setParentName(d.parentName); localStorage.setItem('parentName', d.parentName); }
-      if (d.lang) { setLang(d.lang); localStorage.setItem('asosh_lang_v105', d.lang); }
-      if (d.settings) { setSettings(d.settings); localStorage.setItem('asosh_settings_v105', JSON.stringify(d.settings)); }
+      const vaultPatch: Partial<AccountVault> = {};
+      if (d.cls) { setCls(d.cls); vaultPatch.cls = d.cls; }
+      if (d.shift) { setShift(d.shift); vaultPatch.shift = d.shift; }
+      if (d.subgroup) { setSubGroup(Number(d.subgroup)); vaultPatch.subGroup = Number(d.subgroup); }
+      if (d.studentName) { setStudentName(d.studentName); vaultPatch.studentName = d.studentName; }
+      if (d.parentName) { setParentName(d.parentName); vaultPatch.parentName = d.parentName; }
+      if (d.lang) { setLang(d.lang); vaultPatch.lang = d.lang; }
+      setAccountVault(saveAccountVault(vaultPatch));
+      if (d.settings) handleUpdateSettings(d.settings);
       if (d.homeworkList) { setHomeworkList(d.homeworkList); localStorage.setItem('asosh_hw_v105', JSON.stringify(d.homeworkList)); }
       if (d.lessonUpdates) { setLessonUpdates(d.lessonUpdates); localStorage.setItem('asosh_updates_v105', JSON.stringify(d.lessonUpdates)); }
       if (d.achievements) { setAchievements(d.achievements); localStorage.setItem('asosh_achievements_v106', JSON.stringify(d.achievements)); }
@@ -1376,20 +1404,21 @@ export default function App() {
             lang={lang}
             onLangChange={(l) => {
               setLang(l);
-              localStorage.setItem('asosh_lang_v105', l);
+              setAccountVault(saveAccountVault({ lang: l }));
             }}
             studentName={studentName}
             parentName={parentName}
             onSaveProfile={(s, p) => {
               setStudentName(s);
               setParentName(p);
-              localStorage.setItem('studentName', s);
-              localStorage.setItem('parentName', p);
+              setAccountVault(saveAccountVault({ studentName: s, parentName: p }));
               showToast('Профиль сохранен');
             }}
             onChangeClass={() => {
               setCls('');
-              localStorage.removeItem('asosh_class_v105');
+              setAccountVault(saveAccountVault({ cls: '' }));
+              // loadAccountVault подхватывает класс из старых ключей, поэтому чистим и их
+              ['asosh_class_v105', 'asosh_class_v11', 'class'].forEach((k) => localStorage.removeItem(k));
               setCurrentScreen('select');
               showToast('Выбери свой класс');
             }}
