@@ -42,9 +42,6 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
   const [selectedShift, setSelectedShift] = useState<'1' | '2' | 'short1' | 'short2'>('1');
   const [activePlayingBell, setActivePlayingBell] = useState<string | null>(null);
   const [currentTimeStr, setCurrentTimeStr] = useState<string>('');
-  const [yandexSynced, setYandexSynced] = useState<boolean>(false);
-  const [syncingYandex, setSyncingYandex] = useState<boolean>(false);
-  const [yandexWeatherBrief, setYandexWeatherBrief] = useState<{ temp: number; condition: string } | null>(null);
   const [activeLessonInfo, setActiveLessonInfo] = useState<{
     status: 'lesson' | 'break' | 'before' | 'after';
     lessonNum: number;
@@ -58,35 +55,6 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
     remainSec: 0,
     progress: 0,
   });
-
-  // Sync with Yandex Time & Weather
-  const handleSyncYandexTime = async () => {
-    setSyncingYandex(true);
-    try {
-      const res = await fetch('/api/yandex/time');
-      if (res.ok) {
-        const json = await res.json();
-        setYandexSynced(true);
-        onShowToast(`Синхронизировано с Яндекс.Время: ${json.argayashTime} (UTC+5) 🟡`);
-      }
-    } catch {
-      onShowToast('Не удалось синхронизировать с Яндекс.Время');
-    } finally {
-      setSyncingYandex(false);
-    }
-  };
-
-  useEffect(() => {
-    // Fetch quick yandex weather info
-    fetch('/api/yandex/weather')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d && typeof d.temp === 'number') {
-          setYandexWeatherBrief({ temp: d.temp, condition: d.condition });
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   // Get active schedule array
   const getCurrentSchedule = (): [string, string][] => {
@@ -234,50 +202,6 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
 
         <div className="px-2.5 py-1 rounded-xl bg-white/10 font-mono text-xs font-bold text-amber-300 border border-amber-400/30">
           {currentTimeStr || '12:00:00'}
-        </div>
-      </div>
-
-      {/* Информер Яндекс.Время и Яндекс.Погода */}
-      <div className="p-2.5 rounded-2xl bg-gradient-to-r from-amber-950/60 via-slate-900/80 to-yellow-950/60 border border-amber-400/30 flex flex-wrap items-center justify-between gap-2 text-xs">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300 font-black text-sm">
-            Я
-          </div>
-          <div>
-            <div className="font-bold text-amber-200 flex items-center gap-1.5">
-              <span>Яндекс.Время & Погода (с. Аргаяш)</span>
-              {yandexSynced && (
-                <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] border border-emerald-400/30">
-                  UTC+5 Точно
-                </span>
-              )}
-            </div>
-            <div className="text-[10px] text-white/60">
-              {yandexWeatherBrief
-                ? `В Аргаяше сейчас: ${yandexWeatherBrief.temp > 0 ? `+${yandexWeatherBrief.temp}` : yandexWeatherBrief.temp}°C, ${yandexWeatherBrief.condition}`
-                : 'Синхронизация школьных звонков со временем Яндекс'}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <a
-            href="https://yandex.ru/pogoda/argayash"
-            target="_blank"
-            rel="noreferrer"
-            className="px-2 py-1 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-[11px] font-bold text-amber-200 transition-all flex items-center gap-1"
-          >
-            <span>Погода</span>
-          </a>
-          <button
-            type="button"
-            onClick={handleSyncYandexTime}
-            disabled={syncingYandex}
-            className="px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-400/40 hover:bg-amber-500/30 text-[11px] font-extrabold transition-all flex items-center gap-1 disabled:opacity-50"
-          >
-            <Sparkles className={`w-3 h-3 ${syncingYandex ? 'animate-spin' : ''}`} />
-            <span>{yandexSynced ? 'Синхронизировано' : 'Синхронизировать'}</span>
-          </button>
         </div>
       </div>
 

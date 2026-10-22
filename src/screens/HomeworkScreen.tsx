@@ -34,7 +34,6 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   const [pinned, setPinned] = useState(false);
   const [filter, setFilter] = useState<'all' | 'pinned' | 'active' | 'done'>('all');
   const [photoUrl, setPhotoUrl] = useState<string>('');
-  const [isRecognizing, setIsRecognizing] = useState(false);
   const [previewModalImg, setPreviewModalImg] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,30 +56,6 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
       }
     };
     reader.readAsDataURL(file);
-  };
-
-  const handleAiRecognizeBoard = async () => {
-    if (!photoUrl) return;
-    setIsRecognizing(true);
-    playSound('warn', soundProfile);
-    try {
-      const res = await fetch('/api/ai/recognize-board', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: photoUrl }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.subject) setSub(data.subject);
-        if (data.homeworkText) setText(data.homeworkText);
-        playSound('coin', soundProfile);
-        doVibro(vibro, 30);
-      }
-    } catch (err) {
-      console.warn('Vision recognition error:', err);
-    } finally {
-      setIsRecognizing(false);
-    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -246,15 +221,6 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                     <span className="text-xs font-bold text-white block truncate">
                       Фото прикреплено 📷
                     </span>
-                    <button
-                      type="button"
-                      onClick={handleAiRecognizeBoard}
-                      disabled={isRecognizing}
-                      className="text-[11px] text-cyan-300 font-bold flex items-center gap-1 hover:underline cursor-pointer disabled:opacity-50 mt-0.5"
-                    >
-                      <Sparkles className={`w-3.5 h-3.5 ${isRecognizing ? 'animate-spin' : ''}`} />
-                      <span>{isRecognizing ? 'Распознавание...' : '✨ Распознать через ИИ'}</span>
-                    </button>
                   </div>
                 </div>
 

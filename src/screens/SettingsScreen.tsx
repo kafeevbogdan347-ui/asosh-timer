@@ -91,7 +91,6 @@ type SettingsSectionId =
   | 'all'
   | 'themes'
   | 'sound'
-  | 'ai'
   | 'study'
   | 'privacy'
   | 'device'
@@ -267,7 +266,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     playSound('click', settings.soundProfile);
     doVibro(settings.vibro, 15);
     const start = performance.now();
-    fetch('/api/health?t=' + Date.now(), { method: 'GET' })
+    fetch(`${import.meta.env.BASE_URL}?t=${Date.now()}`, { method: 'HEAD', cache: 'no-store' })
       .then(() => {
         const diff = Math.round(performance.now() - start);
         setPingResult({ ms: Math.max(8, diff), status: 'ok' });
@@ -395,7 +394,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     { id: 'all', label: '🌟 Все настройки', icon: '🌟' },
     { id: 'themes', label: '1. Темы & Дизайн', icon: '🎨' },
     { id: 'sound', label: '2. Звук & Вибро', icon: '🔔' },
-    { id: 'ai', label: '3. ИИ & Голос', icon: '🧠' },
     { id: 'study', label: '4. Учёба & Звонки', icon: '🎒' },
     { id: 'privacy', label: '5. Приватность & PIN', icon: '🔒' },
     { id: 'device', label: '6. Экран & Устройство', icon: '📱' },
@@ -817,152 +815,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 className="w-5 h-5 accent-cyan-400 cursor-pointer"
               />
             </label>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================
-          3. ИИ-ПОМОЩНИК, СИНТЕЗАТОР ГОЛОСА И ЗРЕНИЕ GEMINI
-      ======================================================== */}
-      {isSectionVisible(
-        'ai',
-        'ии ассистент нейросеть gemini голос речь озвучка фото зрение скорость тон'
-      ) && (
-        <div className="p-4 bg-gradient-to-br from-cyan-950/80 via-slate-900 to-blue-950/80 rounded-3xl border border-cyan-400/40 space-y-3.5 shadow-md">
-          <div className="flex items-center justify-between">
-            <b className="text-sm text-cyan-200 flex items-center gap-2 font-black">
-              <Bot className="w-4 h-4 text-cyan-400" />
-              <span>3. ИИ-Помощник, Голос и Мультимодальное зрение</span>
-            </b>
-            <span className="badge bg-cyan-500/20 text-cyan-300 border-cyan-400/40 text-[10px] font-mono font-bold">
-              Gemini 3.8 Flash Vision
-            </span>
-          </div>
-
-          <p className="text-xs text-white/80 leading-relaxed">
-            Настройки нейросети АСОШ №2: точная настройка голосовой озвучки (скорость речи, тональность), анализ фото до 25 МБ и управление историей диалогов.
-          </p>
-
-          {/* НАСТРОЙКИ СКОРОСТИ И ТОНА ГОЛОСА */}
-          <div className="p-3 bg-white/5 rounded-2xl border border-white/10 space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-bold text-white/80 flex items-center justify-between">
-                  <span>Скорость речи (Rate):</span>
-                  <span className="text-cyan-300 font-mono">{aiVoiceSpeed}x</span>
-                </label>
-                <div className="grid grid-cols-4 gap-1 mt-1.5">
-                  {[
-                    { val: 0.75, label: '0.75x' },
-                    { val: 1.0, label: '1.0x' },
-                    { val: 1.25, label: '1.25x' },
-                    { val: 1.5, label: '1.5x' },
-                  ].map((s) => (
-                    <button
-                      key={s.val}
-                      type="button"
-                      onClick={() => {
-                        setAiVoiceSpeed(s.val);
-                        onUpdateSettings({ aiVoiceSpeed: s.val });
-                        doVibro(settings.vibro, 8);
-                      }}
-                      className={`py-1.5 text-xs rounded-xl border font-bold transition-all ${
-                        aiVoiceSpeed === s.val
-                          ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-black shadow-sm'
-                          : 'bg-white/5 text-white/70 border-white/10 hover:bg-white/10'
-                      }`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-white/80 flex items-center justify-between">
-                  <span>Высота тона (Pitch):</span>
-                  <span className="text-cyan-300 font-mono">{aiVoicePitch}x</span>
-                </label>
-                <div className="grid grid-cols-3 gap-1 mt-1.5">
-                  {[
-                    { val: 0.8, label: 'Низкий' },
-                    { val: 1.0, label: 'Стандарт' },
-                    { val: 1.2, label: 'Высокий' },
-                  ].map((p) => (
-                    <button
-                      key={p.val}
-                      type="button"
-                      onClick={() => {
-                        setAiVoicePitch(p.val);
-                        onUpdateSettings({ aiVoicePitch: p.val });
-                        doVibro(settings.vibro, 8);
-                      }}
-                      className={`py-1.5 text-xs rounded-xl border font-bold transition-all ${
-                        aiVoicePitch === p.val
-                          ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-black shadow-sm'
-                          : 'bg-white/5 text-white/70 border-white/10 hover:bg-white/10'
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* КНОПКА ТЕСТА ГОЛОСА */}
-            <div className="pt-2 border-t border-white/10 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={handleTestAiVoice}
-                className={`px-3 py-2 text-xs font-black rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer ${
-                  isAiSpeaking
-                    ? 'bg-rose-500/30 text-rose-200 border-rose-400/60 animate-pulse'
-                    : 'bg-cyan-500 text-slate-950 border-cyan-400 hover:bg-cyan-400 shadow-md'
-                }`}
-              >
-                {isAiSpeaking ? (
-                  <>
-                    <VolumeX className="w-3.5 h-3.5" />
-                    <span>⏹️ Остановить тест речи</span>
-                  </>
-                ) : (
-                  <>
-                    <Volume2 className="w-3.5 h-3.5" />
-                    <span>Прослушать тестовую фразу ИИ</span>
-                  </>
-                )}
-              </button>
-
-              {isAiSpeaking && (
-                <button
-                  type="button"
-                  onClick={handleStopAiVoice}
-                  className="px-2.5 py-1.5 rounded-xl bg-white/10 text-white/80 hover:bg-white/20 text-xs font-bold border border-white/15"
-                >
-                  Выключить звук
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="p-3 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-between gap-3">
-            <div>
-              <b className="text-xs text-white block">Очистка истории чата с ИИ</b>
-              <span className="text-[11px] text-white/60">Удаляет сохраненную переписку для конфиденциальности</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (window.confirm('Очистить историю диалогов с ИИ?')) {
-                  localStorage.removeItem('asosh_ai_chat_v105');
-                  onShowToast('История чата с ИИ очищена');
-                }
-              }}
-              className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-400/30 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0"
-            >
-              Очистить чат
-            </button>
           </div>
         </div>
       )}
