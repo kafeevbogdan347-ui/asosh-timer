@@ -5,40 +5,14 @@ import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
-import rateLimit from "express-rate-limit";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-// За прокси хостинга (Vercel, Cloud Run) реальный IP берётся из X-Forwarded-For
-app.set("trust proxy", 1);
-
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ limit: "25mb", extended: true }));
-
-const makeLimiter = (windowMs: number, max: number, message: string, skipWeather = false) =>
-  rateLimit({
-    windowMs,
-    max,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: message },
-    skip: (req) => skipWeather && req.path === "/weather",
-  });
-
-// Платные AI-эндпоинты: защита квоты Gemini/Yandex
-app.use(
-  ["/api/ai", "/api/yandex/gpt"],
-  makeLimiter(60_000, 15, "Слишком много запросов к ИИ. Подожди минуту.", true)
-);
-// Защита от подбора пароля разработчика и кодов классов
-app.use(
-  ["/api/dev/verify", "/api/class/verify-code"],
-  makeLimiter(15 * 60_000, 10, "Слишком много попыток. Попробуй позже.")
-);
-app.use("/api/chat/send", makeLimiter(60_000, 20, "Слишком часто. Подожди немного."));
 
 // Lazy-initialized Gemini AI Client
 let aiClient: GoogleGenAI | null = null;
@@ -1348,9 +1322,28 @@ async function setupViteOrStatic() {
   const isProduction = process.env.NODE_ENV === "production" || (hasDist && process.env.PORT !== undefined);
 
   if (isProduction && hasDist) {
-    app.use(express.static(distPath));
+    // Публичные настройки клиента подставляются в страницу при запуске,
+    // потому что на хостинге переменные окружения недоступны во время сборки
+    const runtimeConfig = {
+      firebase: {
+        apiKey: process.env.VITE_FIREBASE_API_KEY || '',
+        authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+        databaseURL: process.env.VITE_FIREBASE_DATABASE_URL || '',
+        projectId: process.env.VITE_FIREBASE_PROJECT_ID || '',
+        storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+        messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+        appId: process.env.VITE_FIREBASE_APP_ID || '',
+        measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID || '',
+      },
+    };
+    const configScript = `<script>window.__APP_CONFIG__=${JSON.stringify(runtimeConfig).replace(/</g, '\\u003c')}</script>`;
+    const indexHtml = fs
+      .readFileSync(path.join(distPath, "index.html"), "utf-8")
+      .replace("</head>", `${configScript}</head>`);
+
+    app.use(express.static(distPath, { index: false }));
     app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+      res.type("html").send(indexHtml);
     });
   } else {
     const vite = await createViteServer({
