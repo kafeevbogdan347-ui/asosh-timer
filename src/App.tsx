@@ -6,7 +6,6 @@ import {
   LessonUpdate,
   LanguageType,
   DeviceType,
-  SmartDayData,
 } from './types';
 import {
   DAYS,
@@ -22,7 +21,6 @@ import {
 } from './data/constants';
 import { getBaseLessonsForClass } from './data/schoolSchedule';
 import { playSound, doVibro } from './utils/audio';
-import { fetchSmartDayAdvice } from './services/aiService';
 
 // Components
 import { TopBar } from './components/TopBar';
@@ -69,10 +67,8 @@ import { ChatScreen } from './screens/ChatScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { NewsScreen } from './screens/NewsScreen';
 import { RetroFirstScreen } from './screens/RetroFirstScreen';
-import { WeatherScreen } from './screens/WeatherScreen';
 import { BellsScreen } from './screens/BellsScreen';
 import { MaintenanceScreen } from './screens/MaintenanceScreen';
-import { AiAssistantScreen } from './screens/AiAssistantScreen';
 import { Achievement } from './types';
 
 export default function App() {
@@ -87,34 +83,6 @@ export default function App() {
   const [parentName, setParentName] = useState<string>(() => accountVault.parentName);
   const [authProvider, setAuthProvider] = useState<'guest' | 'local' | 'google' | 'apple'>(() => accountVault.authProvider);
   const [authEmail, setAuthEmail] = useState<string | undefined>(() => accountVault.authEmail);
-
-  // Auto-restore account from Cloud server if local state is missing, guaranteeing account never disappears on update or reload
-  useEffect(() => {
-    const restoreCloudAccount = async () => {
-      try {
-        if (!registered || !studentName) {
-          const res = await fetch('/api/account/restore');
-          if (res.ok) {
-            const data = await res.json();
-            if (data.success && data.vault) {
-              const restored = saveAccountVault(data.vault, false);
-              setAccountVault(restored);
-              if (restored.registered) setRegistered(true);
-              if (restored.studentName) setStudentName(restored.studentName);
-              if (restored.cls) setCls(restored.cls);
-              if (restored.shift) setShift(restored.shift);
-              if (restored.subGroup) setSubGroup(restored.subGroup);
-              if (restored.authProvider) setAuthProvider(restored.authProvider);
-              if (restored.authEmail) setAuthEmail(restored.authEmail);
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Account restore check:', e);
-      }
-    };
-    restoreCloudAccount();
-  }, []);
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('asosh_settings_v105') || localStorage.getItem('asosh_opts_v104');
@@ -759,75 +727,6 @@ export default function App() {
   const numLessonsToday = currentLessons.filter((l) => l[0] !== '—').length;
   const smartText = numLessonsToday === 0 ? 'Расписание ещё не добавлено' : `Сегодня ${numLessonsToday} уроков`;
 
-  // 🧠 Умный день на базе ИИ (Gemini 3.8 Flash + локальный синтезатор)
-  const [smartDayData, setSmartDayData] = useState<SmartDayData | null>(() => {
-    try {
-      const saved = localStorage.getItem('asosh_smart_day_cache');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return null;
-  });
-  const [isGeneratingSmartDay, setIsGeneratingSmartDay] = useState(false);
-  const weatherRef = useRef<any>(null);
-
-  const handleGenerateSmartDay = async (forceRefresh = false) => {
-    if (!cls) return;
-    setIsGeneratingSmartDay(true);
-    try {
-      // 1. Fetch weather in Argayash if not cached or if force refreshed
-      if (!weatherRef.current || forceRefresh) {
-        try {
-          const wRes = await fetch('/api/yandex/weather');
-          if (wRes.ok) {
-            weatherRef.current = await wRes.json();
-          }
-        } catch {
-          // ignore
-        }
-      }
-
-      // 2. Prepare pending and done homework stats
-      const classHw = homeworkList.filter((h) => h.cls === cls);
-      const pendingHw = classHw.filter((h) => !h.done);
-      const doneHw = classHw.filter((h) => h.done);
-      const pendingSubjects = Array.from(new Set(pendingHw.map((h) => h.sub)));
-
-      const advice = await fetchSmartDayAdvice({
-        className: cls,
-        shift,
-        subGroup,
-        studentName,
-        dayName: currentDayName,
-        lessons: currentLessons,
-        tomorrowLessons,
-        weather: weatherRef.current,
-        accountStats: {
-          hwPendingCount: pendingHw.length,
-          hwPendingSubjects: pendingSubjects,
-          hwDoneCount: doneHw.length,
-          achievementsUnlocked: achievements.filter((a) => a.unlocked).length,
-          totalAchievements: achievements.length,
-        },
-      });
-
-      setSmartDayData(advice);
-      localStorage.setItem('asosh_smart_day_cache', JSON.stringify(advice));
-      if (forceRefresh) {
-        showToast('🧠 ИИ обновил подсказку на сегодня!');
-      }
-    } catch (e) {
-      console.warn('Smart day generation error:', e);
-    } finally {
-      setIsGeneratingSmartDay(false);
-    }
-  };
-
-  useEffect(() => {
-    if (cls && registered) {
-      handleGenerateSmartDay();
-    }
-  }, [cls, currentDayName, shift, subGroup]);
-
   const dayOfWeek = currentTime.getDay();
   let weekendText = '';
   if (dayOfWeek === 6) weekendText = 'Суббота! Отдых 🥳';
@@ -1200,7 +1099,6 @@ export default function App() {
             setPrivacyBlurActive(next);
             showToast(next ? 'Режим «Анти-Шпион» включён' : 'Режим «Анти-Шпион» выключен');
           }}
-          onOpenAi={() => setCurrentScreen('ai')}
         />
       )}
 
@@ -1289,9 +1187,6 @@ export default function App() {
               daysLeft: quarterDaysLeft,
               breakName: activeQuarter.breakName,
             }}
-            smartDayData={smartDayData}
-            onRefreshSmartDay={() => handleGenerateSmartDay(true)}
-            isGeneratingSmartDay={isGeneratingSmartDay}
           />
         )}
 
@@ -1304,7 +1199,6 @@ export default function App() {
             totalSec={lessonStatus.totalSec}
             statusType={lessonStatus.type}
             lang={lang}
-            smartDayAdvice={smartDayData}
           />
         )}
 
@@ -1318,7 +1212,6 @@ export default function App() {
             currentLessonIdx={selectedDaySchedule === currentDayName ? lessonStatus.currentIdx : -1}
             lang={lang}
             onGoAddUpdates={() => setCurrentScreen('updates')}
-            smartDayAdvice={smartDayData}
           />
         )}
 
@@ -1365,7 +1258,6 @@ export default function App() {
             lang={lang}
             soundProfile={settings.soundProfile}
             vibro={settings.vibro}
-            onOpenAi={() => setCurrentScreen('ai')}
           />
         )}
 
@@ -1523,14 +1415,6 @@ export default function App() {
           />
         )}
 
-        {currentScreen === 'weather' && (
-          <WeatherScreen
-            onBack={() => setCurrentScreen('main')}
-            onShowToast={showToast}
-            lang={lang}
-          />
-        )}
-
         {currentScreen === 'bells' && (
           <BellsScreen
             onBack={() => setCurrentScreen('main')}
@@ -1541,41 +1425,6 @@ export default function App() {
           />
         )}
 
-        {currentScreen === 'ai' && (
-          <AiAssistantScreen
-            cls={cls}
-            lang={lang}
-            soundProfile={settings.soundProfile}
-            vibro={settings.vibro}
-            onBack={() => setCurrentScreen('main')}
-            onShowToast={showToast}
-            studentName={studentName}
-            shift={shift}
-            subGroup={subGroup}
-            currentLessonText={lessonStatus.nowText}
-            nextLessonText={lessonStatus.nextText}
-            bellTimeText={bellTimeText}
-            remainSec={lessonStatus.remainSec}
-            todayLessons={getLessonsForDay(currentDayName)}
-            tomorrowLessons={tomorrowLessons}
-            homeworkList={homeworkList}
-            lessonUpdates={lessonUpdates}
-            weatherTemp={smartDayData?.weatherSummary ? parseInt(smartDayData.weatherSummary.match(/-?\d+/)?.[0] || '16', 10) : 16}
-            weatherCondition="с. Аргаяш"
-            frostStatus={smartDayData?.urgentAlert || 'Уроки идут в обычном режиме'}
-            onAddHomeworkTask={(sub, text) => {
-              handleAddHomework({
-                cls,
-                sub,
-                text,
-                done: false,
-                pinned: false,
-                date: new Date().toISOString().slice(0, 10),
-              });
-              showToast('Задание добавлено в список домашних работ 📘');
-            }}
-          />
-        )}
       </main>
 
       {/* Bottom Navigation Bar */}

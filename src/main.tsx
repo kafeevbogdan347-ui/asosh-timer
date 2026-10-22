@@ -1,7 +1,6 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
-import { Analytics } from '@vercel/analytics/react';
 import { initCordovaPlugins } from './services/cordovaService';
 import './index.css';
 
@@ -9,9 +8,9 @@ import './index.css';
 initCordovaPlugins();
 
 // Регистрация Service Worker для оффлайн-доступа и сборки в APK (MConvertor & Cordova)
-if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
       // Игнорируем в средах без поддержки SW
     });
   });
@@ -20,7 +19,6 @@ if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
-    <Analytics />
   </StrictMode>,
 );
 

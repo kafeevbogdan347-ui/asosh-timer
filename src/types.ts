@@ -368,8 +368,6 @@ export type ScreenId =
   | 'settings'
   | 'dev'
   | 'retroFirst'
-  | 'weather'
   | 'bells'
   | 'maintenance'
-  | 'ai';
 
