@@ -10,6 +10,7 @@ import {
   DatabaseReference,
   Unsubscribe,
 } from 'firebase/database';
+import { getAuth, signInAnonymously } from 'firebase/auth';
 import { ChatMessage } from '../types';
 
 // Конфиг Firebase берётся из .env (VITE_FIREBASE_*) при сборке, а не хранится в коде
@@ -68,6 +69,7 @@ export function saveCustomFirebaseConfig(customCfg: Partial<typeof DEFAULT_FIREB
 
 let firebaseAppInstance: any = null;
 let firebaseDbInstance: any = null;
+let signInPromise: Promise<boolean> | null = null;
 
 export function initFirebase() {
   try {
@@ -85,6 +87,23 @@ export function initFirebase() {
     console.error('Failed to init Firebase:', err);
     return { app: null, db: null };
   }
+}
+
+// Анонимный вход: правила базы пускают в чат только вошедших пользователей,
+// поэтому перед чтением и записью тихо входим без логина и пароля
+function ensureSignedIn(): Promise<boolean> {
+  if (!signInPromise) {
+    const { app } = initFirebase();
+    if (!app) return Promise.resolve(false);
+    signInPromise = signInAnonymously(getAuth(app))
+      .then(() => true)
+      .catch((err) => {
+        console.warn('Firebase anonymous sign-in error:', err?.code || err);
+        signInPromise = null; // попробуем снова при следующем обращении
+        return false;
+      });
+  }
+  return signInPromise;
 }
 
 /**
@@ -116,7 +135,7 @@ export async function sendFirebaseMessage(
   // Firebase Realtime DB
   try {
     const { db } = initFirebase();
-    if (db) {
+    if (db && (await ensureSignedIn())) {
       const path = getChatRoomPath(room);
       const chatRef = ref(db, path);
       const newMsgRef = await push(chatRef, {
@@ -164,47 +183,58 @@ export function subscribeToFirebaseMessages(
     onMessagesUpdate(list.slice(-limitCount));
   };
 
-  // Firebase Realtime subscription
+  // Firebase Realtime subscription (после анонимного входа)
   let firebaseUnsubscribe: Unsubscribe | null = null;
-  try {
-    const { db } = initFirebase();
-    if (db) {
-      const path = getChatRoomPath(room);
-      const chatRef = ref(db, path);
-      const recentQuery = query(chatRef, limitToLast(limitCount));
+  let cancelled = false;
+  const { db } = initFirebase();
+  if (!db) {
+    emitMerged();
+  } else {
+    ensureSignedIn().then((signedIn) => {
+      if (cancelled) return;
+      if (!signedIn) {
+        // Без входа база не пустит: показываем пустую комнату, а не вечное «Подключение…»
+        emitMerged();
+        return;
+      }
+      try {
+        const chatRef = ref(db, getChatRoomPath(room));
+        const recentQuery = query(chatRef, limitToLast(limitCount));
 
-      firebaseUnsubscribe = onValue(
-        recentQuery,
-        (snapshot) => {
-          if (snapshot.exists()) {
-            const data = snapshot.val();
-            Object.keys(data).forEach((key) => {
-              const item = data[key];
-              knownMessages.set(key, {
-                id: key,
-                username: item.username || 'Ученик',
-                userId: item.userId || '',
-                avatar: item.avatar || '',
-                content: item.content || '',
-                created_at: item.created_at || (item.timestamp ? new Date(item.timestamp).toISOString() : new Date().toISOString()),
+        firebaseUnsubscribe = onValue(
+          recentQuery,
+          (snapshot) => {
+            if (snapshot.exists()) {
+              const data = snapshot.val();
+              Object.keys(data).forEach((key) => {
+                const item = data[key];
+                knownMessages.set(key, {
+                  id: key,
+                  username: item.username || 'Ученик',
+                  userId: item.userId || '',
+                  avatar: item.avatar || '',
+                  content: item.content || '',
+                  created_at: item.created_at || (item.timestamp ? new Date(item.timestamp).toISOString() : new Date().toISOString()),
+                });
               });
-            });
+            }
+            // Пустая комната — тоже ответ: сообщаем экрану, что подключение есть
+            emitMerged();
+          },
+          (error) => {
+            console.warn('Firebase subscription warning:', error);
+            emitMerged();
           }
-          // Пустая комната — тоже ответ: сообщаем экрану, что подключение есть
-          emitMerged();
-        },
-        (error) => {
-          console.warn('Firebase subscription warning:', error);
-          // Без доступа к базе показываем пустую комнату, а не вечное «Подключение…»
-          emitMerged();
-        }
-      );
-    }
-  } catch (err) {
-    console.warn('Firebase init error for subscription:', err);
+        );
+      } catch (err) {
+        console.warn('Firebase subscription error:', err);
+        emitMerged();
+      }
+    });
   }
 
   return () => {
+    cancelled = true;
     if (firebaseUnsubscribe) {
       try {
         firebaseUnsubscribe();
