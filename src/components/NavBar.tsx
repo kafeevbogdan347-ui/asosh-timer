@@ -30,7 +30,6 @@ export const NavBar: React.FC<NavBarProps> = ({
     { id: 'today', icon: '⏱', label: d.now },
     { id: 'schedule', icon: '📅', label: d.schedule },
     { id: 'homework', icon: '📘', label: d.hw, badge: activeHwCount },
-    { id: 'ai', icon: '🤖', label: d.ai || 'ИИ' },
     { id: 'games', icon: '🎮', label: d.games },
     { id: 'settings', icon: '⚙️', label: d.settings },
   ];
