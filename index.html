@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#060d1f" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="АСОШ №2" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+    <title>АСОШ №2 — Умный дневник</title>
+    <meta name="description" content="Электронный помощник и умный школьный дневник АСОШ №2: приватные коды классов от руководителей, защищённый чат класса, 60 тем оформления, расписание 2026, погода с. Аргаяш, аналитика посещаемости и 100% стабильная работа в РФ." />
+    <meta property="og:title" content="АСОШ №2 — Умный дневник" />
+    <meta property="og:description" content="Электронный помощник и умный школьный дневник АСОШ №2: приватные коды классов от руководителей, защищённый чат класса, 60 тем оформления, расписание 2026, погода с. Аргаяш, аналитика посещаемости и 100% стабильная работа в РФ." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Динамическая загрузка cordova.js только внутри нативного APK контейнера -->
+    <script>
+      if (window.location.protocol === 'file:' || window.location.href.indexOf('android_asset') !== -1) {
+        var cordovaScript = document.createElement('script');
+        cordovaScript.src = 'cordova.js';
+        document.body.appendChild(cordovaScript);
+      }
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
