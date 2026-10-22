@@ -22,14 +22,7 @@ function getGeminiClient() {
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not set in environment");
     }
-    aiClient = new GoogleGenAI({
-      apiKey,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
-      },
-    });
+    aiClient = new GoogleGenAI({ apiKey });
   }
   return aiClient;
 }
