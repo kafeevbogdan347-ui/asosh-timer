@@ -489,8 +489,8 @@ export default function App() {
 
   // 2. Real-time timer and clock calculation
   const [currentTime, setCurrentTime] = useState(new Date());
-  const warned2minRef = useRef(false);
-  const warned5minRef = useRef(false);
+  const warned2minRef = useRef('');
+  const warned5minRef = useRef('');
   const eveningBackpackRemindedRef = useRef(false);
 
   useEffect(() => {
@@ -588,12 +588,12 @@ export default function App() {
     nextText: '—',
   };
 
-  if (currentLessons.length > 0) {
-    const activeBells = currentBells.slice(0, currentLessons.length);
-    const firstStart = activeBells.length ? toSec(activeBells[0][0]) : null;
+  const activeBells = currentBells.slice(0, currentLessons.length);
+  const firstStart = activeBells.length ? toSec(activeBells[0][0]) : null;
 
+  if (currentLessons.length > 0) {
     if (firstStart !== null && curSec < firstStart) {
-      const countdownStart = shift === '2' ? (firstStart <= 13 * 3600 ? 12 * 3600 : 13 * 3600) : 7 * 3600;
+      const countdownStart = firstStart - 3600;
       if (curSec >= countdownStart) {
         lessonStatus = {
           type: 'before',
@@ -644,28 +644,44 @@ export default function App() {
     }
   }
 
+  if (lessonStatus.type === 'none' && firstStart !== null && currentLessons.some((l) => l[0] !== '—')) {
+    lessonStatus = curSec < firstStart
+      ? {
+          ...lessonStatus,
+          nowText: 'Занятия ещё не начались',
+          nextText: `${currentLessons[0][0]} ${currentLessons[0][1] ? `(каб. ${currentLessons[0][1]})` : ''}`,
+        }
+      : { ...lessonStatus, nowText: 'Уроки на сегодня закончены 🎉' };
+  }
+
+  // Ключ текущего урока/перемены: предупреждение срабатывает один раз за период
+  const periodKey = `${currentDayName}-${lessonStatus.type}-${lessonStatus.currentIdx}-${lessonStatus.nextIdx}`;
+
   // Pre-bell alarms and smart reminders
   useEffect(() => {
+    // Окно в 60 с вместо точной секунды: в фоне браузер замедляет таймер и секунды пропускаются
+    const remain = lessonStatus.remainSec;
+
     // 5-minute pre-bell reminder with room info
-    if (lessonStatus.type === 'break' && lessonStatus.remainSec === 300 && !warned5minRef.current) {
-      warned5minRef.current = true;
+    if (lessonStatus.type === 'break' && remain <= 300 && remain > 240 && warned5minRef.current !== periodKey) {
+      warned5minRef.current = periodKey;
       playSound('warn', settings.soundProfile);
       doVibro(settings.vibro, 30);
-      showToast(`🔔 Урок через 5 минут! ${lessonStatus.nextText ? `(${lessonStatus.nextText})` : ''}`);
-    }
-    if (lessonStatus.remainSec !== 300) {
-      warned5minRef.current = false;
+      showToast(`🔔 Урок через ${Math.ceil(remain / 60)} мин! ${lessonStatus.nextText ? `(${lessonStatus.nextText})` : ''}`);
     }
 
     // 2-minute alarm trigger
-    if (settings.warn2 && lessonStatus.remainSec === 120 && !warned2minRef.current) {
-      warned2minRef.current = true;
+    if (
+      settings.warn2 &&
+      lessonStatus.type !== 'none' &&
+      remain <= 120 &&
+      remain > 60 &&
+      warned2minRef.current !== periodKey
+    ) {
+      warned2minRef.current = periodKey;
       playSound('warn', settings.soundProfile);
       doVibro(settings.vibro, 50);
       showToast('⏳ 2 минуты до звонка!');
-    }
-    if (lessonStatus.remainSec !== 120) {
-      warned2minRef.current = false;
     }
 
     // 20:00 evening backpack reminder
@@ -684,7 +700,7 @@ export default function App() {
       setCurrentScreen('today');
       showToast('Начался урок! Игры свернуты.');
     }
-  }, [lessonStatus.remainSec, lessonStatus.type, lessonStatus.nextText, currentScreen, settings.warn2, settings.soundProfile, settings.vibro, activeTime]);
+  }, [lessonStatus.remainSec, lessonStatus.type, lessonStatus.nextText, periodKey, currentScreen, settings.warn2, settings.soundProfile, settings.vibro, activeTime]);
 
   // Bell widget text & icon
   const formatSec = (s: number) => {
@@ -693,6 +709,8 @@ export default function App() {
     const sec = s % 60;
     return `${pad(m)}:${pad(sec)}`;
   };
+
+  const numLessonsToday = currentLessons.filter((l) => l[0] !== '—').length;
 
   let bellTitle = 'Скоро будет новое расписание';
   let bellTimeText = '--:--';
@@ -717,6 +735,14 @@ export default function App() {
     bellTitle = 'До начала занятий:';
     bellTimeText = formatSec(lessonStatus.remainSec);
     bellIcon = '🎒';
+  } else if (numLessonsToday > 0 && firstStart !== null && curSec < firstStart) {
+    bellTitle = 'Занятия начнутся в';
+    bellTimeText = activeBells[0][0];
+    bellIcon = '🌙';
+  } else if (numLessonsToday > 0) {
+    bellTitle = 'Уроки на сегодня закончены';
+    bellTimeText = '00:00';
+    bellIcon = '🎉';
   } else {
     bellTitle = 'Уроков на сегодня нет';
     bellTimeText = '00:00';
@@ -724,10 +750,9 @@ export default function App() {
   }
 
   // Smart day & weekend calculations
-  const numLessonsToday = currentLessons.filter((l) => l[0] !== '—').length;
   const smartText = numLessonsToday === 0 ? 'Расписание ещё не добавлено' : `Сегодня ${numLessonsToday} уроков`;
 
-  const dayOfWeek = currentTime.getDay();
+  const dayOfWeek = activeTime.getDay();
   let weekendText = '';
   if (dayOfWeek === 6) weekendText = 'Суббота! Отдых 🥳';
   else if (dayOfWeek === 0) weekendText = 'Воскресенье! Завтра в школу ⚡';
@@ -737,22 +762,30 @@ export default function App() {
   }
 
   // Quarter calculation
-  const nowMs = currentTime.getTime();
-  let activeQuarter = SCHOOL_QUARTERS[0];
-  let quarterPercent = 0;
+  const DAY_MS = 1000 * 60 * 60 * 24;
+  const nowMs = activeTime.getTime();
+  // Даты без времени парсятся как UTC, поэтому явно задаём локальную полночь
+  const quarterStartMs = (q: (typeof SCHOOL_QUARTERS)[number]) => new Date(`${q.start}T00:00:00`).getTime();
+  const quarterEndMs = (q: (typeof SCHOOL_QUARTERS)[number]) => new Date(`${q.end}T23:59:59`).getTime();
+
+  let activeQuarter: { name: string; breakName: string } = { name: 'Каникулы', breakName: 'учёбы' };
+  let quarterPercent = 100;
   let quarterDaysLeft = 0;
 
-  for (const q of SCHOOL_QUARTERS) {
-    const sTime = new Date(q.start).getTime();
-    const eTime = new Date(q.end).getTime();
-    if (nowMs >= sTime && nowMs <= eTime) {
-      activeQuarter = q;
-      const total = Math.max(1, Math.round((eTime - sTime) / (1000 * 60 * 60 * 24)));
-      const passed = Math.max(0, Math.min(total, Math.round((nowMs - sTime) / (1000 * 60 * 60 * 24))));
-      quarterPercent = Math.round((passed / total) * 100);
-      quarterDaysLeft = Math.max(0, Math.round((eTime - nowMs) / (1000 * 60 * 60 * 24)));
-      break;
-    }
+  const currentQuarter = SCHOOL_QUARTERS.find((q) => nowMs >= quarterStartMs(q) && nowMs <= quarterEndMs(q));
+  if (currentQuarter) {
+    const sTime = quarterStartMs(currentQuarter);
+    const eTime = quarterEndMs(currentQuarter);
+    activeQuarter = currentQuarter;
+    const total = Math.max(1, Math.round((eTime - sTime) / DAY_MS));
+    const passed = Math.max(0, Math.min(total, Math.round((nowMs - sTime) / DAY_MS)));
+    quarterPercent = Math.round((passed / total) * 100);
+    quarterDaysLeft = Math.max(0, Math.round((eTime - nowMs) / DAY_MS));
+  } else {
+    const prevQuarter = [...SCHOOL_QUARTERS].reverse().find((q) => nowMs > quarterEndMs(q));
+    const nextQuarter = SCHOOL_QUARTERS.find((q) => nowMs < quarterStartMs(q));
+    if (prevQuarter) activeQuarter = { name: prevQuarter.breakName, breakName: 'учёбы' };
+    if (nextQuarter) quarterDaysLeft = Math.max(0, Math.ceil((quarterStartMs(nextQuarter) - nowMs) / DAY_MS));
   }
 
   // 3. User Actions & Handlers
@@ -1186,6 +1219,7 @@ export default function App() {
               percent: quarterPercent,
               daysLeft: quarterDaysLeft,
               breakName: activeQuarter.breakName,
+              isBreak: !currentQuarter,
             }}
           />
         )}
