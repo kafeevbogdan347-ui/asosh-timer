@@ -1,6 +1,8 @@
 // Служба конфиденциальности и безопасности МОУ АСОШ №2
 // Защита персональных данных (152-ФЗ РФ), PIN-код, Анти-Шпион, Защита от перебора кодов
 
+import { sha256Hex } from './sha256';
+
 const PIN_STORAGE_KEY = 'asosh_privacy_pin_v1';
 const PIN_ENABLED_KEY = 'asosh_privacy_pin_enabled';
 const PRIVACY_BLUR_KEY = 'asosh_privacy_blur_mode';
@@ -197,18 +199,13 @@ export function resetFailedDevAttempts(): void {
   }
 }
 
-// Пароль разработчика хранится только на сервере (DEV_PASSWORD в .env)
+// Пароль разработчика задаётся в DEV_PASSWORD при сборке и хранится в приложении
+// только как SHA-256-отпечаток (__DEV_PASSWORD_HASH__)
 export async function verifyDevPassword(input: string): Promise<boolean> {
   const password = input.trim();
-  if (!password) return false;
+  if (!password || !__DEV_PASSWORD_HASH__) return false;
   try {
-    const res = await fetch('/api/dev/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
-    });
-    const data = await res.json();
-    return Boolean(data.ok);
+    return (await sha256Hex(password)) === __DEV_PASSWORD_HASH__;
   } catch {
     return false;
   }

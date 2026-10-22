@@ -2,7 +2,6 @@ import { AccountVault, LanguageType } from '../types';
 import { getMyProfile, saveMyProfile } from '../services/userService';
 
 const VAULT_KEY = 'asosh_account_vault_v2';
-const SERVER_SYNC_URL = '/api/account/sync';
 
 // Default initial state
 const defaultVault: AccountVault = {
@@ -112,17 +111,14 @@ export function loadAccountVault(): AccountVault {
   };
 
   // Re-save to guarantee all mirrored keys stay synchronized
-  saveAccountVault(fullVault, false);
+  saveAccountVault(fullVault);
   return fullVault;
 }
 
 /**
  * Saves account to primary vault AND all redundant mirror keys.
  */
-export function saveAccountVault(
-  partial: Partial<AccountVault>,
-  syncWithServer = true
-): AccountVault {
+export function saveAccountVault(partial: Partial<AccountVault>): AccountVault {
   const current = (() => {
     try {
       const raw = localStorage.getItem(VAULT_KEY);
@@ -200,30 +196,9 @@ export function saveAccountVault(
         saveMyProfile(myProf);
       }
     } catch {}
-
-    // 4. Server cloud backup
-    if (syncWithServer) {
-      syncAccountToServer(merged);
-    }
   } catch (e) {
     console.warn('Vault save error:', e);
   }
 
   return merged;
 }
-
-/**
- * Cloud backup on server so even browser cleanups don't wipe account.
- */
-export async function syncAccountToServer(vault: AccountVault): Promise<void> {
-  try {
-    await fetch(SERVER_SYNC_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(vault),
-    });
-  } catch {
-    // Non-blocking offline sync
-  }
-}
-
