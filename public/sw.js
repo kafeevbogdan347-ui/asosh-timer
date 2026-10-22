@@ -1,13 +1,10 @@
 // Service Worker для АСОШ №2
 // Обеспечивает мгновенный запуск в Android APK (MConvertor) и оффлайн-доступ
 
-const CACHE_NAME = 'asosh2-apk-cache-v1';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon.svg',
-];
+const CACHE_NAME = 'asosh2-apk-cache-v2';
+// Пути считаются от папки, где лежит sw.js (на GitHub Pages это /asosh-timer/)
+const BASE = new URL('./', self.location).pathname;
+const ASSETS_TO_CACHE = [BASE, BASE + 'index.html', BASE + 'manifest.json', BASE + 'icon.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -56,7 +53,7 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         });
-      }).catch(() => caches.match('/index.html'))
+      }).catch(() => caches.match(BASE + 'index.html'))
     );
   }
 });
