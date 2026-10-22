@@ -1,20 +1,44 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# АСОШ №2 — Умный дневник
 
-# Run and deploy your AI Studio app
+Электронный помощник для учеников МОУ АСОШ №2 (с. Аргаяш): расписание уроков и звонков, домашние задания, чат класса, погода, ИИ-помощник по школьным предметам, помодоро-таймер и другое.
 
-This contains everything you need to run your app locally.
+Стек: React 19, Vite, Tailwind CSS, сервер на Express (Node.js).
 
-View your app in AI Studio: https://ai.studio/apps/c9da985b-87ae-41df-94eb-d824efc67676
+## Запуск на компьютере
 
-## Run Locally
+Нужен Node.js 20 или новее.
 
-**Prerequisites:**  Node.js
+```bash
+npm install
+cp .env.example .env   # заполните значения в .env
+npm run dev            # http://localhost:3000
+```
 
+## Переменные окружения
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Все секреты хранятся только в `.env` (локально) или в настройках хостинга. В репозиторий они не попадают.
+
+| Переменная | Зачем |
+|---|---|
+| `DEV_PASSWORD` | пароль панели разработчика, проверяется на сервере |
+| `CLASS_CODES` | приватные коды классов: `5А:код,5Б:код,...` |
+| `VITE_FIREBASE_*` | настройки Firebase для чата класса |
+| `GEMINI_API_KEY` | ИИ-помощник (необязательно) |
+| `YANDEX_API_KEY`, `YANDEX_FOLDER_ID` | YandexGPT (необязательно) |
+
+## Публикация сайта (Render)
+
+1. Зайдите на [render.com](https://render.com) через аккаунт GitHub.
+2. **New → Blueprint**, выберите этот репозиторий. Render прочитает `render.yaml`.
+3. Заполните переменные окружения (значения из вашего `.env`) и нажмите **Apply**.
+4. Через несколько минут сайт будет доступен по адресу вида `https://asosh-timer.onrender.com`.
+
+После каждого коммита в `main` сайт пересобирается автоматически.
+
+Сборка и запуск вручную на любом сервере:
+
+```bash
+npm ci --include=dev
+npm run build
+npm start
+```
