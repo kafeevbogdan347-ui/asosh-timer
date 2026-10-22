@@ -1,6 +1,8 @@
+import { normalizeCode } from '../utils/normalizeCode';
+import { sha256Hex } from '../utils/sha256';
+
 // Реестр классов МОУ АСОШ №2
-// Сами коды классов приватные: они хранятся только на сервере (CLASS_CODES в .env)
-// и проверяются через /api/class/verify-code
+// Сами коды классов задаются в CLASS_CODES (.env или секрет на GitHub) и обновляются каждый год
 
 export interface ClassCodeInfo {
   className: string;
@@ -53,18 +55,7 @@ export const CLASS_LIST: ClassCodeInfo[] = [
   { className: '11Г', grade: 11, letter: 'Г', defaultShift: '1' },
 ];
 
-// Нормализация кода для удобного ввода (поддерживает русский/латиницу, без дефиса, пробелов и в любом регистре)
-export function normalizeCode(input: string): string {
-  return (input || '')
-    .trim()
-    .toUpperCase()
-    .replace(/[\s\-_–—]/g, '')
-    // Латинские буквы похожие на русские
-    .replace(/A/g, 'А')
-    .replace(/B/g, 'Б')
-    .replace(/V/g, 'В')
-    .replace(/G/g, 'Г');
-}
+export { normalizeCode };
 
 export type ClassCodeCheck =
   | { status: 'ok'; info: ClassCodeInfo }
@@ -72,20 +63,16 @@ export type ClassCodeCheck =
   | { status: 'locked'; lockedSec: number }
   | { status: 'error' };
 
-// Проверка приватного кода на сервере. Возвращает класс, к которому подходит код
+// Проверка кода класса. Коды задаются в CLASS_CODES при сборке и попадают в приложение
+// только в виде SHA-256-отпечатков (__CLASS_CODE_HASHES__), открытым текстом их здесь нет
 export async function checkClassCode(input: string): Promise<ClassCodeCheck> {
-  if (!input.trim()) return { status: 'wrong' };
+  const norm = normalizeCode(input);
+  if (!norm) return { status: 'wrong' };
   try {
-    const res = await fetch('/api/class/verify-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: input }),
-    });
-    const data = await res.json();
-    if (res.status === 429) return { status: 'locked', lockedSec: data.lockedSec || 60 };
-    if (!data.ok) return { status: 'wrong' };
-    const norm = normalizeCode(data.className);
-    const info = CLASS_LIST.find((item) => normalizeCode(item.className) === norm);
+    const hash = await sha256Hex(norm);
+    const match = __CLASS_CODE_HASHES__.find((item) => item.hash === hash);
+    if (!match) return { status: 'wrong' };
+    const info = CLASS_LIST.find((item) => normalizeCode(item.className) === normalizeCode(match.className));
     return info ? { status: 'ok', info } : { status: 'wrong' };
   } catch {
     return { status: 'error' };
