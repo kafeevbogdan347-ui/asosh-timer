@@ -27,6 +27,7 @@ interface MainScreenProps {
     percent: number;
     daysLeft: number;
     breakName: string;
+    isBreak: boolean;
   };
 }
 
@@ -117,7 +118,10 @@ export const MainScreen: React.FC<MainScreenProps> = ({
         onClick={() => onNavigate('quarter')}
       >
         <div className="flex justify-between items-center text-xs mb-1.5 font-bold">
-          <span className="text-cyan-300">📊 {quarterProgress.name} ({quarterProgress.percent}%)</span>
+          <span className="text-cyan-300">
+            📊 {quarterProgress.name}
+            {!quarterProgress.isBreak && ` (${quarterProgress.percent}%)`}
+          </span>
           <span className="text-white/80">До {quarterProgress.breakName}: {quarterProgress.daysLeft} дн.</span>
         </div>
         <div className="w-full bg-white/10 h-2.5 rounded-full overflow-hidden border border-white/15">
