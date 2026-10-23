@@ -22,6 +22,8 @@ interface HomeworkScreenProps {
   onShareHomework: (h: { sub: string; text: string }) => Promise<boolean>;
   onDeleteClassHomework: (id: string) => void;
   onShowToast: (msg: string) => void;
+  // Гость без кода класса не может делиться ДЗ с классом
+  canShare: boolean;
 }
 
 export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
@@ -40,6 +42,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   onShareHomework,
   onDeleteClassHomework,
   onShowToast,
+  canShare,
 }) => {
   const [shareWithClass, setShareWithClass] = useState(false);
   // ДЗ класса за последние 2 недели, новые сверху
@@ -250,7 +253,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
             </label>
           </div>
 
-          <div className="flex items-center gap-2 py-1">
+          {canShare && <div className="flex items-center gap-2 py-1">
             <input
               type="checkbox"
               id="shareCheck"
@@ -261,7 +264,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
             <label htmlFor="shareCheck" className="text-xs font-bold text-cyan-300 cursor-pointer !m-0">
               📣 Поделиться с классом (без фото)
             </label>
-          </div>
+          </div>}
 
           <button type="submit" className="btn green justify-center text-sm py-3 mt-1">
             <Plus className="w-4 h-4" />

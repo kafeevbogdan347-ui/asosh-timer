@@ -37,6 +37,8 @@ interface SelectClassScreenProps {
   lang: LanguageType;
   timeStr: string;
   dayName: string;
+  isGuest: boolean;
+  onEnterAsGuest: () => void;
 }
 
 export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
@@ -50,6 +52,8 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
   lang,
   timeStr,
   dayName,
+  isGuest,
+  onEnterAsGuest,
 }) => {
   const [selectedParallel, setSelectedParallel] = useState<number | null>(null);
   const [codeQuery, setCodeQuery] = useState('');
@@ -124,8 +128,8 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
   };
 
   const handleLetterClick = (fullCls: string) => {
-    // If class already unlocked on this device, enter immediately
-    if (isClassUnlocked(fullCls)) {
+    // Класс уже открыт кодом на этом устройстве или вход гостем — заходим сразу
+    if (isClassUnlocked(fullCls) || isGuest) {
       const info = CLASS_LIST.find((c) => c.className === fullCls);
       if (info) onSelectShift(info.defaultShift);
       onSelectClass(fullCls);
@@ -176,8 +180,15 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
           Выбери свой класс
         </h1>
         <p className="text-white/70 text-xs mt-1 max-w-md mx-auto">
-          Введи код, который дал классный руководитель. Код нужен один раз — дальше приложение запомнит класс.
+          {isGuest
+            ? 'Ты вошёл как гость — выбери класс ниже без кода. Чат класса откроется, когда введёшь код.'
+            : 'Введи код, который дал классный руководитель. Код нужен один раз — дальше приложение запомнит класс.'}
         </p>
+        {!isGuest && (
+          <button type="button" className="btn darkBtn justify-center text-xs mt-3 mx-auto" onClick={onEnterAsGuest}>
+            👀 Нет кода? Войти как гость
+          </button>
+        )}
       </div>
 
       {/* Вход по приватному коду класса (выдаётся классным руководителем) */}
@@ -336,7 +347,7 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
                       ) : (
                         <span className="text-amber-300/80 flex items-center gap-1">
                           <Lock className="w-2.5 h-2.5 text-amber-400" />
-                          <span>Требуется код</span>
+                          <span>{isGuest ? 'Гостем, без чата' : 'Требуется код'}</span>
                         </span>
                       )}
                     </div>

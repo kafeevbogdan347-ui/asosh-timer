@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { DAYS, DICT } from '../data/constants';
 import { LessonUpdate, LanguageType, SoundProfileType } from '../types';
 import { playSound, doVibro } from '../utils/audio';
-import { Plus, Trash2, Users, User } from 'lucide-react';
+import { Plus, Trash2, Users, User, Lock } from 'lucide-react';
 import { ClassReplacement, toDateKey } from '../services/classShared';
 
 interface AddUpdateScreenProps {
@@ -19,6 +19,8 @@ interface AddUpdateScreenProps {
   soundProfile: SoundProfileType;
   vibro: boolean;
   onShowToast: (msg: string) => void;
+  // Гость без кода класса не может отправлять замены всему классу
+  canShare: boolean;
 }
 
 const RU_DATE = (key: string) => {
@@ -40,8 +42,9 @@ export const AddUpdateScreen: React.FC<AddUpdateScreenProps> = ({
   soundProfile,
   vibro,
   onShowToast,
+  canShare,
 }) => {
-  const [mode, setMode] = useState<'class' | 'me'>('class');
+  const [mode, setMode] = useState<'class' | 'me'>(canShare ? 'class' : 'me');
   const todayKey = toDateKey(today);
   const tomorrowKey = toDateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1));
   const [date, setDate] = useState(todayKey);
@@ -113,8 +116,12 @@ export const AddUpdateScreen: React.FC<AddUpdateScreenProps> = ({
       </div>
 
       <div className="flex gap-1.5 p-1 bg-white/5 rounded-2xl border border-white/10">
-        <button type="button" className={tabClass(mode === 'class')} onClick={() => setMode('class')}>
-          <Users className="w-3.5 h-3.5" />
+        <button
+          type="button"
+          className={tabClass(mode === 'class')}
+          onClick={() => (canShare ? setMode('class') : onShowToast('🔒 Замены для класса — только с кодом класса'))}
+        >
+          {canShare ? <Users className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
           <span>Замена для класса</span>
         </button>
         <button type="button" className={tabClass(mode === 'me')} onClick={() => setMode('me')}>

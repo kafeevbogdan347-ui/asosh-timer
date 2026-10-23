@@ -9,6 +9,7 @@ interface OnboardingScreenProps {
     device: DeviceType;
     lang: LanguageType;
     isDeveloperMode?: boolean;
+    guest?: boolean;
   }) => void;
   lang: LanguageType;
   onLangChange: (lang: LanguageType) => void;
@@ -40,6 +41,18 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, 
       device: detectDevice(),
       lang,
       isDeveloperMode: false,
+    });
+  };
+
+  // Гость: без имени и без кода класса. Доступно всё, кроме чата класса
+  const handleGuest = () => {
+    onComplete({
+      studentName: studentName.trim() || 'Гость',
+      parentName: '',
+      device: detectDevice(),
+      lang,
+      isDeveloperMode: false,
+      guest: true,
     });
   };
 
@@ -86,6 +99,13 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, 
       <button type="submit" className="btn green w-full justify-center text-base font-black py-3">
         Начать
       </button>
+
+      <div className="space-y-1">
+        <button type="button" className="btn darkBtn w-full justify-center text-sm py-2.5" onClick={handleGuest}>
+          👀 Войти как гость
+        </button>
+        <p className="text-[11px] text-white/50">Без кода класса: всё, кроме чата класса</p>
+      </div>
 
       <p className="text-[10px] text-white/40">{APP_VERSION}</p>
     </form>
