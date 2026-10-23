@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { APP_VERSION } from '../data/constants';
 import {
   Volume2,
   RefreshCw,
@@ -209,7 +210,7 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-6 h-6 text-cyan-400 animate-pulse" />
             <div>
-              <span className="text-lg font-black text-cyan-300">Панель Разработчика v11.3 Official</span>
+              <span className="text-lg font-black text-cyan-300">Панель разработчика {APP_VERSION}</span>
               <span className="block text-[10px] text-cyan-400/80 uppercase font-mono">ASOSH Full Dev & Presentation Suite</span>
             </div>
           </div>
@@ -902,7 +903,7 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
                   </div>
                   <div className="bg-slate-950/80 p-2 rounded-xl border border-white/10">
                     <span className="text-[10px] text-white/50 block">Платформа</span>
-                    <b className="font-mono text-cyan-300">v11.0 Official Release Pro</b>
+                    <b className="font-mono text-cyan-300">{APP_VERSION}</b>
                   </div>
                 </div>
 

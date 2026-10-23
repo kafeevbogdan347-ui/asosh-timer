@@ -19,7 +19,8 @@ import {
   MOTIVATORS_BA,
   SCHOOL_QUARTERS,
 } from './data/constants';
-import { getBaseLessonsForClass } from './data/schoolSchedule';
+import { getBaseLessonsForClass, hasOfficialSchedule } from './data/schoolSchedule';
+import { migrateTheme } from './data/themes';
 import { playSound, doVibro } from './utils/audio';
 
 // Components
@@ -96,7 +97,7 @@ export default function App() {
           mot: parsed.mot !== false,
           fontSize: parsed.fontSize || 'font-md',
           timerStyle: parsed.timerStyle || 'circle',
-          theme: parsed.theme || (localStorage.getItem('asosh_theme_v9') as any) || 'dark',
+          theme: migrateTheme(parsed.theme || localStorage.getItem('asosh_theme_v9') || 'dark'),
           compact: parsed.compact || localStorage.getItem('asosh_compact') === '1',
           devicePC: parsed.devicePC || localStorage.getItem('device_type') === 'pc',
           perfLow: parsed.perfLow || localStorage.getItem('asosh_perf') === 'low',
@@ -571,7 +572,11 @@ export default function App() {
       .filter((u) => u.cls === cls && u.day === dayName)
       .sort((a, b) => a.num - b.num);
 
+    // Список идёт от новых к старым: у старых сохранённых дублей побеждает новое
+    const applied = new Set<number>();
     updates.forEach((u) => {
+      if (applied.has(u.num)) return;
+      applied.add(u.num);
       map[u.num - 1] = [u.sub, parseRoom(u.room)];
     });
 
@@ -766,6 +771,10 @@ export default function App() {
     bellTitle = 'Уроки на сегодня закончены';
     bellTimeText = '—';
     bellIcon = '🎉';
+  } else if (cls && !hasOfficialSchedule(cls)) {
+    bellTitle = 'Расписание класса пока не добавлено';
+    bellTimeText = '—';
+    bellIcon = '📝';
   } else {
     bellTitle = 'Уроков на сегодня нет';
     bellTimeText = '—';
@@ -895,6 +904,14 @@ export default function App() {
   };
 
   // Homework actions
+  const saveHomeworks = (list: HomeworkItem[]) => {
+    try {
+      localStorage.setItem('asosh_hw_v105', JSON.stringify(list));
+    } catch {
+      showToast('⚠️ Память заполнена: удалите старые ДЗ с фото');
+    }
+  };
+
   const handleAddHomework = (item: Omit<HomeworkItem, 'id' | 'createdAt'>) => {
     const newItem: HomeworkItem = {
       ...item,
@@ -903,7 +920,7 @@ export default function App() {
     };
     const updated = [newItem, ...homeworkList];
     setHomeworkList(updated);
-    localStorage.setItem('asosh_hw_v105', JSON.stringify(updated));
+    saveHomeworks(updated);
     showToast('ДЗ добавлено!');
   };
 
@@ -918,7 +935,7 @@ export default function App() {
       return h;
     });
     setHomeworkList(updated);
-    localStorage.setItem('asosh_hw_v105', JSON.stringify(updated));
+    saveHomeworks(updated);
   };
 
   const handleTogglePin = (id: number) => {
@@ -933,20 +950,24 @@ export default function App() {
       return h;
     });
     setHomeworkList(updated);
-    localStorage.setItem('asosh_hw_v105', JSON.stringify(updated));
+    saveHomeworks(updated);
   };
 
   const handleDeleteHomework = (id: number) => {
     const updated = homeworkList.filter((h) => h.id !== id);
     setHomeworkList(updated);
-    localStorage.setItem('asosh_hw_v105', JSON.stringify(updated));
+    saveHomeworks(updated);
     playSound('settings', settings.soundProfile);
     showToast('Задание удалено');
   };
 
   // Lesson Update Actions
   const handleAddUpdate = (update: LessonUpdate) => {
-    const updated = [update, ...lessonUpdates];
+    // Новое изменение того же урока заменяет старое
+    const updated = [
+      update,
+      ...lessonUpdates.filter((u) => !(u.cls === update.cls && u.day === update.day && u.num === update.num)),
+    ];
     setLessonUpdates(updated);
     localStorage.setItem('asosh_updates_v105', JSON.stringify(updated));
   };

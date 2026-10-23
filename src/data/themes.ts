@@ -94,3 +94,14 @@ export const THEMES: ThemeInfo[] = [
 
 // Светлые темы: для них включается общий светлый режим (тёмный текст на светлых панелях)
 export const LIGHT_THEME_IDS: ThemeType[] = ['light', 'nordic', ...THEMES.filter((t) => t.light).map((t) => t.id)];
+
+// Старые темы убрали из выбора: переводим сохранённую тему на ближайшую из нового списка
+export const migrateTheme = (id: string): ThemeType => {
+  if (THEMES.some((t) => t.id === id)) return id as ThemeType;
+  if (LIGHT_THEME_IDS.includes(id as ThemeType) || /sakura|spring|holographic|frost|mint/.test(id)) return 'notebook';
+  if (/retro|mario|pixel/.test(id)) return 'pixel';
+  if (/neon|cyber|synthwave|laser|vice|tokyo|glitch/.test(id)) return 'neon_grid';
+  if (/space|galaxy|nebula|void|graviton|pulsar|dark_matter|saturn/.test(id)) return 'space';
+  if (/arctic|ice|winter/.test(id)) return 'winter';
+  return 'dark';
+};

@@ -246,3 +246,5 @@ export const getBaseLessonsForClass = (className: string, dayName: string): [str
     DEFAULT_ROOMS_BY_SUBJECT[subject] || '',
   ]);
 };
+
+export const hasOfficialSchedule = (className: string): boolean => Boolean(OFFICIAL_SCHEDULE_2026[className]);

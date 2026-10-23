@@ -9,6 +9,7 @@ import {
   removeCertificateFromProfile,
 } from '../services/userService';
 import { playSound, doVibro } from '../utils/audio';
+import { compressImage } from '../utils/image';
 import { isHideGradesInProfile } from '../utils/privacy';
 import {
   User,
@@ -165,22 +166,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      onShowToast('⚠️ Фото слишком большое (макс. 2 МБ)');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const result = ev.target?.result as string;
-      if (result) {
-        setSelectedAvatar(result);
+    compressImage(file, 256, 0.8)
+      .then((dataUrl) => {
+        setSelectedAvatar(dataUrl);
         setAvatarType('image');
         playSound('nav', soundProfile);
         onShowToast('📸 Новое фото выбрано! Нажмите «Сохранить»');
-      }
-    };
-    reader.readAsDataURL(file);
+      })
+      .catch(() => onShowToast('⚠️ Не удалось открыть фото'));
   };
 
   const handleAddCertSubmit = (e: React.FormEvent) => {
