@@ -12,6 +12,8 @@ interface TopBarProps {
   onLockApp?: () => void;
   isPrivacyBlur?: boolean;
   onTogglePrivacyBlur?: () => void;
+  // До входа в класс кнопки шапки не нужны
+  minimal?: boolean;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -24,11 +26,13 @@ export const TopBar: React.FC<TopBarProps> = ({
   onLockApp,
   isPrivacyBlur = false,
   onTogglePrivacyBlur,
+  minimal = false,
 }) => {
   return (
     <header className="flex justify-between items-center py-2 px-1 select-none">
       <div className="text-2xl font-black tabular-nums tracking-wide">{timeStr || '--:--'}</div>
       <div className="flex items-center gap-1.5 sm:gap-2">
+        {!minimal && (<>
         {/* Quick Anti-Spy Privacy Blur button */}
         {onTogglePrivacyBlur && (
           <button
@@ -89,6 +93,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           <Calculator className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Калькулятор</span>
         </button>
+        </>)}
         <button
           type="button"
           onClick={(e) => {
