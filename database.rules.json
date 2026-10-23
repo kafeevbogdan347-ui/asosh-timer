@@ -17,6 +17,31 @@
           ".validate": "newData.hasChildren(['content', 'created_at']) && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 400 && (!newData.child('username').exists() || (newData.child('username').isString() && newData.child('username').val().length <= 60))"
         }
       }
+    },
+    "asosh_class": {
+      "$cls": {
+        "replacements": {
+          ".read": "auth != null",
+          "$id": {
+            ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid))",
+            ".validate": "newData.hasChildren(['date', 'num', 'sub', 'uid', 'created_at']) && newData.child('date').isString() && newData.child('date').val().length === 10 && newData.child('num').isNumber() && newData.child('num').val() >= 1 && newData.child('num').val() <= 12 && newData.child('sub').isString() && newData.child('sub').val().length > 0 && newData.child('sub').val().length <= 60 && (!newData.child('room').exists() || (newData.child('room').isString() && newData.child('room').val().length <= 20)) && (!newData.child('author').exists() || (newData.child('author').isString() && newData.child('author').val().length <= 60))"
+          }
+        },
+        "homework": {
+          ".read": "auth != null",
+          "$id": {
+            ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid))",
+            ".validate": "newData.hasChildren(['sub', 'text', 'uid', 'created_at']) && newData.child('sub').isString() && newData.child('sub').val().length > 0 && newData.child('sub').val().length <= 60 && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 1000 && (!newData.child('author').exists() || (newData.child('author').isString() && newData.child('author').val().length <= 60))"
+          }
+        }
+      }
+    },
+    "asosh_transfer": {
+      "$id": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || !newData.exists())",
+        ".validate": "newData.hasChildren(['payload', 'created_at']) && newData.child('payload').isString() && newData.child('payload').val().length <= 3000000"
+      }
     }
   }
 }
