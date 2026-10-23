@@ -1,0 +1,50 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Секрет APP_ENV — содержимое .env: CLASS_CODES, DEV_PASSWORD, VITE_FIREBASE_*
+      - name: Write .env from secret
+        run: printf '%s\n' "$APP_ENV" > .env
+        env:
+          APP_ENV: ${{ secrets.APP_ENV }}
+      # В APK приложение открывается с корня, поэтому BASE_PATH не задаём
+      - run: npm run build
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npx cap add android
+      - run: npx cap sync android
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+      - run: cp android/app/build/outputs/apk/debug/app-debug.apk asosh-timer.apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: АСОШ Таймер для Android
+          body: |
+            Последняя сборка приложения для Android. Обновляется автоматически при каждом изменении.
+            Скачай asosh-timer.apk и открой его на телефоне. Android попросит разрешить установку из этого источника.
+          files: asosh-timer.apk
+          make_latest: true
