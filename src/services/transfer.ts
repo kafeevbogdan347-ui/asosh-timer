@@ -1,4 +1,5 @@
 import { ref, set, get, remove } from 'firebase/database';
+import { Capacitor } from '@capacitor/core';
 import { initFirebase, ensureSignedIn } from './firebaseChat';
 
 // Перенос данных на новый телефон по QR-коду.
@@ -9,6 +10,7 @@ import { initFirebase, ensureSignedIn } from './firebaseChat';
 const TTL_MS = 30 * 60 * 1000;
 const MAX_PAYLOAD = 3_000_000; // как в правилах базы
 const HASH_PREFIX = '#transfer=';
+const WEB_APP_URL = 'https://kafeevbogdan347-ui.github.io/asosh-timer/';
 
 // Кусками, чтобы большие данные (фото) не переполняли стек
 const b64 = (bytes: Uint8Array) => {
@@ -64,7 +66,9 @@ export async function createTransfer(): Promise<TransferResult> {
   } catch {
     return { ok: false, error: 'Не удалось отправить данные. Проверь интернет.' };
   }
-  const link = `${location.origin}${import.meta.env.BASE_URL}${HASH_PREFIX}${id}.${b64url(keyBytes)}`;
+  // В APK адрес страницы — https://localhost, такая ссылка на другом телефоне не откроется
+  const base = Capacitor.isNativePlatform() ? WEB_APP_URL : `${location.origin}${import.meta.env.BASE_URL}`;
+  const link = `${base}${HASH_PREFIX}${id}.${b64url(keyBytes)}`;
   return { ok: true, link };
 }
 
