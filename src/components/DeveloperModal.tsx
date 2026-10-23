@@ -40,12 +40,11 @@ import {
 import { playSound } from '../utils/audio';
 import { SoundProfileType } from '../types';
 import {
-} from '../utils/privacy';
-import {
   downloadPresentationHtml,
   downloadPresentationMarkdown,
-  PRESENTATION_MARKDOWN,
+  openPresentationSlides,
 } from '../data/presentationData';
+import { SLIDES, CHAT_POSTS } from '../data/presentationContent';
 
 interface DeveloperModalProps {
   isOpen: boolean;
@@ -360,10 +359,10 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
                     </div>
                     <div>
                       <b className="text-sm font-black text-cyan-200 block">
-                        Школьная презентация «АСОШ №2 — 2026»
+                        Презентация «АСОШ Таймер»
                       </b>
                       <span className="text-[11px] text-white/70 block">
-                        Официальный интерактивный слайд-комплект и маркетинг-кит
+                        Слайды с речью и готовые тексты для чатов
                       </span>
                     </div>
                   </div>
@@ -373,7 +372,7 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
                 </div>
 
                 <p className="text-xs text-white/90 leading-relaxed">
-                  Специально подготовленный пакет для выступления перед классом, на классном часе, родительском собрании или показа на школьном проекторе и интерактивной доске села Аргаяш.
+                  Для выступления в классе, на родительском собрании или в актовом зале. Слайды открываются в браузере: стрелки — листать, N — показать речь, F — во весь экран.
                 </p>
 
                 {/* Primary Download Buttons */}
@@ -409,7 +408,7 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      window.open('/presentation.html', '_blank');
+                      openPresentationSlides();
                       playSound('nav', soundProfile);
                     }}
                     className="flex-1 py-2 px-3 bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-400/40 text-cyan-200 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer"
@@ -420,38 +419,19 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
                 </div>
               </div>
 
-              {/* Presentation Specs */}
-              <div className="p-3.5 bg-slate-950/80 rounded-2xl border border-white/10 space-y-2.5">
+              {/* Список слайдов */}
+              <div className="p-3.5 bg-slate-950/80 rounded-2xl border border-white/10 space-y-2">
                 <b className="text-xs text-amber-300 font-bold flex items-center gap-1.5 uppercase tracking-wider">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Состав скачиваемой интерактивной презентации:</span>
+                  <span>Слайды ({SLIDES.length}):</span>
                 </b>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 space-y-1">
-                    <b className="text-cyan-300 block">6 интерактивных слайдов:</b>
-                    <ul className="text-white/80 space-y-0.5 text-[11px] list-disc list-inside">
-                      <li>Слайд 1: Введение и титульный слайд школы</li>
-                      <li>Слайд 2: Проблемы школьников (бумажные записи, чаты)</li>
-                      <li>Слайд 3: Решение — единая веб-платформа АСОШ №2</li>
-                      <li>Слайд 4: Фирменные сервисы для Аргаяша (погода, звонки)</li>
-                      <li>Слайд 5: Польза ученикам, родителям и учителям</li>
-                      <li>Слайд 6: Быстрый старт за 10 секунд без установки</li>
-                    </ul>
-                  </div>
-
-                  <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 space-y-1">
-                    <b className="text-cyan-300 block">Технические особенности:</b>
-                    <ul className="text-white/80 space-y-0.5 text-[11px] list-disc list-inside">
-                      <li>Управление стрелками ⬅️ ➡️ и пробелом</li>
-                      <li>Встроенные подсказки и речь спикера</li>
-                      <li>Автономность 100% (работает без интернета с флешки)</li>
-                      <li>Адаптивно под проекторы, ТВ, интерактивные доски</li>
-                      <li>Красивая анимация смены слайдов</li>
-                      <li>Размер файла всего ~15 КБ</li>
-                    </ul>
-                  </div>
-                </div>
+                <ol className="text-white/80 space-y-0.5 text-[11px] list-decimal list-inside">
+                  {SLIDES.map((slide) => (
+                    <li key={slide.title}>
+                      {slide.tag}: {slide.title}
+                    </li>
+                  ))}
+                </ol>
               </div>
 
               {/* Ready Promo Texts for Messenger Chats */}
@@ -463,55 +443,24 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
                   </b>
                 </div>
 
-                {/* Post 1: Class Chat */}
-                <div className="p-3 bg-white/5 rounded-xl border border-white/10 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-white flex items-center gap-1">
-                      <span>💬</span> <b>Для беседы одноклассников (VK, Telegram, WhatsApp, Сферум):</b>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        copyToClipboard(
-                          `🔥 Ребята, всем привет!\n\nДля нашей АСОШ №2 сделали крутое бесплатное веб-приложение — «Умный школьный дневник»! 🚀\n\nЧто в нём есть:\n📅 Полное официальное расписание 2026 для всех классов (5–11)\n🌐 Погода в Аргаяше и автоматический расчёт актировок (отмены уроков из-за морозов)\n🎒 Умный рюкзак — сам сканирует уроки на завтра и подсказывает нужные учебники\n🔔 Точный таймер звонков и расписание 1 и 2 смен\n🎯 Калькулятор среднего балла\n🎮 8 мини-игр для перемен без интернета\n\nРаботает прямо в браузере, ничего не весит и без рекламы!\n👉 Заходите и выбирайте свой класс!`,
-                          'Текст для беседы класса'
-                        )
-                      }
-                      className="px-2.5 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <Copy className="w-3 h-3" />
-                      <span>Копировать</span>
-                    </button>
+                {CHAT_POSTS.map((post) => (
+                  <div key={post.id} className="p-3 bg-white/5 rounded-xl border border-white/10 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <b className="text-xs text-white">{post.title}</b>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(post.text, post.title)}
+                        className="px-2.5 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                      >
+                        <Copy className="w-3 h-3" />
+                        <span>Копировать</span>
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-white/70 bg-black/40 p-2 rounded-lg leading-relaxed whitespace-pre-line">
+                      {post.text}
+                    </p>
                   </div>
-                  <p className="text-[11px] text-white/70 italic bg-black/40 p-2 rounded-lg leading-relaxed">
-                    «🔥 Ребята, всем привет! Для нашей АСОШ №2 сделали крутое бесплатное веб-приложение — Умный школьный дневник! Расписание 2026, погода Аргаяша, актировки, умный рюкзак...»
-                  </p>
-                </div>
-
-                {/* Post 2: Parents Chat */}
-                <div className="p-3 bg-white/5 rounded-xl border border-white/10 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-white flex items-center gap-1">
-                      <span>📢</span> <b>Для родительского чата класса:</b>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        copyToClipboard(
-                          `Уважаемые родители! 👋\n\nДля учеников и родителей МБОУ «АСОШ №2» (с. Аргаяш) создано удобное и бесплатное цифровое приложение-помощник:\n\n✅ Официальная сетка уроков для всех параллелей с 5 по 11 классы\n✅ Автоматический расчёт актировок (отмены занятий из-за морозов по нормативам Челябинской области)\n✅ Точное расписание звонков и длительность перемен для 1-й и 2-й смен\n✅ Автоматический чек-лист учебников и школьных принадлежностей на завтрашний день\n✅ Расчёт успеваемости и дней до каникул\n\nПриложение полностью бесплатное, не содержит рекламы и не требует регистрации.`,
-                          'Текст для родительского чата'
-                        )
-                      }
-                      className="px-2.5 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <Copy className="w-3 h-3" />
-                      <span>Копировать</span>
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-white/70 italic bg-black/40 p-2 rounded-lg leading-relaxed">
-                    «Уважаемые родители! Для учеников и родителей МБОУ АСОШ №2 создано удобное приложение: сетка уроков 5-11 кл, расчет актировок по нормативам области, чек-лист рюкзака...»
-                  </p>
-                </div>
+                ))}
               </div>
             </div>
           )}
