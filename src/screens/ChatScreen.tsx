@@ -29,6 +29,7 @@ import {
 } from '../services/firebaseChat';
 import { getMyProfile } from '../services/userService';
 import { playSound, doVibro } from '../utils/audio';
+import { useOnline } from '../utils/useOnline';
 
 interface ChatScreenProps {
   cls: string;
@@ -66,6 +67,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
+  const online = useOnline();
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [cooldown, setCooldown] = useState(false);
   const [copiedId, setCopiedId] = useState<string | number | null>(null);
@@ -141,6 +143,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     const rawText = textToSend !== undefined ? textToSend : inputText;
     const trimmed = rawText.trim();
     if (!trimmed || sending || cooldown) return;
+    if (!online) {
+      setErrorStatus('Нет интернета — сообщение не отправлено');
+      return;
+    }
 
     setSending(true);
     setCooldown(true);
@@ -433,6 +439,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {!online && (
+        <div className="my-1.5 p-2.5 bg-amber-950/70 border border-amber-500/40 rounded-xl text-xs text-amber-200">
+          📴 Нет интернета. Показаны последние сохранённые сообщения — новые появятся, когда будет сеть.
+        </div>
+      )}
 
       {/* Error Banner */}
       {errorStatus && (
