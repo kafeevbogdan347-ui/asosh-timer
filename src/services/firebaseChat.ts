@@ -93,7 +93,7 @@ export function initFirebase() {
 
 // Анонимный вход: правила базы пускают в чат только вошедших пользователей,
 // поэтому перед чтением и записью тихо входим без логина и пароля
-function ensureSignedIn(): Promise<boolean> {
+export function ensureSignedIn(): Promise<boolean> {
   if (!signInPromise) {
     const { app } = initFirebase();
     if (!app) return Promise.resolve(false);
