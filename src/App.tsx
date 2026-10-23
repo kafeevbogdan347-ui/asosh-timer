@@ -63,6 +63,7 @@ import { GpaCalculatorScreen } from './screens/GpaCalculatorScreen';
 import { PortfolioScreen } from './screens/PortfolioScreen';
 import { FocusAudioScreen } from './screens/FocusAudioScreen';
 import { ChatScreen } from './screens/ChatScreen';
+import { isClassUnlocked } from './data/classCodes';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { RetroFirstScreen } from './screens/RetroFirstScreen';
 import { BellsScreen } from './screens/BellsScreen';
@@ -90,6 +91,9 @@ export default function App() {
   const [accountVault, setAccountVault] = useState<AccountVault>(() => loadAccountVault());
   const [registered, setRegistered] = useState<boolean>(() => accountVault.registered);
   const [cls, setCls] = useState<string>(() => accountVault.cls);
+  // Гость выбирает класс без кода; чат и отправка замен/ДЗ классу — только после ввода кода
+  const [isGuest, setIsGuest] = useState<boolean>(() => localStorage.getItem('asosh_guest') === '1');
+  const [classVerified, setClassVerified] = useState<boolean>(() => !!accountVault.cls && isClassUnlocked(accountVault.cls));
   const [shift, setShift] = useState<string>(() => accountVault.shift);
   const [subGroup, setSubGroup] = useState<number>(() => accountVault.subGroup);
   const [lang, setLang] = useState<LanguageType>(() => accountVault.lang);
@@ -927,7 +931,11 @@ export default function App() {
     isDeveloperMode?: boolean;
     authProvider?: 'guest' | 'local' | 'google' | 'apple';
     authEmail?: string;
+    guest?: boolean;
   }) => {
+    setIsGuest(!!data.guest);
+    if (data.guest) localStorage.setItem('asosh_guest', '1');
+    else localStorage.removeItem('asosh_guest');
     const updated = saveAccountVault({
       registered: true,
       studentName: data.studentName,
@@ -957,7 +965,7 @@ export default function App() {
       showToast('🛠️ Режим разработчика активирован!');
     } else {
       localStorage.removeItem('asosh_dev_unlocked');
-      showToast('Регистрация успешна! 🚀');
+      showToast(data.guest ? 'Вход как гость 👀' : 'Регистрация успешна! 🚀');
     }
 
     handleUpdateSettings({ devicePC: data.device === 'pc' });
@@ -968,6 +976,7 @@ export default function App() {
 
   const handleSelectClass = (selected: string) => {
     setCls(selected);
+    setClassVerified(isClassUnlocked(selected));
     const updated = saveAccountVault({ cls: selected });
     setAccountVault(updated);
     localStorage.setItem('asosh_class_v105', selected);
@@ -1333,6 +1342,12 @@ export default function App() {
             lang={lang}
             timeStr={timeStr}
             dayName={currentDayName}
+            isGuest={isGuest}
+            onEnterAsGuest={() => {
+              setIsGuest(true);
+              localStorage.setItem('asosh_guest', '1');
+              showToast('Выбери класс — код не нужен 👀');
+            }}
           />
         )}
 
@@ -1440,6 +1455,7 @@ export default function App() {
             vibro={settings.vibro}
             classHomework={classHomework}
             myUid={myUid()}
+            canShare={classVerified}
             onShareHomework={(h) => addClassHomework(cls, { ...h, forDate: '', author: studentName || 'Ученик' })}
             onDeleteClassHomework={(id) => {
               deleteClassHomework(cls, id);
@@ -1459,6 +1475,7 @@ export default function App() {
             onDeleteUpdate={handleDeleteUpdate}
             classReplacements={classReplacements}
             myUid={myUid()}
+            canShare={classVerified}
             onAddClassReplacement={(r) => addClassReplacement(cls, { ...r, author: studentName || 'Ученик' })}
             onDeleteClassReplacement={(id) => {
               deleteClassReplacement(cls, id);
@@ -1520,7 +1537,23 @@ export default function App() {
           />
         )}
 
-        {currentScreen === 'chat' && (
+        {currentScreen === 'chat' && !classVerified && (
+          <div className="card screen-enter max-w-lg mx-auto text-center space-y-3 py-8">
+            <div className="text-5xl">🔒</div>
+            <h2 className="text-xl font-black text-cyan-300">Чат класса — только по коду</h2>
+            <p className="text-sm text-white/70">
+              Ты вошёл как гость. Чтобы писать в чат {cls}, введи код класса — его даёт классный руководитель.
+            </p>
+            <button type="button" className="btn green w-full justify-center" onClick={() => setCurrentScreen('select')}>
+              Ввести код класса
+            </button>
+            <button type="button" className="btn darkBtn w-full justify-center" onClick={() => setCurrentScreen('main')}>
+              На главную
+            </button>
+          </div>
+        )}
+
+        {currentScreen === 'chat' && classVerified && (
           <ChatScreen
             cls={cls}
             lang={lang}
