@@ -27,7 +27,26 @@ export const BoardScreen: React.FC<BoardScreenProps> = ({ cls, shift, time, stat
   useEffect(() => {
     const onChange = () => setIsFull(Boolean(document.fullscreenElement));
     document.addEventListener('fullscreenchange', onChange);
-    return () => document.removeEventListener('fullscreenchange', onChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange);
+      // Ушли с экрана — выходим из полноэкранного режима
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    };
+  }, []);
+
+  // Не даём экрану проектора/ноутбука погаснуть, пока открыт этот режим
+  useEffect(() => {
+    let lock: WakeLockSentinel | null = null;
+    const request = () => {
+      if (document.visibilityState !== 'visible' || !('wakeLock' in navigator)) return;
+      navigator.wakeLock.request('screen').then((l) => (lock = l)).catch(() => {});
+    };
+    request();
+    document.addEventListener('visibilitychange', request);
+    return () => {
+      document.removeEventListener('visibilitychange', request);
+      lock?.release().catch(() => {});
+    };
   }, []);
 
   const toggleFull = () => {
