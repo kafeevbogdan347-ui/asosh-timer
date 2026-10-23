@@ -275,26 +275,6 @@ export interface AccountVault {
   updatedAt: number;
 }
 
-export interface SchoolNewsPost {
-  id: string;
-  authorId: string;
-  authorName: string;
-  authorClass: string;
-  authorAvatar: string;
-  authorAvatarType?: 'emoji' | 'image';
-  title: string;
-  content: string;
-  category: 'news' | 'announcement' | 'sport' | 'meme' | 'creative' | 'olympiad' | 'canteen';
-  imageUrl?: string;
-  createdAt: string;
-  timestamp: number;
-  likes: number;
-  likedBy: string[]; // User IDs who liked
-  status: 'pending' | 'approved' | 'rejected';
-  rejectionReason?: string;
-  moderatedAt?: string;
-}
-
 export interface ChatMessage {
   id?: number | string;
   created_at?: string;
@@ -348,7 +328,6 @@ export type ScreenId =
   | 'formulas'
   | 'pomodoro'
   | 'homework'
-  | 'excuse'
   | 'map'
   | 'updates'
   | 'games'
@@ -363,7 +342,6 @@ export type ScreenId =
   | 'focus'
   | 'chat'
   | 'profile'
-  | 'news'
   | 'about'
   | 'settings'
   | 'dev'

@@ -26,7 +26,6 @@ import { playSound, doVibro } from './utils/audio';
 import { TopBar } from './components/TopBar';
 import { NavBar } from './components/NavBar';
 import { CalcModal } from './components/CalcModal';
-import { PanicModal } from './components/PanicModal';
 import { DeveloperModal } from './components/DeveloperModal';
 import { DevPasswordModal } from './components/DevPasswordModal';
 import { PinLockModal } from './components/PinLockModal';
@@ -53,7 +52,6 @@ import { QuarterScreen } from './screens/QuarterScreen';
 import { FormulasScreen } from './screens/FormulasScreen';
 import { PomodoroScreen } from './screens/PomodoroScreen';
 import { HomeworkScreen } from './screens/HomeworkScreen';
-import { ExcuseScreen } from './screens/ExcuseScreen';
 import { MapScreen } from './screens/MapScreen';
 import { AddUpdateScreen } from './screens/AddUpdateScreen';
 import { GamesScreen } from './screens/GamesScreen';
@@ -65,7 +63,6 @@ import { PortfolioScreen } from './screens/PortfolioScreen';
 import { FocusAudioScreen } from './screens/FocusAudioScreen';
 import { ChatScreen } from './screens/ChatScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
-import { NewsScreen } from './screens/NewsScreen';
 import { RetroFirstScreen } from './screens/RetroFirstScreen';
 import { BellsScreen } from './screens/BellsScreen';
 import { MaintenanceScreen } from './screens/MaintenanceScreen';
@@ -166,7 +163,7 @@ export default function App() {
     { id: 'math_genius', title: 'Калькулятор в голове', description: 'Набрали 15+ очков в математическом спринте', icon: '🧠', unlocked: false },
     { id: 'memory_master', title: 'Эйдетическая память', description: 'Нашли все пары карточек в игре Память', icon: '🎴', unlocked: false },
     { id: 'reflex_god', title: 'Молниеносный', description: 'Показали скорость реакции быстрее 250 мс', icon: '⚡', unlocked: false },
-    { id: 'tictactoe_win', title: 'Гроссмейстер', description: 'Обыграли ИИ в Крестики-Нолики', icon: '⭕', unlocked: false },
+    { id: 'tictactoe_win', title: 'Гроссмейстер', description: 'Обыграли компьютер в крестики-нолики', icon: '⭕', unlocked: false },
     { id: 'dev_unlocked', title: 'Хакер Пентагона', description: 'Открыли секретную панель разработчика', icon: '💻', unlocked: false },
     { id: 'top_student', title: 'Отличник четверти', description: 'Рассчитали средний балл ≥ 4.60 в симуляторе', icon: '🎯', unlocked: false },
     { id: 'social_star', title: 'Звезда школы', description: 'Оформили профиль ученика и нашли друзей в АСОШ №2', icon: '🌟', unlocked: true, unlockedAt: 'Сегодня' },
@@ -301,7 +298,6 @@ export default function App() {
 
   const [selectedDaySchedule, setSelectedDaySchedule] = useState<string>(() => getTodayDayName());
   const [isCalcOpen, setIsCalcOpen] = useState(false);
-  const [isPanicOpen, setIsPanicOpen] = useState(false);
   const [isDevOpen, setIsDevOpen] = useState(false);
   const [isDevPasswordPromptOpen, setIsDevPasswordPromptOpen] = useState(false);
 
@@ -407,7 +403,6 @@ export default function App() {
 
       // 1. If any modal is open, close modal first
       if (isCalcOpen) { setIsCalcOpen(false); stay(); return; }
-      if (isPanicOpen) { setIsPanicOpen(false); stay(); return; }
       if (isDevOpen) { setIsDevOpen(false); stay(); return; }
       if (isPinSetupOpen) { setIsPinSetupOpen(false); stay(); return; }
 
@@ -457,7 +452,7 @@ export default function App() {
       window.removeEventListener('popstate', onPopState);
       document.removeEventListener('backbutton', onBackButton);
     };
-  }, [currentScreen, isCalcOpen, isPanicOpen, isDevOpen, isPinSetupOpen, isPinLocked]);
+  }, [currentScreen, isCalcOpen, isDevOpen, isPinSetupOpen, isPinLocked]);
 
   // Splashes and Motivators
   const [currentSplash, setCurrentSplash] = useState('');
@@ -645,7 +640,7 @@ export default function App() {
             remainSec: e - curSec,
             totalSec: e - s,
             nowText: `${currentLessons[i][0]} ${currentLessons[i][1] ? `(каб. ${currentLessons[i][1]})` : ''}`,
-            nextText: nextL ? `${nextL[0]} ${nextL[1] ? `(каб. ${nextL[1]})` : ''}` : 'Все уроки закончены 🎉',
+            nextText: nextL ? `${nextL[0]} ${nextL[1] ? `(каб. ${nextL[1]})` : ''}` : 'Это последний урок 🎉',
           };
           break;
         }
@@ -776,7 +771,13 @@ export default function App() {
   }
 
   // Smart day & weekend calculations
-  const smartText = numLessonsToday === 0 ? 'Расписание ещё не добавлено' : `Сегодня ${numLessonsToday} уроков`;
+  const lessonsWord = (n: number) => {
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return 'урок';
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'урока';
+    return 'уроков';
+  };
+  const smartText = numLessonsToday === 0 ? 'Уроков нет' : `${numLessonsToday} ${lessonsWord(numLessonsToday)}`;
 
   const dayOfWeek = activeTime.getDay();
   let weekendText = '';
@@ -1084,7 +1085,6 @@ export default function App() {
       )}
 
       {/* Panic Modal (Anti-palevo) */}
-      <PanicModal isOpen={isPanicOpen} onClose={() => setIsPanicOpen(false)} />
 
       {/* 4-digit PIN Authentication Modal */}
       <PinLockModal
@@ -1147,7 +1147,6 @@ export default function App() {
         <TopBar
           timeStr={timeStr}
           onOpenCalc={() => setIsCalcOpen(true)}
-          onDoubleTapPanic={() => setIsPanicOpen(true)}
           onOpenAchievements={() => setCurrentScreen('achievements')}
           unlockedCount={achievements.filter((a) => a.unlocked).length}
           onOpenDev={handleRequestOpenDev}
@@ -1323,15 +1322,6 @@ export default function App() {
           />
         )}
 
-        {currentScreen === 'excuse' && (
-          <ExcuseScreen
-            studentName={studentName}
-            parentName={parentName}
-            lang={lang}
-            onShowToast={showToast}
-          />
-        )}
-
         {currentScreen === 'map' && <MapScreen />}
 
         {currentScreen === 'updates' && (
@@ -1417,16 +1407,6 @@ export default function App() {
           />
         )}
 
-        {currentScreen === 'news' && (
-          <NewsScreen
-            lang={lang}
-            soundProfile={settings.soundProfile}
-            vibro={settings.vibro}
-            onShowToast={showToast}
-            onOpenDevModal={() => setIsDevOpen(true)}
-          />
-        )}
-
         {currentScreen === 'about' && (
           <AboutScreen onBack={() => setCurrentScreen(cls ? 'main' : 'select')} />
         )}
@@ -1458,7 +1438,6 @@ export default function App() {
             }}
             onExportData={handleExportData}
             onImportData={handleImportData}
-            onPanicTest={() => setIsPanicOpen(true)}
             onResetAll={handleResetAll}
             onShowToast={showToast}
             onNavigate={(s) => setCurrentScreen(s)}

@@ -1016,16 +1016,19 @@ body.hide-mot .motivator { display: none !important; }
 }
 
 /* ФОРМЫ */
-input, select, textarea {
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 12px 14px;
-  font-size: 15px;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.4);
-  outline: none;
-  transition: border-color 0.2s;
-  box-sizing: border-box;
+/* Базовый вид полей в слое base, чтобы классы Tailwind (отступы, ширина) могли его переопределять */
+@layer base {
+  input, select, textarea {
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 12px 14px;
+    font-size: 15px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.4);
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+  }
 }
 
 body.theme-light input, body.theme-light select, body.theme-light textarea {
