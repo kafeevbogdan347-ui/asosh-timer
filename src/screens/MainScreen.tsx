@@ -20,6 +20,7 @@ interface MainScreenProps {
   onOpenCalc: () => void;
   onLogoTap: () => void;
   lang: LanguageType;
+  showBackpackHint: boolean;
   quarterProgress: {
     name: string;
     percent: number;
@@ -76,10 +77,10 @@ export const MainScreen: React.FC<MainScreenProps> = ({
   onOpenCalc,
   onLogoTap,
   lang,
+  showBackpackHint,
   quarterProgress,
 }) => {
   const d = DICT[lang] || DICT.ru;
-  const isEvening = new Date().getHours() >= 15;
 
   return (
     <div className="card screen-enter">
@@ -153,7 +154,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
       </div>
 
       {/* Портфель на завтра — только вечером, когда он нужен */}
-      {isEvening && (
+      {showBackpackHint && (
         <button
           type="button"
           className="w-full my-3 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-400/30 flex items-center justify-between hover:border-emerald-400/60 transition-all text-xs cursor-pointer"

@@ -189,7 +189,9 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
       { subject: 'История', marks: [5, 4, 5, 5] },
       { subject: 'Английский язык', marks: [5, 5, 4, 5, 5] },
     ];
-    localStorage.setItem('asosh_gpa_v106', JSON.stringify(sampleGrades));
+    // Калькулятор и профиль читают asosh_gpa_subjects в формате SubjectGrades
+    const subjects = sampleGrades.map((g, i) => ({ id: String(i + 1), name: g.subject, grades: g.marks, target: 5 }));
+    localStorage.setItem('asosh_gpa_subjects', JSON.stringify(subjects));
     onShowToast('🎯 Сгенерирован отличный табель отметок (ср. балл 4.88)!');
   };
 

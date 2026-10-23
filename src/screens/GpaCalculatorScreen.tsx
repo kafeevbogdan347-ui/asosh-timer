@@ -78,7 +78,8 @@ export const GpaCalculatorScreen: React.FC<GpaCalculatorScreenProps> = ({
     const curGrades = [...activeSubject.grades, val];
     const sum = curGrades.reduce((a, b) => a + b, 0);
     const avg = sum / curGrades.length;
-    if (avg >= 4.60) {
+    // Одна пятёрка ещё не «отличник»: нужно хотя бы 5 оценок
+    if (curGrades.length >= 5 && avg >= 4.60) {
       onUnlockAchievement?.('top_student');
     }
   };

@@ -7,6 +7,7 @@ import {
   isClassUnlocked,
   saveClassUnlocked,
   ClassCodeInfo,
+  CLASS_LIST,
 } from '../data/classCodes';
 import {
   checkClassCodeLockout,
@@ -128,6 +129,8 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
   const handleLetterClick = (fullCls: string) => {
     // If class already unlocked on this device, enter immediately
     if (isClassUnlocked(fullCls)) {
+      const info = CLASS_LIST.find((c) => c.className === fullCls);
+      if (info) onSelectShift(info.defaultShift);
       onSelectClass(fullCls);
     } else {
       // Prompt for private code
@@ -160,6 +163,7 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
       setTargetClassToUnlock(null);
       setModalInputCode('');
       setModalError(null);
+      onSelectShift(res.info.defaultShift);
       onSelectClass(targetCls);
     } else {
       const lockMsg = res.status === 'ok' ? handleFailedCheck({ status: 'wrong' }) : handleFailedCheck(res);

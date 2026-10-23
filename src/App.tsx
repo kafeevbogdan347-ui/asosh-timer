@@ -764,11 +764,11 @@ export default function App() {
     bellIcon = '🌙';
   } else if (numLessonsToday > 0) {
     bellTitle = 'Уроки на сегодня закончены';
-    bellTimeText = '00:00';
+    bellTimeText = '—';
     bellIcon = '🎉';
   } else {
     bellTitle = 'Уроков на сегодня нет';
-    bellTimeText = '00:00';
+    bellTimeText = '—';
     bellIcon = '🥳';
   }
 
@@ -1086,8 +1086,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Panic Modal (Anti-palevo) */}
-
       {/* 4-digit PIN Authentication Modal */}
       <PinLockModal
         isOpen={isPinLocked}
@@ -1098,7 +1096,7 @@ export default function App() {
       <PinSetupModal
         isOpen={isPinSetupOpen}
         onClose={() => setIsPinSetupOpen(false)}
-        onSuccess={() => {
+        onUpdated={() => {
           setIsPinSetupOpen(false);
           setIsPinLocked(false);
           showToast('Настройки PIN-кода успешно обновлены');
@@ -1244,6 +1242,7 @@ export default function App() {
             onOpenCalc={() => setIsCalcOpen(true)}
             onLogoTap={handleLogoTap}
             lang={lang}
+            showBackpackHint={activeTime.getHours() >= 15 && dayOfWeek <= 4}
             quarterProgress={{
               name: activeQuarter.name,
               percent: quarterPercent,

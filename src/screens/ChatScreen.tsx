@@ -61,6 +61,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const userProfile = getMyProfile();
   const username = userProfile.username || `Ученик ${cls || 'АСОШ №2'}`;
   const selectedAvatar = userProfile.avatar || '🎒';
+  // Фото-аватар в base64 слишком длинный для имени в сообщении
+  const chatAvatar = selectedAvatar.startsWith('data:') ? '🎒' : selectedAvatar;
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
@@ -148,14 +150,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
     const formattedSender = isIncognito
       ? '🎭 Анонимный ученик'
-      : `${selectedAvatar} ${username}`.trim();
+      : `${chatAvatar} ${username}`.trim();
 
     const res = await sendFirebaseMessage(
       formattedSender,
       trimmed,
       currentRoomKey,
       isIncognito ? 'anonymous' : userProfile.id,
-      isIncognito ? '🎭' : selectedAvatar,
+      isIncognito ? '🎭' : chatAvatar,
       { isIncognito, isSelfDestruct }
     );
 
@@ -373,7 +375,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               (!msg.userId && (
                 username &&
                 !username.startsWith('Ученик') &&
-                (msg.username === username || msg.username === `${selectedAvatar} ${username}`)
+                (msg.username === username || msg.username === `${chatAvatar} ${username}`)
               ))
             );
 
