@@ -23,7 +23,6 @@ import {
   FileCode,
   Sliders,
   Radio,
-  Newspaper,
   Check,
   Ban,
   Trash2,
@@ -42,12 +41,6 @@ import { playSound } from '../utils/audio';
 import { SoundProfileType } from '../types';
 import {
 } from '../utils/privacy';
-import {
-  getAllPosts,
-  getPendingPosts,
-  moderatePost,
-  deletePost,
-} from '../services/newsService';
 import {
   downloadPresentationHtml,
   downloadPresentationMarkdown,
@@ -81,12 +74,10 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
   fpsOverlayActive,
   onToggleFpsOverlay,
 }) => {
-  const [tab, setTab] = useState<'security' | 'presentation' | 'apk' | 'moderation' | 'mobile' | 'time' | 'data' | 'audio' | 'system'>('security');
+  const [tab, setTab] = useState<'security' | 'presentation' | 'apk' | 'mobile' | 'time' | 'data' | 'audio' | 'system'>('security');
   const [stressResult, setStressResult] = useState<string | null>(null);
   const [simBattery, setSimBattery] = useState(88);
   const [simNetwork, setSimNetwork] = useState<'online' | 'offline' | 'slow3g'>('online');
-  const [allPostsList, setAllPostsList] = useState(() => getAllPosts());
-  const [rejectReasonInput, setRejectReasonInput] = useState<{ [postId: string]: string }>({});
 
 
   const copyToClipboard = (text: string, label: string) => {
@@ -109,23 +100,6 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
   };
 
   if (!isOpen) return null;
-
-  const pendingPosts = allPostsList.filter((p) => p.status === 'pending');
-
-  const handleModerate = (postId: string, action: 'approve' | 'reject') => {
-    const reason = rejectReasonInput[postId] || 'Не соответствует правилам школьного сообщества';
-    const updated = moderatePost(postId, action, reason);
-    setAllPostsList(updated);
-    playSound(action === 'approve' ? 'coin' : 'nav', soundProfile);
-    onShowToast(action === 'approve' ? '✅ Пост одобрен и выставлен в школьную ленту!' : '❌ Пост отклонен');
-  };
-
-  const handleDeletePost = (postId: string) => {
-    const updated = deletePost(postId);
-    setAllPostsList(updated);
-    playSound('nav', soundProfile);
-    onShowToast('🗑️ Пост удален');
-  };
 
   const storageKeys = [
     'asosh_settings_v11',
@@ -294,7 +268,6 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
           {[
             { id: 'security', label: '🔒 Пароль Dev', icon: Lock },
             { id: 'presentation', label: '🎓 Презентация', icon: Presentation },
-            { id: 'moderation', label: `🛡️ Посты (${pendingPosts.length})`, icon: Newspaper },
             { id: 'apk', label: '🤖 APK Сборка', icon: Smartphone },
             { id: 'mobile', label: '📱 Телефон', icon: Activity },
             { id: 'time', label: '⏱️ Время', icon: Clock },
@@ -542,146 +515,6 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
               </div>
             </div>
           )}
-          {/* 0. MODERATION OF SCHOOL POSTS */}
-          {tab === 'moderation' && (
-            <div className="space-y-3">
-              <div className="p-3.5 bg-gradient-to-r from-cyan-950/70 to-blue-950/70 rounded-2xl border border-cyan-400/40 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Newspaper className="w-5 h-5 text-cyan-400" />
-                    <b className="text-sm font-bold text-cyan-300">
-                      Модерация предложенных постов школьной ленты:
-                    </b>
-                  </div>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono font-bold">
-                    Ожидают: {pendingPosts.length}
-                  </span>
-                </div>
-                <p className="text-xs text-white/80 leading-relaxed">
-                  Здесь отображаются все новости и объявления, которые ученики АСОШ №2 отправили на публикацию. Вы можете проверить текст, фото и нажать <b>«✅ Одобрить»</b> или <b>«❌ Отклонить»</b>.
-                </p>
-              </div>
-
-              {/* Pending Queue */}
-              <div className="space-y-2.5">
-                <h4 className="text-xs font-black text-amber-300 uppercase tracking-wider">
-                  ⏳ Заявки на проверку ({pendingPosts.length})
-                </h4>
-
-                {pendingPosts.length > 0 ? (
-                  pendingPosts.map((post) => (
-                    <div
-                      key={post.id}
-                      className="p-3.5 bg-slate-950/90 rounded-2xl border-2 border-amber-400/40 space-y-3 shadow-lg"
-                    >
-                      {/* Author */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-400 flex items-center justify-center text-lg">
-                            {post.authorAvatar || '🎒'}
-                          </div>
-                          <div>
-                            <b className="text-xs text-white">{post.authorName}</b>
-                            <span className="text-[10px] text-cyan-300 ml-1.5 font-bold">
-                              ({post.authorClass})
-                            </span>
-                            <span className="text-[10px] text-white/40 block font-mono">
-                              Категория: {post.category} • {post.createdAt}
-                            </span>
-                          </div>
-                        </div>
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">
-                          На проверке
-                        </span>
-                      </div>
-
-                      {/* Post Content */}
-                      <div className="bg-white/5 p-2.5 rounded-xl border border-white/8 space-y-1">
-                        <b className="text-xs text-cyan-200 block">{post.title}</b>
-                        <p className="text-xs text-white/90 whitespace-pre-line leading-relaxed">
-                          {post.content}
-                        </p>
-                        {post.imageUrl && (
-                          <div className="mt-2 rounded-lg overflow-hidden border border-white/10 max-h-40">
-                            <img src={post.imageUrl} alt="Media" className="w-full h-full object-cover" />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Reject Reason input if needed */}
-                      <div className="space-y-1.5">
-                        <input
-                          type="text"
-                          value={rejectReasonInput[post.id] || ''}
-                          onChange={(e) =>
-                            setRejectReasonInput({ ...rejectReasonInput, [post.id]: e.target.value })
-                          }
-                          placeholder="Причина отказа (если отклоняете): Спам, оффтоп..."
-                          className="input !py-1 text-xs"
-                        />
-                      </div>
-
-                      {/* Action buttons */}
-                      <div className="flex gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => handleModerate(post.id, 'approve')}
-                          className="btn cyan flex-1 text-xs py-2 flex items-center justify-center gap-1.5 font-black shadow-md"
-                        >
-                          <Check className="w-4 h-4" />
-                          <span>Одобрить и выставить</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleModerate(post.id, 'reject')}
-                          className="btn flex-1 text-xs py-2 flex items-center justify-center gap-1.5 font-bold bg-rose-500/20 border-rose-400 text-rose-300 hover:bg-rose-500/30"
-                        >
-                          <Ban className="w-4 h-4" />
-                          <span>Отклонить</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-5 text-center bg-white/5 rounded-2xl border border-white/10 text-xs text-white/60">
-                    🎉 Нет постов, ожидающих модерации! Все заявки обработаны.
-                  </div>
-                )}
-              </div>
-
-              {/* All Published Posts Management */}
-              <div className="space-y-2 pt-2 border-t border-white/10">
-                <h4 className="text-xs font-black text-white/80 uppercase tracking-wider">
-                  Все посты в базе ({allPostsList.length})
-                </h4>
-
-                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                  {allPostsList.map((p) => (
-                    <div
-                      key={p.id}
-                      className="p-2 bg-white/5 rounded-xl border border-white/8 flex items-center justify-between text-xs gap-2"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <b className="text-white truncate block">{p.title}</b>
-                        <span className="text-[10px] text-white/50">
-                          {p.authorName} ({p.authorClass}) • Статус: {p.status}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDeletePost(p.id)}
-                        className="p-1 text-white/40 hover:text-rose-400"
-                        title="Удалить"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* 1.5. APK & PWA EXPORT */}
           {tab === 'apk' && (
             <div className="space-y-3">

@@ -1,10 +1,10 @@
 import React from 'react';
 import { Calculator, Trophy, Lock, EyeOff, Eye } from 'lucide-react';
+import { APP_VERSION } from '../data/constants';
 
 interface TopBarProps {
   timeStr: string;
   onOpenCalc: () => void;
-  onDoubleTapPanic: () => void;
   onOpenAchievements?: () => void;
   unlockedCount?: number;
   onOpenDev?: () => void;
@@ -12,13 +12,11 @@ interface TopBarProps {
   onLockApp?: () => void;
   isPrivacyBlur?: boolean;
   onTogglePrivacyBlur?: () => void;
-  onOpenAi?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
   timeStr,
   onOpenCalc,
-  onDoubleTapPanic,
   onOpenAchievements,
   unlockedCount = 0,
   onOpenDev,
@@ -26,14 +24,9 @@ export const TopBar: React.FC<TopBarProps> = ({
   onLockApp,
   isPrivacyBlur = false,
   onTogglePrivacyBlur,
-  onOpenAi,
 }) => {
   return (
-    <header
-      className="flex justify-between items-center py-2 px-1 select-none cursor-pointer"
-      onDoubleClick={onDoubleTapPanic}
-      title="Двойной клик — Режим «Анти-палево»"
-    >
+    <header className="flex justify-between items-center py-2 px-1 select-none">
       <div className="text-2xl font-black tabular-nums tracking-wide">{timeStr || '--:--'}</div>
       <div className="flex items-center gap-1.5 sm:gap-2">
         {/* Quick Anti-Spy Privacy Blur button */}
@@ -85,21 +78,6 @@ export const TopBar: React.FC<TopBarProps> = ({
           </button>
         )}
 
-        {onOpenAi && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenAi();
-            }}
-            className="flex items-center gap-1 bg-gradient-to-r from-cyan-500/25 to-blue-500/25 hover:from-cyan-500/40 hover:to-blue-500/40 border border-cyan-400/40 rounded-xl text-xs font-bold px-2.5 py-1.5 text-cyan-200 transition-colors cursor-pointer shadow-sm"
-            title="ИИ-Помощник АСОШ №2"
-          >
-            <span>🤖</span>
-            <span className="hidden sm:inline">ИИ</span>
-          </button>
-        )}
-
         <button
           type="button"
           onClick={(e) => {
@@ -117,10 +95,10 @@ export const TopBar: React.FC<TopBarProps> = ({
             e.stopPropagation();
             if (onOpenDev) onOpenDev();
           }}
-          className="text-[11px] font-black px-2 py-1 rounded-lg bg-amber-400/20 hover:bg-amber-400/35 border border-amber-400/40 text-amber-200 transition-colors cursor-pointer"
-          title="Режим разработчика & Презентация школы"
+          className="text-[10px] font-bold px-1.5 py-1 text-white/40 hover:text-white/70 transition-colors cursor-pointer"
+          title="Версия приложения"
         >
-          ⚡ v13.3
+          {APP_VERSION}
         </button>
       </div>
     </header>
