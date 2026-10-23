@@ -94,6 +94,8 @@ export interface AppSettings {
   fontSize: FontSizeType;
   timerStyle: TimerStyleType;
   theme: ThemeType;
+  bellNotifications?: boolean; // системные уведомления о звонках
+  themeAuto?: boolean; // тема как в системе: светлая днём, тёмная ночью
   compact: boolean;
   devicePC: boolean;
   perfLow: boolean;
@@ -354,4 +356,6 @@ export type ScreenId =
   | 'retroFirst'
   | 'bells'
   | 'maintenance'
+  | 'calendar'
+  | 'board'
 

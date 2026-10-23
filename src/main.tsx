@@ -1,6 +1,7 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
+import { receiveTransferIfNeeded } from './services/transfer';
 import { initCordovaPlugins } from './services/cordovaService';
 import './index.css';
 import './themes.css';
@@ -17,9 +18,12 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   });
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+// Сначала принимаем перенос данных по ссылке из QR-кода (если открыли такую ссылку), потом запускаем приложение
+receiveTransferIfNeeded().finally(() => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+});
 

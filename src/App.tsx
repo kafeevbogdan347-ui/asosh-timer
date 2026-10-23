@@ -69,6 +69,21 @@ import { BellsScreen } from './screens/BellsScreen';
 import { MaintenanceScreen } from './screens/MaintenanceScreen';
 import { Achievement } from './types';
 import { LIGHT_THEME_IDS } from './data/themes';
+import { BoardScreen } from './screens/BoardScreen';
+import { CalendarScreen } from './screens/CalendarScreen';
+import {
+  ClassReplacement,
+  ClassHomework,
+  subscribeClassReplacements,
+  subscribeClassHomework,
+  addClassReplacement,
+  deleteClassReplacement,
+  addClassHomework,
+  deleteClassHomework,
+  myUid,
+  toDateKey,
+} from './services/classShared';
+import { isNativeApp, showSystemNotification, scheduleNativeReminders, cancelNativeReminders } from './services/bellNotifications';
 
 export default function App() {
   // 1. Initial State from unified Account Vault (guarantees account NEVER resets on refresh or update)
@@ -475,6 +490,17 @@ export default function App() {
     refreshMotivator();
   }, [lang, currentScreen]);
 
+  // Тема «как в системе»: следим за светлым/тёмным режимом устройства
+  const [systemDark, setSystemDark] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true);
+  useEffect(() => {
+    const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
+    if (!mq) return;
+    const onChange = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  const effectiveTheme = settings.themeAuto ? (systemDark ? 'dark' : 'minimal') : settings.theme;
+
   // Sync body classes & font size
   useEffect(() => {
     const body = document.body;
@@ -490,8 +516,8 @@ export default function App() {
     }
 
     body.className = '';
-    body.classList.add(`theme-${settings.theme}`);
-    if (LIGHT_THEME_IDS.includes(settings.theme)) body.classList.add('ui-light');
+    body.classList.add(`theme-${effectiveTheme}`);
+    if (LIGHT_THEME_IDS.includes(effectiveTheme)) body.classList.add('ui-light');
     body.classList.add(settings.fontSize);
     if (settings.timerStyle === 'digital') body.classList.add('timer-digital');
     if (settings.compact) body.classList.add('compact');
@@ -500,7 +526,7 @@ export default function App() {
     if (!settings.anim) body.classList.add('no-anim');
     if (!settings.splash) body.classList.add('hide-splash');
     if (!settings.mot) body.classList.add('hide-mot');
-  }, [settings]);
+  }, [settings, effectiveTheme]);
 
   // Save settings
   const handleUpdateSettings = (newSettings: Partial<AppSettings>) => {
@@ -556,6 +582,31 @@ export default function App() {
     return roomStr;
   };
 
+  // Общие замены и домашка класса из Firebase
+  const [classReplacements, setClassReplacements] = useState<ClassReplacement[]>([]);
+  const [classHomework, setClassHomework] = useState<ClassHomework[]>([]);
+  useEffect(() => {
+    if (!registered || !cls) return;
+    const unsubR = subscribeClassReplacements(cls, setClassReplacements);
+    const unsubH = subscribeClassHomework(cls, setClassHomework);
+    return () => {
+      unsubR();
+      unsubH();
+    };
+  }, [cls, registered]);
+
+  // Дата дня недели: сегодня, завтра или день текущей недели (Пн–Вс)
+  const dateKeyForDay = (dayName: string): string => {
+    const base = new Date(activeTime.getFullYear(), activeTime.getMonth(), activeTime.getDate());
+    if (dayName === tomorrowDayName) base.setDate(base.getDate() + 1);
+    else {
+      // Прошедшие дни недели — это уже следующая неделя (в субботу «Пн» = ближайший понедельник)
+      const diff = DAYS.indexOf(dayName as (typeof DAYS)[number]) - dayIndex;
+      base.setDate(base.getDate() + (diff < 0 ? diff + 7 : diff));
+    }
+    return toDateKey(base);
+  };
+
   // Get active lessons for day (official base schedule + custom updates)
   const getLessonsForDay = (dayName: string): [string, string][] => {
     // 1. Get official base lessons for selected class & day
@@ -579,6 +630,15 @@ export default function App() {
       applied.add(u.num);
       map[u.num - 1] = [u.sub, parseRoom(u.room)];
     });
+
+    // 4. Замены класса на эту дату важнее всего; при нескольких побеждает самая новая
+    const dateKey = dateKeyForDay(dayName);
+    classReplacements
+      .filter((r) => r.date === dateKey && r.num >= 1 && r.num <= 12)
+      .sort((a, b) => a.created_at - b.created_at)
+      .forEach((r) => {
+        map[r.num - 1] = r.sub === 'Урока не будет' ? ['—', ''] : [`🔄 ${r.sub}`, parseRoom(r.room)];
+      });
 
     const result: [string, string][] = [];
     const keys = Object.keys(map).map(Number);
@@ -682,6 +742,34 @@ export default function App() {
       : { ...lessonStatus, nowText: 'Уроки на сегодня закончены 🎉' };
   }
 
+  // APK: заранее ставим напоминания за 5 минут до каждого урока на 7 дней вперёд
+  const nativeReminders = (() => {
+    if (!settings.bellNotifications || !cls) return [];
+    const list: { at: Date; title: string; body: string }[] = [];
+    for (let d = 0; d < 7; d++) {
+      const date = new Date(activeTime.getFullYear(), activeTime.getMonth(), activeTime.getDate() + d);
+      const dayName = DAYS[(dayIndex + d) % 7];
+      const bells = getDayBells(dayName);
+      getLessonsForDay(dayName).forEach(([sub, room], i) => {
+        if (!bells[i] || sub === '—') return;
+        const [h, m] = bells[i][0].split(':').map(Number);
+        const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m - 5);
+        list.push({ at, title: `Через 5 минут: ${sub.replace('🔄 ', '')}`, body: `${i + 1} урок в ${bells[i][0]}${room ? ` · каб. ${room}` : ''}` });
+      });
+    }
+    return list;
+  })();
+  const nativeRemindersKey = JSON.stringify(nativeReminders.map((r) => [r.at.getTime(), r.title, r.body]));
+  useEffect(() => {
+    if (!isNativeApp()) return;
+    if (!settings.bellNotifications) {
+      cancelNativeReminders();
+      return;
+    }
+    scheduleNativeReminders(nativeReminders);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nativeRemindersKey, settings.bellNotifications]);
+
   // Ключ текущего урока/перемены: предупреждение срабатывает один раз за период
   const periodKey = `${currentDayName}-${lessonStatus.type}-${lessonStatus.currentIdx}-${lessonStatus.nextIdx}`;
 
@@ -696,6 +784,9 @@ export default function App() {
       playSound('warn', settings.soundProfile);
       doVibro(settings.vibro, 30);
       showToast(`🔔 Урок через ${Math.ceil(remain / 60)} мин! ${lessonStatus.nextText ? `(${lessonStatus.nextText})` : ''}`);
+      if (settings.bellNotifications) {
+        showSystemNotification(`🔔 Урок через ${Math.ceil(remain / 60)} мин`, lessonStatus.nextText || '');
+      }
     }
 
     // 2-minute alarm trigger
@@ -710,6 +801,7 @@ export default function App() {
       playSound('warn', settings.soundProfile);
       doVibro(settings.vibro, 50);
       showToast('⏳ 2 минуты до звонка!');
+      if (settings.bellNotifications) showSystemNotification('⏳ 2 минуты до звонка', lessonStatus.nowText || '');
     }
 
     // 20:00 evening backpack reminder
@@ -1164,7 +1256,7 @@ export default function App() {
       />
 
       {/* Top Header Bar */}
-      {currentScreen !== 'retroFirst' && currentScreen !== 'maintenance' && (
+      {currentScreen !== 'retroFirst' && currentScreen !== 'maintenance' && currentScreen !== 'board' && (
         <TopBar
           timeStr={timeStr}
           minimal={currentScreen === 'onboarding' || currentScreen === 'select'}
@@ -1270,6 +1362,10 @@ export default function App() {
               daysLeft: quarterDaysLeft,
               breakName: activeQuarter.breakName,
               isBreak: !currentQuarter,
+              daysToSummer: Math.max(
+                0,
+                Math.ceil((quarterEndMs(SCHOOL_QUARTERS[SCHOOL_QUARTERS.length - 1]) - nowMs) / DAY_MS)
+              ),
             }}
           />
         )}
@@ -1342,6 +1438,14 @@ export default function App() {
             lang={lang}
             soundProfile={settings.soundProfile}
             vibro={settings.vibro}
+            classHomework={classHomework}
+            myUid={myUid()}
+            onShareHomework={(h) => addClassHomework(cls, { ...h, forDate: '', author: studentName || 'Ученик' })}
+            onDeleteClassHomework={(id) => {
+              deleteClassHomework(cls, id);
+              showToast('Удалено у класса');
+            }}
+            onShowToast={showToast}
           />
         )}
 
@@ -1353,6 +1457,14 @@ export default function App() {
             updates={lessonUpdates}
             onAddUpdate={handleAddUpdate}
             onDeleteUpdate={handleDeleteUpdate}
+            classReplacements={classReplacements}
+            myUid={myUid()}
+            onAddClassReplacement={(r) => addClassReplacement(cls, { ...r, author: studentName || 'Ученик' })}
+            onDeleteClassReplacement={(id) => {
+              deleteClassReplacement(cls, id);
+              showToast('Замена удалена');
+            }}
+            today={activeTime}
             lang={lang}
             soundProfile={settings.soundProfile}
             vibro={settings.vibro}
@@ -1432,6 +1544,23 @@ export default function App() {
 
         {currentScreen === 'about' && (
           <AboutScreen onBack={() => setCurrentScreen(cls ? 'main' : 'select')} />
+        )}
+
+        {currentScreen === 'calendar' && <CalendarScreen today={activeTime} onShowToast={showToast} />}
+
+        {currentScreen === 'board' && (
+          <BoardScreen
+            cls={cls}
+            shift={shift}
+            time={activeTime}
+            status={lessonStatus}
+            lessons={currentLessons}
+            bells={currentBells}
+            onExit={() => {
+              if (document.fullscreenElement) document.exitFullscreen();
+              setCurrentScreen('main');
+            }}
+          />
         )}
 
         {currentScreen === 'settings' && (
