@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import { initCordovaPlugins } from './services/cordovaService';
 import './index.css';
+import './themes.css';
 
 // Инициализация хуков Apache Cordova (deviceready, statusbar, splashscreen)
 initCordovaPlugins();

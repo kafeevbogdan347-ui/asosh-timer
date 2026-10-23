@@ -57,7 +57,13 @@ export type ThemeType =
   | 'golden_autumn_ural'
   | 'dark_matter_pulsar'
   | 'cyber_emerald_core'
-  | 'first';
+  | 'first'
+  | 'notebook'
+  | 'pixel'
+  | 'winter'
+  | 'neon_grid'
+  | 'chalk'
+  | 'minimal';
 
 export type FontSizeType = 'font-sm' | 'font-md' | 'font-lg' | 'font-xl';
 

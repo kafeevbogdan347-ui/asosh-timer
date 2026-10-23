@@ -67,6 +67,7 @@ import { RetroFirstScreen } from './screens/RetroFirstScreen';
 import { BellsScreen } from './screens/BellsScreen';
 import { MaintenanceScreen } from './screens/MaintenanceScreen';
 import { Achievement } from './types';
+import { LIGHT_THEME_IDS } from './data/themes';
 
 export default function App() {
   // 1. Initial State from unified Account Vault (guarantees account NEVER resets on refresh or update)
@@ -489,6 +490,7 @@ export default function App() {
 
     body.className = '';
     body.classList.add(`theme-${settings.theme}`);
+    if (LIGHT_THEME_IDS.includes(settings.theme)) body.classList.add('ui-light');
     body.classList.add(settings.fontSize);
     if (settings.timerStyle === 'digital') body.classList.add('timer-digital');
     if (settings.compact) body.classList.add('compact');
