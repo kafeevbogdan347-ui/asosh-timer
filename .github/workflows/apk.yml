@@ -35,10 +35,34 @@ jobs:
           java-version: 21
       - run: npx cap add android
       - run: npx cap sync android
+      # Номер версии растёт с каждой сборкой, чтобы новый APK ставился поверх старого
+      - name: Set version
+        run: |
+          sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          sed -i "s/versionName \"1.0\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
       - name: Build APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
-      - run: cp android/app/build/outputs/apk/debug/app-debug.apk asosh-timer.apk
+        run: ./gradlew assembleRelease --no-daemon
+      # Подписываем постоянным ключом из секретов: тогда обновления встают поверх и данные сохраняются.
+      # Без секретов — запасной вариант с отладочной подписью
+      - name: Sign APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BT/zipalign" -f -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > release.p12
+            "$BT/apksigner" sign --ks release.p12 --ks-type PKCS12 --ks-pass env:KEYSTORE_PASSWORD --ks-key-alias asosh --out asosh-timer.apk aligned.apk
+            rm release.p12
+          else
+            echo "::warning::Нет секрета ANDROID_KEYSTORE_BASE64 — APK подписан отладочным ключом"
+            mkdir -p ~/.android
+            [ -f ~/.android/debug.keystore ] || keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+            "$BT/apksigner" sign --ks ~/.android/debug.keystore --ks-pass pass:android --ks-key-alias androiddebugkey --out asosh-timer.apk aligned.apk
+          fi
+          "$BT/apksigner" verify --print-certs asosh-timer.apk | head -3
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: apk-latest
