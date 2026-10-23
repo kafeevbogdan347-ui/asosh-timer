@@ -1148,6 +1148,7 @@ export default function App() {
       {currentScreen !== 'retroFirst' && currentScreen !== 'maintenance' && (
         <TopBar
           timeStr={timeStr}
+          minimal={currentScreen === 'onboarding' || currentScreen === 'select'}
           onOpenCalc={() => setIsCalcOpen(true)}
           onOpenAchievements={() => setCurrentScreen('achievements')}
           unlockedCount={achievements.filter((a) => a.unlocked).length}

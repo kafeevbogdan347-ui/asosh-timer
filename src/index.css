@@ -831,7 +831,9 @@ body.device-pc .nav-bar {
   border: 1px solid var(--line);
   border-radius: 24px;
   padding: 18px;
-  margin: 12px 0;
+  /* только вертикальные отступы, чтобы mx-auto мог центрировать узкие карточки */
+  margin-top: 12px;
+  margin-bottom: 12px;
   box-shadow: var(--sh);
   backdrop-filter: blur(20px);
   position: relative;
