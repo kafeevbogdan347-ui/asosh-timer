@@ -22,7 +22,7 @@ export const NavBar: React.FC<NavBarProps> = ({
 }) => {
   const d = DICT[lang] || DICT.ru;
 
-  const hideOnScreens: ScreenId[] = ['onboarding', 'select', 'letters', 'about', 'maintenance'];
+  const hideOnScreens: ScreenId[] = ['onboarding', 'select', 'letters', 'about', 'maintenance', 'board'];
   if (hideOnScreens.includes(currentScreen)) return null;
 
   const navItems: { id: ScreenId; icon: string; label: string; badge?: number }[] = [
