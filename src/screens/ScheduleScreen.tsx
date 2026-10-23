@@ -39,14 +39,11 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-black text-cyan-300">{d.schedule}</h2>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">
-              Авто 2026
-            </span>
           </div>
           <p className="text-[11px] text-white/60">
             {isViewingToday
-              ? `Сегодня: ${currentDayName} (автоопределение активно 🟢)`
-              : `Просмотр: ${selectedDay} (сегодня — ${currentDayName})`}
+              ? `Сегодня, ${currentDayName.toLowerCase()}`
+              : `${selectedDay} · сегодня ${currentDayName.toLowerCase()}`}
           </p>
         </div>
         <button
@@ -54,36 +51,8 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
           onClick={onGoAddUpdates}
           className="text-xs bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-bold px-2.5 py-1.5 rounded-xl hover:bg-cyan-500/30 transition-all shrink-0 cursor-pointer shadow-sm"
         >
-          + Изменить / Урок
+          ✏️ Изменить
         </button>
-      </div>
-
-      {/* Auto-Day Status Bar & Quick Jump to Today */}
-      <div className="p-2.5 rounded-xl bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-blue-950/40 border border-cyan-400/30 flex flex-wrap items-center justify-between gap-2 text-xs text-cyan-200">
-        <div className="flex items-center gap-2">
-          <span className="text-base shrink-0">📅</span>
-          <div>
-            <span className="font-bold text-white block">
-              Автоопределение дня: <span className="text-cyan-300 font-black">{currentDayName}</span>
-            </span>
-            <span className="text-[10px] text-white/70">
-              {isViewingToday
-                ? 'Открыто актуальное расписание на сегодня'
-                : 'Вы просматриваете другой день недели'}
-            </span>
-          </div>
-        </div>
-
-        {!isViewingToday && (
-          <button
-            type="button"
-            onClick={() => onSelectDay(currentDayName)}
-            className="flex items-center gap-1.5 text-[11px] font-black bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-3 py-1.5 rounded-lg shadow-md hover:from-cyan-400 hover:to-blue-500 transition-all cursor-pointer ml-auto"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Вернуться на сегодня ({currentDayName})</span>
-          </button>
-        )}
       </div>
 
       {/* Day Tabs Chips (Пн..Вс) with "Сегодня" Badge */}
@@ -120,48 +89,6 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
         })}
       </div>
 
-      {/* Smart Day AI Advice Banner for Today */}
-      {isViewingToday && smartDayAdvice && (
-        <div className="p-3 rounded-2xl bg-gradient-to-r from-purple-950/60 via-slate-900/80 to-cyan-950/60 border border-purple-400/40 shadow-md">
-          <div className="flex items-center justify-between mb-1.5">
-            <div className="flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-purple-300 animate-pulse" />
-              <span className="text-xs font-black text-white">Умная подсказка ИИ на сегодня</span>
-            </div>
-            <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-purple-500/20 text-purple-200 border border-purple-400/30">
-              {smartDayAdvice.engine === 'gemini' ? 'Gemini 3.8 Flash' : 'ИИ-Анализ'}
-            </span>
-          </div>
-          <p className="text-xs text-purple-100/90 leading-relaxed mb-2 font-medium">
-            {smartDayAdvice.summary}
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {smartDayAdvice.tags.map((tag, idx) => (
-              <span
-                key={idx}
-                className="px-2 py-0.5 rounded-lg bg-white/10 border border-white/15 text-[10px] text-cyan-200 font-semibold"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Traditional Select Dropdown as secondary accessible selector */}
-      <div className="flex items-center gap-2">
-        <select
-          value={selectedDay}
-          onChange={(e) => onSelectDay(e.target.value)}
-          className="cursor-pointer font-bold flex-1"
-        >
-          {DAYS.map((dayRu, i) => (
-            <option key={dayRu} value={dayRu}>
-              {dayList[i]} {dayRu === currentDayName ? '★ (Сегодня)' : ''}
-            </option>
-          ))}
-        </select>
-      </div>
 
       {/* Lesson List */}
       <div className="space-y-2 mt-2">

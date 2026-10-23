@@ -75,7 +75,6 @@ interface SettingsScreenProps {
   onChangeClass: () => void;
   onExportData: () => void;
   onImportData: (data: string) => void;
-  onPanicTest: () => void;
   onResetAll: () => void;
   onShowToast: (msg: string) => void;
   onNavigate?: (screen: ScreenId) => void;
@@ -108,7 +107,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onChangeClass,
   onExportData,
   onImportData,
-  onPanicTest,
   onResetAll,
   onShowToast,
   onNavigate,
@@ -123,7 +121,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [isApkModalOpen, setIsApkModalOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<SettingsSectionId>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [themeCategory, setThemeCategory] = useState<string>('all');
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Sound Lab state
@@ -225,62 +222,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     onShowToast(`Тест вибрации: ${pattern}`);
   };
 
-  const handleTestAiVoice = () => {
-    if (!('speechSynthesis' in window)) {
-      onShowToast('Синтез речи не поддерживается браузером');
-      return;
-    }
-    if (isAiSpeaking) {
-      window.speechSynthesis.cancel();
-      setIsAiSpeaking(false);
-      onShowToast('Озвучка остановлена 🔇');
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-    const phrase =
-      'Привет! Я школьный ИИ-ассистент АСОШ №2 села Аргаяш. Все системы работают в штатном режиме, приятной учёбы!';
-    const utterance = new SpeechSynthesisUtterance(phrase);
-    utterance.lang = 'ru-RU';
-    utterance.rate = aiVoiceSpeed;
-    utterance.pitch = aiVoicePitch;
-
-    utterance.onstart = () => setIsAiSpeaking(true);
-    utterance.onend = () => setIsAiSpeaking(false);
-    utterance.onerror = () => setIsAiSpeaking(false);
-
-    window.speechSynthesis.speak(utterance);
-    onShowToast(`Тест голоса (${aiVoiceSpeed}x, тон ${aiVoicePitch}) 🔊`);
-  };
-
-  const handleStopAiVoice = () => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-    setIsAiSpeaking(false);
-    onShowToast('Озвучка выключена 🔇');
-  };
-
-  const handleRunPingTest = () => {
-    setPingResult({ ms: 0, status: 'testing' });
-    playSound('click', settings.soundProfile);
-    doVibro(settings.vibro, 15);
-    const start = performance.now();
-    fetch(`${import.meta.env.BASE_URL}?t=${Date.now()}`, { method: 'HEAD', cache: 'no-store' })
-      .then(() => {
-        const diff = Math.round(performance.now() - start);
-        setPingResult({ ms: Math.max(8, diff), status: 'ok' });
-        playSound('coin', settings.soundProfile);
-        onShowToast(`🟢 Серверы онлайн: пинг ${Math.max(8, diff)} мс`);
-      })
-      .catch(() => {
-        // Local fallback
-        const simulated = Math.floor(Math.random() * 10) + 12;
-        setPingResult({ ms: simulated, status: 'ok' });
-        onShowToast(`🟢 Автономный сервер: отклик ${simulated} мс`);
-      });
-  };
-
   const handleClearCacheOnly = () => {
     if (window.confirm('Очистить временный кэш (историю поиска, временные логи)? Ваши оценки, класс и ДЗ останутся на месте.')) {
       try {
@@ -364,16 +305,22 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     { id: 'first', label: '📜 Первый (Пасхалка 5Б)', bg: '#0f172a', color: '#f8fafc', accent: '#38bdf8', category: 'gaming', border: '1px solid #38bdf8' },
   ];
 
+  // Оставляем короткий список тем без чужих брендов; остальные CSS-темы продолжают работать у тех, кто их уже выбрал
+  const CURATED_THEMES = [
+    'dark', 'light', 'amoled', 'nordic', 'space', 'aurora', 'emerald', 'argayash_ural',
+    'ural_uvildy_lake', 'golden_autumn_ural', 'sunset', 'sakura', 'coffee', 'ocean_abyss', 'violet', 'first',
+  ];
+
   const filteredThemes = useMemo(() => {
     return themes.filter((t) => {
-      const matchCat = themeCategory === 'all' || t.category === themeCategory;
+      const matchCat = CURATED_THEMES.includes(t.id) || t.id === settings.theme;
       const matchSearch =
         !searchQuery.trim() ||
         t.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.id.toLowerCase().includes(searchQuery.toLowerCase());
       return matchCat && matchSearch;
     });
-  }, [themes, themeCategory, searchQuery]);
+  }, [themes, searchQuery, settings.theme]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -391,14 +338,14 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   };
 
   const sectionsList: { id: SettingsSectionId; label: string; icon: string }[] = [
-    { id: 'all', label: '🌟 Все настройки', icon: '🌟' },
-    { id: 'themes', label: '1. Темы & Дизайн', icon: '🎨' },
-    { id: 'sound', label: '2. Звук & Вибро', icon: '🔔' },
-    { id: 'study', label: '4. Учёба & Звонки', icon: '🎒' },
-    { id: 'privacy', label: '5. Приватность & PIN', icon: '🔒' },
-    { id: 'device', label: '6. Экран & Устройство', icon: '📱' },
-    { id: 'storage', label: '7. Память & Бэкап', icon: '💾' },
-    { id: 'server', label: '8. Серверы & Dev', icon: '🛠️' },
+    { id: 'all', label: 'Все', icon: '🌟' },
+    { id: 'themes', label: 'Оформление', icon: '🎨' },
+    { id: 'sound', label: 'Звук', icon: '🔔' },
+    { id: 'study', label: 'Учёба и звонки', icon: '🎒' },
+    { id: 'privacy', label: 'Приватность', icon: '🔒' },
+    { id: 'device', label: 'Экран', icon: '📱' },
+    { id: 'storage', label: 'Память и резервная копия', icon: '💾' },
+    { id: 'server', label: 'Для разработчиков', icon: '🛠️' },
   ];
 
   // Helper to determine if section matches search
@@ -420,20 +367,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             </span>
             <div>
               <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2 tracking-tight">
-                <span>Центр Управления и Супер-Настройки</span>
+                <span>Настройки</span>
               </h2>
               <p className="text-xs text-white/70">
-                Полная персонализация АСОШ №2: 60 тем, звук, ИИ Gemini Vision, приватность 152-ФЗ, бэкап и APK
+                Оформление, звук, звонки, приватность и резервная копия
               </p>
             </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="badge bg-emerald-500/20 text-emerald-300 border-emerald-400/40 text-xs font-mono font-black">
-              🟢 ONLINE 100%
-            </span>
-            <span className="badge bg-cyan-500/20 text-cyan-300 border-cyan-400/40 text-xs font-mono font-bold">
-              v14.8 MEGA
-            </span>
           </div>
         </div>
 
@@ -444,7 +383,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Быстрый поиск настройки (тема, звук, пин, голос, смена, кэш, apk)..."
+            placeholder="Поиск настройки: тема, звук, PIN, смена, бэкап…"
             className="w-full pl-10 pr-9 py-2.5 bg-black/40 border border-white/15 rounded-2xl text-xs text-white placeholder-white/40 focus:border-cyan-400 focus:outline-none transition-all shadow-inner"
           />
           {searchQuery && (
@@ -492,48 +431,14 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           <div className="flex items-center justify-between">
             <b className="text-sm text-cyan-200 flex items-center gap-2 font-black">
               <Palette className="w-4 h-4 text-cyan-400" />
-              <span>1. Внешний вид и 60 Графических тем</span>
+              <span>Оформление</span>
             </b>
-            <span className="text-[11px] font-mono text-cyan-300 bg-cyan-500/20 px-2 py-0.5 rounded-lg border border-cyan-400/30 font-bold">
-              Найдено: {filteredThemes.length} / 60
-            </span>
           </div>
 
           <p className="text-xs text-white/70">
-            Выберите визуальный стиль интерфейса: каждый стиль меняет цвета карточек, свечение неона, фон и контраст для максимального удобства.
+            Цветовая тема меняет фон, карточки и акцентный цвет.
           </p>
 
-          {/* Фильтры категорий тем */}
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {[
-              { id: 'all', label: 'Все (60)' },
-              { id: 'neon', label: '🔥 Неон & Кибер' },
-              { id: 'ural', label: '🌲 Урал & Аргаяш' },
-              { id: 'space', label: '🌌 Космос' },
-              { id: 'gaming', label: '🎮 Гейминг & Ретро' },
-              { id: 'gold', label: '👑 Золото' },
-              { id: 'amoled', label: '🖤 AMOLED' },
-              { id: 'nature', label: '🌸 Природа & Сакура' },
-              { id: 'light', label: '☀️ Светлые' },
-            ].map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => {
-                  setThemeCategory(cat.id);
-                  playSound('flip', settings.soundProfile);
-                  doVibro(settings.vibro, 8);
-                }}
-                className={`text-[11px] px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer border ${
-                  themeCategory === cat.id
-                    ? 'bg-cyan-500/30 text-cyan-200 border-cyan-400/60 shadow-sm'
-                    : 'bg-white/5 text-white/70 border-white/10 hover:bg-white/10'
-                }`}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
 
           {/* Сетка тем */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-1 max-h-[360px] overflow-y-auto p-1 rounded-2xl bg-black/25 border border-white/8">
@@ -844,7 +749,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className="p-3 bg-white/5 rounded-2xl border border-white/10 space-y-1">
               <b className="text-xs text-white block">1-я Смена (Утренняя):</b>
-              <p className="text-[11px] text-white/60">08:00 – 14:35 • 1, 4, 5, 9, 10, 11 классы</p>
+              <p className="text-[11px] text-white/60">08:00 – 14:40 • 5, 7, 8, 9, 10, 11 классы</p>
               <span className="badge bg-emerald-500/20 text-emerald-300 border-emerald-400/30 text-[10px] font-bold">
                 Штатное расписание
               </span>
@@ -852,7 +757,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
             <div className="p-3 bg-white/5 rounded-2xl border border-white/10 space-y-1">
               <b className="text-xs text-white block">2-я Смена (Дневная):</b>
-              <p className="text-[11px] text-white/60">14:00 – 19:15 • 2, 3, 6, 7, 8 классы</p>
+              <p className="text-[11px] text-white/60">13:45 – 19:15 • 6 классы</p>
               <span className="badge bg-amber-500/20 text-amber-300 border-amber-400/30 text-[10px] font-bold">
                 Вторая смена
               </span>
@@ -1038,14 +943,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
             <button
               type="button"
-              className="btn darkBtn text-xs justify-center py-2.5 font-bold cursor-pointer"
-              onClick={onPanicTest}
-            >
-              🚨 Тест режима «Анти-палево»
-            </button>
-
-            <button
-              type="button"
               onClick={() => {
                 if (window.confirm('Очистить личные заметки, историю переписки и восстановить приватность по умолчанию?')) {
                   wipeConfidentialData();
@@ -1100,17 +997,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={() => setIsApkModalOpen(true)}
-              className="p-3 rounded-2xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 flex items-center justify-between text-left cursor-pointer transition-all"
-            >
-              <div>
-                <b className="text-xs text-cyan-200 block">Параметры Android APK</b>
-                <span className="text-[11px] text-white/60">config.xml, Cordova CLI & MConvertor</span>
-              </div>
-              <Smartphone className="w-4 h-4 text-cyan-300" />
-            </button>
           </div>
 
           <div className="space-y-2 pt-1">
@@ -1255,52 +1141,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       ======================================================== */}
       {isSectionVisible(
         'server',
-        'сервер пинг онлайн статус техработы разработчик dev suite презентация слайды'
+        'разработчик dev презентация слайды'
       ) && (
         <div className="p-4 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950/40 rounded-3xl border border-emerald-400/40 space-y-3.5 shadow-md">
-          <div className="flex items-center justify-between">
-            <b className="text-sm text-white flex items-center gap-2 font-black">
-              <span className="text-base">{maintenanceMode ? '🛠️' : '🟢'}</span>
-              <span>8. Статус серверов АСОШ №2 и Dev Suite</span>
-            </b>
-            <span
-              className={`badge ${
-                maintenanceMode
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-400/40'
-                  : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
-              } text-[10px] font-mono font-bold`}
-            >
-              {maintenanceMode ? '⚠️ Режим техработ' : '🟢 Серверы онлайн (100%)'}
-            </span>
-          </div>
-
-          <p className="text-xs text-white/70 leading-relaxed">
-            {maintenanceMode
-              ? 'Серверы в режиме регламентных работ. Вход временно сопровождается экраном обслуживания.'
-              : 'Все школьные службы электронного дневника МОУ АСОШ №2 села Аргаяш работают в штатном режиме онлайн.'}
-          </p>
-
-          {/* ПИНГ ТЕСТЕР */}
-          <div className="p-3 bg-black/30 rounded-2xl border border-white/10 flex items-center justify-between gap-3">
-            <div>
-              <div className="text-xs text-white font-bold flex items-center gap-1.5">
-                <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Замер пинга школьного сервера:</span>
-              </div>
-              <div className="text-[11px] text-white/60">
-                {pingResult.status === 'testing'
-                  ? 'Замеряем задержку пакетов...'
-                  : `Отклик: ${pingResult.ms} мс (Минимальная задержка, отличный пинг)`}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleRunPingTest}
-              className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0"
-            >
-              {pingResult.status === 'testing' ? 'Тестируем...' : 'Проверить пинг'}
-            </button>
-          </div>
+          <b className="text-sm text-white flex items-center gap-2 font-black">
+            <Wrench className="w-4 h-4 text-cyan-400" />
+            <span>Для разработчиков</span>
+          </b>
 
           {/* ПРЕЗЕНТАЦИЯ ШКОЛЫ */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

@@ -140,31 +140,6 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
           <span>{d.hw} — {cls}</span>
         </h2>
 
-        {onOpenAi && (
-          <div
-            onClick={onOpenAi}
-            className="mb-3 p-2.5 rounded-2xl bg-gradient-to-r from-purple-950/60 via-slate-900/80 to-cyan-950/60 border border-purple-400/40 hover:border-cyan-400/60 flex items-center justify-between cursor-pointer transition-all text-xs shadow-sm group"
-          >
-            <div className="flex items-center gap-2.5">
-              <span className="text-lg group-hover:scale-110 transition-transform">🤖</span>
-              <div>
-                <div className="font-bold text-white flex items-center gap-1.5">
-                  <span>Трудная задача? Спроси ИИ</span>
-                  <span className="px-1.5 py-0.2 rounded bg-cyan-400/20 text-cyan-300 text-[9px] font-mono">
-                    Gemini 3.8
-                  </span>
-                </div>
-                <div className="text-[10px] text-purple-200/70">
-                  Пошаговое решение уравнений, физики и сочинений
-                </div>
-              </div>
-            </div>
-            <div className="px-2 py-1 rounded-xl bg-purple-500/20 text-purple-200 text-[10px] font-bold border border-purple-400/40 shrink-0 ml-2 group-hover:bg-purple-500/30 transition-colors">
-              Помощь ИИ →
-            </div>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="space-y-2.5">
           <div>
             <label className="text-xs font-bold text-white/70">Предмет</label>

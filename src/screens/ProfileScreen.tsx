@@ -82,7 +82,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onShowToast,
   onNavigateToChat,
 }) => {
-  const [activeTab, setActiveTab] = useState<'me' | 'search' | 'friends'>('me');
   const [myProfile, setMyProfile] = useState<UserProfile>(() => getMyProfile());
 
   // Edit My Profile state
@@ -109,6 +108,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [classFilter, setClassFilter] = useState('all');
   const [selectedUserModal, setSelectedUserModal] = useState<UserProfile | null>(null);
+
+  // Средний балл по всем оценкам из калькулятора среднего балла; без оценок — прочерк
+  const realGpa = (() => {
+    try {
+      const subjects: { grades: number[] }[] = JSON.parse(localStorage.getItem('asosh_gpa_subjects') || '[]');
+      const all = subjects.flatMap((sub) => (Array.isArray(sub.grades) ? sub.grades : []));
+      return all.length ? (all.reduce((a, b) => a + b, 0) / all.length).toFixed(2) : '—';
+    } catch {
+      return '—';
+    }
+  })();
 
   const allStudents = getAllSearchableStudents(myProfile);
 
@@ -239,64 +249,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <span>Школьные Аккаунты & Профиль</span>
           </h2>
           <p className="text-xs text-white/70">
-            Настройка профиля, поиск друзей по всей АСОШ №2 и витрина грамот
+            Твой профиль, средний балл и витрина грамот
           </p>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-950/80 rounded-2xl border border-white/10">
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('me');
-            playSound('nav', soundProfile);
-          }}
-          className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'me'
-              ? 'bg-cyan-500 text-slate-950 shadow-md font-black'
-              : 'text-white/70 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <User className="w-3.5 h-3.5" />
-          <span>Мой Профиль</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('search');
-            playSound('nav', soundProfile);
-          }}
-          className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'search'
-              ? 'bg-cyan-500 text-slate-950 shadow-md font-black'
-              : 'text-white/70 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <Search className="w-3.5 h-3.5" />
-          <span>Поиск Учеников</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('friends');
-            playSound('nav', soundProfile);
-          }}
-          className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 relative ${
-            activeTab === 'friends'
-              ? 'bg-cyan-500 text-slate-950 shadow-md font-black'
-              : 'text-white/70 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <Heart className="w-3.5 h-3.5 text-rose-400" />
-          <span>Друзья ({myProfile.friends.length})</span>
-        </button>
-      </div>
-
       {/* TAB 1: MY PROFILE */}
-      {activeTab === 'me' && (
+      {(
         <div className="space-y-4">
           {/* Profile Card Header */}
           <div className="p-4 sm:p-5 bg-gradient-to-br from-cyan-950/60 via-slate-900/80 to-purple-950/60 rounded-3xl border border-cyan-400/30 shadow-lg relative overflow-hidden">
@@ -375,7 +334,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <div className="grid grid-cols-4 gap-2 mt-4 pt-3 border-t border-white/10 text-center">
               <div className="p-2 bg-white/5 rounded-xl border border-white/8">
                 <span className="sensitive-data block text-base font-black text-amber-300 font-mono">
-                  {isHideGradesInProfile() ? '🔒' : myProfile.gpa.toFixed(2)}
+                  {isHideGradesInProfile() ? '🔒' : realGpa}
                 </span>
                 <span className="text-[9px] text-white/60 uppercase">Ср. балл</span>
               </div>
@@ -400,29 +359,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </div>
           </div>
 
-          {/* Блок «Вечное сохранение профиля» */}
-          <div className="p-3.5 bg-gradient-to-r from-slate-900/90 via-cyan-950/40 to-slate-900/90 rounded-2xl border border-cyan-400/40 shadow-md">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-300 flex items-center justify-center font-bold text-sm border border-cyan-400/30 shrink-0">
-                  🛡️
-                </div>
-                <div>
-                  <h4 className="text-xs font-black text-white flex items-center gap-1.5">
-                    <span>Сохранение аккаунта и облачная защита</span>
-                    <span className="px-1.5 py-0.2 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[9px] font-mono font-bold">
-                      ✓ Активна
-                    </span>
-                  </h4>
-                  <p className="text-[10px] text-cyan-200/80">
-                    Данные класса, оценки и ДЗ защищены от сброса при любых обновлениях
-                  </p>
-                </div>
-              </div>
-              <span className="text-[11px] font-bold text-emerald-400 px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-400/30 shrink-0">
-                100% Сохранено
-              </span>
-            </div>
+          {/* Где хранятся данные */}
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-[11px] text-white/70 leading-relaxed">
+            🛡️ Профиль, оценки и ДЗ хранятся только на этом устройстве. Чтобы не потерять их при смене телефона,
+            сделай резервную копию: <b className="text-white">Опции → Память и резервная копия</b>.
           </div>
 
           {/* Showcase of Certificates (Витрина грамот и наград) */}
@@ -504,200 +444,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </div>
       )}
 
-      {/* TAB 2: SEARCH STUDENTS & ACCOUNTS */}
-      {activeTab === 'search' && (
-        <div className="space-y-3">
-          {/* Search Inputs */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <div className="sm:col-span-2 relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="🔍 Поиск по имени, никнейму или классу..."
-                className="input pl-9"
-              />
-              <Search className="w-4 h-4 text-white/40 absolute left-3 top-3.5" />
-            </div>
-
-            <select
-              value={classFilter}
-              onChange={(e) => setClassFilter(e.target.value)}
-              className="select"
-            >
-              <option value="all">Все параллели школы</option>
-              <option value="5">5-е классы</option>
-              <option value="6">6-е классы</option>
-              <option value="7">7-е классы</option>
-              <option value="8">8-е классы</option>
-              <option value="9">9-е классы</option>
-              <option value="10">10-е классы</option>
-              <option value="11">11-е классы</option>
-            </select>
-          </div>
-
-          {/* Students List */}
-          <div className="space-y-2">
-            <div className="text-xs text-white/60 px-1 flex justify-between">
-              <span>Найдено учеников: {filteredStudents.length}</span>
-              <span>АСОШ №2 с. Аргаяш</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {filteredStudents.map((st) => {
-                const isMe = st.id === myProfile.id;
-                const isFriend = myProfile.friends.includes(st.id);
-
-                return (
-                  <div
-                    key={st.id}
-                    className="p-3 bg-white/5 hover:bg-white/8 rounded-2xl border border-white/10 transition-all flex items-center justify-between gap-2.5"
-                  >
-                    <div
-                      className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
-                      onClick={() => setSelectedUserModal(st)}
-                    >
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-purple-500/20 border border-cyan-400/40 flex items-center justify-center text-2xl shrink-0 overflow-hidden">
-                        {st.avatarType === 'image' && st.avatar.startsWith('data:') ? (
-                          <img src={st.avatar} alt={st.username} className="w-full h-full object-cover" />
-                        ) : (
-                          <span>{st.avatar}</span>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <b className="text-xs font-bold text-white truncate">{st.fullName}</b>
-                          {st.badge && (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold">
-                              {st.badge}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-white/60 flex items-center gap-2">
-                          <span className="text-cyan-300 font-bold">{st.className}</span>
-                          <span>•</span>
-                          <span className="truncate">@{st.username}</span>
-                          <span>•</span>
-                          <span className="text-amber-300 font-mono">{st.gpa} ⭐</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      {!isMe ? (
-                        <button
-                          type="button"
-                          onClick={() => handleToggleFriend(st.id, st.fullName)}
-                          className={`p-2 rounded-xl border transition-all ${
-                            isFriend
-                              ? 'bg-rose-500/20 border-rose-400 text-rose-300'
-                              : 'bg-white/5 border-white/15 text-white/60 hover:text-rose-400'
-                          }`}
-                          title={isFriend ? 'В друзьях' : 'Добавить в друзья'}
-                        >
-                          <Heart className={`w-4 h-4 ${isFriend ? 'fill-rose-400' : ''}`} />
-                        </button>
-                      ) : (
-                        <span className="text-[10px] px-2 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg font-bold">
-                          Вы
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedUserModal(st)}
-                        className="btn darkBtn text-[11px] py-1.5 px-2.5"
-                      >
-                        Профиль
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: FRIENDS LIST */}
-      {activeTab === 'friends' && (
-        <div className="space-y-3">
-          <div className="flex justify-between items-center px-1">
-            <h3 className="text-xs font-bold text-white/80 uppercase">
-              Мои друзья ({friendsList.length})
-            </h3>
-            <button
-              type="button"
-              onClick={() => setActiveTab('search')}
-              className="text-xs text-cyan-300 hover:underline flex items-center gap-1"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Найти одноклассников</span>
-            </button>
-          </div>
-
-          {friendsList.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {friendsList.map((fr) => (
-                <div
-                  key={fr.id}
-                  className="p-3 bg-gradient-to-r from-rose-950/20 to-purple-950/20 rounded-2xl border border-rose-400/30 flex items-center justify-between gap-3"
-                >
-                  <div
-                    className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
-                    onClick={() => setSelectedUserModal(fr)}
-                  >
-                    <div className="w-11 h-11 rounded-xl bg-rose-500/20 border border-rose-400/40 flex items-center justify-center text-2xl shrink-0 overflow-hidden">
-                      {fr.avatarType === 'image' && fr.avatar.startsWith('data:') ? (
-                        <img src={fr.avatar} alt={fr.username} className="w-full h-full object-cover" />
-                      ) : (
-                        <span>{fr.avatar}</span>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <b className="text-xs font-bold text-white truncate block">{fr.fullName}</b>
-                      <div className="text-[11px] text-white/60">
-                        {fr.className} класс • @{fr.username}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleFriend(fr.id, fr.fullName)}
-                      className="p-2 rounded-xl bg-rose-500/20 border border-rose-400 text-rose-300 hover:bg-rose-500/30 transition-colors"
-                      title="Удалить из друзей"
-                    >
-                      <Heart className="w-4 h-4 fill-rose-400" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedUserModal(fr)}
-                      className="btn cyan text-[11px] py-1.5 px-2"
-                    >
-                      Инфо
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="p-8 text-center bg-white/5 rounded-2xl border border-white/10 text-xs text-white/60 space-y-3">
-              <Users className="w-10 h-10 mx-auto text-white/30" />
-              <p>У вас пока нет друзей в списке. Найдите одноклассников во вкладке «Поиск»!</p>
-              <button
-                type="button"
-                onClick={() => setActiveTab('search')}
-                className="btn cyan text-xs py-2 px-4 inline-flex items-center gap-1.5"
-              >
-                <Search className="w-3.5 h-3.5" />
-                <span>Найти одноклассников</span>
-              </button>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* MODAL: EDIT PROFILE & AVATAR */}
       {isEditing && (

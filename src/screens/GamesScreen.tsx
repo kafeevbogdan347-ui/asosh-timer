@@ -1207,7 +1207,7 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
         <div>
           <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2">
             <span>🎮</span>
-            <span>Школьный Игровой Зал v11.0</span>
+            <span>Школьный игровой зал</span>
           </h2>
           <p className="text-xs text-amber-300 font-bold">
             ⚡ 8 школьных мини-игр без интернета для веселой перемены!
@@ -1532,7 +1532,7 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
                   resetTttBoard();
                 }}
               >
-                Против ИИ 🤖
+                Против компьютера 🤖
               </button>
               <button
                 type="button"
@@ -1602,7 +1602,7 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
           <div className="flex flex-wrap justify-between items-center gap-2 px-1">
             <div className="text-sm font-black text-emerald-300 flex items-center gap-1.5">
               <Layers className="w-4 h-4 text-emerald-400" />
-              <span>Школьная Память v11.0</span>
+              <span>Школьная память</span>
             </div>
             <div className="flex items-center gap-2 text-xs font-mono font-bold">
               <span className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-lg text-emerald-300">

@@ -84,23 +84,6 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
         <div className="text-sm font-black text-cyan-200">{nextLessonText}</div>
       </div>
 
-      {smartDayAdvice && (
-        <div className="mt-4 p-3.5 rounded-2xl bg-gradient-to-r from-purple-950/60 via-slate-900/80 to-cyan-950/60 border border-purple-400/30 text-left">
-          <div className="flex items-center gap-1.5 mb-1 text-xs font-black text-cyan-300">
-            <Sparkles className="w-3.5 h-3.5 text-purple-300 animate-pulse" />
-            <span>Умная подсказка на сегодня ({smartDayAdvice.engine === 'gemini' ? 'Gemini 3.8' : 'ИИ'})</span>
-          </div>
-          <p className="text-xs text-purple-100/90 leading-relaxed font-medium">
-            {smartDayAdvice.summary}
-          </p>
-          {smartDayAdvice.outfitTip && (
-            <div className="text-[11px] text-sky-200/90 mt-1.5 flex items-center gap-1">
-              <span>❄️</span>
-              <span>{smartDayAdvice.outfitTip}</span>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 };

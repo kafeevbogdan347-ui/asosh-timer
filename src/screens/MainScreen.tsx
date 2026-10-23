@@ -1,8 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ScreenId, LanguageType } from '../types';
 import { DICT } from '../data/constants';
-import { ShieldCheck } from 'lucide-react';
-import { FriendGamePromo } from '../components/FriendGamePromo';
 
 interface MainScreenProps {
   cls: string;
@@ -31,6 +29,40 @@ interface MainScreenProps {
   };
 }
 
+// Разделы, которых нет в нижнем меню (Уроки, ДЗ, Игры и Опции открываются оттуда)
+const QUICK_GROUPS: { title: string; items: { icon: string; label: string; screen: ScreenId | 'calc' }[] }[] = [
+  {
+    title: 'Учёба',
+    items: [
+      { icon: '🔔', label: 'Звонки', screen: 'bells' },
+      { icon: '🔮', label: 'Завтра', screen: 'tomorrow' },
+      { icon: '🎯', label: 'Средний балл', screen: 'gpa' },
+      { icon: '📊', label: 'Четверть', screen: 'quarter' },
+      { icon: '📐', label: 'Формулы', screen: 'formulas' },
+      { icon: '🧮', label: 'Калькулятор', screen: 'calc' },
+    ],
+  },
+  {
+    title: 'Класс',
+    items: [
+      { icon: '💬', label: 'Чат класса', screen: 'chat' },
+      { icon: '👤', label: 'Профиль', screen: 'profile' },
+      { icon: '🏅', label: 'Портфолио', screen: 'portfolio' },
+      { icon: '🏆', label: 'Достижения', screen: 'achievements' },
+    ],
+  },
+  {
+    title: 'Инструменты',
+    items: [
+      { icon: '🎒', label: 'Портфель', screen: 'backpack' },
+      { icon: '🍅', label: 'Помодоро', screen: 'pomodoro' },
+      { icon: '🎧', label: 'Фокус-звуки', screen: 'focus' },
+      { icon: '🗺', label: 'Кабинеты', screen: 'map' },
+      { icon: '✏️', label: 'Своё расписание', screen: 'updates' },
+    ],
+  },
+];
+
 export const MainScreen: React.FC<MainScreenProps> = ({
   cls,
   shift,
@@ -47,7 +79,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
   quarterProgress,
 }) => {
   const d = DICT[lang] || DICT.ru;
-  const [activeCategoryTab, setActiveCategoryTab] = useState<'study' | 'tools' | 'fun'>('study');
+  const isEvening = new Date().getHours() >= 15;
 
   return (
     <div className="card screen-enter">
@@ -71,48 +103,36 @@ export const MainScreen: React.FC<MainScreenProps> = ({
       {/* Мотиватор */}
       <div className="motivator">{motivator}</div>
 
-      {/* Заголовок класса */}
-      <h1
-        className="text-2xl font-black cursor-pointer select-none hover:text-cyan-300 transition-colors"
-        onClick={onLogoTap}
-      >
-        {cls} | Классный центр
-      </h1>
-
-      <div className="flex flex-wrap items-center gap-1.5 my-2">
-        <div className="badge bg-white/10 border-white/20 text-white/90">
-          {shift} смена • Подгруппа {subGroup}
-        </div>
-        <div
-          className="badge bg-amber-500/15 border-amber-400/40 text-amber-200 font-mono text-xs flex items-center gap-1 select-none"
-          title="Класс подтверждён персональным кодом"
+      {/* Класс */}
+      <div className="flex items-baseline justify-between gap-2 mt-1">
+        <h1
+          className="text-2xl font-black cursor-pointer select-none hover:text-cyan-300 transition-colors"
+          onClick={onLogoTap}
         >
-          <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-          <span>{cls} класс • Код активен 🔒</span>
+          {cls}
+        </h1>
+        <span className="text-xs text-white/60 font-bold">
+          {shift} смена · подгруппа {subGroup}
+        </span>
+      </div>
+
+      {/* Сегодня и до выходных */}
+      <div className="grid grid-cols-2 gap-2 my-3">
+        <button
+          type="button"
+          onClick={() => onNavigate('schedule')}
+          className="text-left p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
+        >
+          <div className="text-[11px] text-white/60 font-bold">📅 Сегодня</div>
+          <div className="text-sm font-black text-white mt-0.5">{smartText}</div>
+        </button>
+        <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
+          <div className="text-[11px] text-white/60 font-bold">🏖️ {d.weekend}</div>
+          <div className="text-sm font-black text-white mt-0.5">{weekendText}</div>
         </div>
       </div>
 
-      {/* Сводка дня */}
-      <div className="my-3 p-3.5 rounded-3xl bg-gradient-to-r from-purple-950/70 via-slate-900/80 to-blue-950/70 border border-purple-400/40 shadow-lg">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-500 to-cyan-400 flex items-center justify-center text-sm shadow-md shrink-0">
-            📅
-          </div>
-          <b className="text-sm text-white font-black">{d.smartday}</b>
-        </div>
-        <p className="text-xs text-purple-100/95 leading-relaxed font-medium">{smartText}</p>
-      </div>
-
-      {/* Блок «До выходных» */}
-      <div className="lesson my-2 !m-0">
-        <div className="num">🏖️</div>
-        <div>
-          <b className="text-sm">{d.weekend}</b>
-          <div className="text-xs text-white/70">{weekendText}</div>
-        </div>
-      </div>
-
-      {/* Интерактивный виджет четверти */}
+      {/* Четверть */}
       <div
         className="cleanNext cursor-pointer hover:bg-white/12 transition-colors my-3"
         onClick={() => onNavigate('quarter')}
@@ -132,167 +152,43 @@ export const MainScreen: React.FC<MainScreenProps> = ({
         </div>
       </div>
 
-      {/* Вечерний виджет сбора портфеля */}
-      <div
-        className="my-3 p-3 rounded-2xl bg-gradient-to-r from-emerald-950/60 via-slate-900/70 to-teal-950/60 border border-emerald-400/30 flex items-center justify-between cursor-pointer hover:border-emerald-400/60 transition-all text-xs shadow-sm"
-        onClick={() => onNavigate('backpack')}
-        title="Проверьте, собран ли портфель на завтра"
-      >
-        <div className="flex items-center gap-2.5">
-          <span className="text-xl">🎒</span>
-          <div>
-            <div className="font-bold text-emerald-200">Вечерний сбор портфеля на завтра</div>
-            <div className="text-[11px] text-white/70">Чек-лист учебников и формы по завтрашнему расписанию</div>
+      {/* Портфель на завтра — только вечером, когда он нужен */}
+      {isEvening && (
+        <button
+          type="button"
+          className="w-full my-3 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-400/30 flex items-center justify-between hover:border-emerald-400/60 transition-all text-xs cursor-pointer"
+          onClick={() => onNavigate('backpack')}
+        >
+          <span className="flex items-center gap-2.5 text-left">
+            <span className="text-xl">🎒</span>
+            <span>
+              <span className="block font-bold text-emerald-200">Собери портфель на завтра</span>
+              <span className="block text-[11px] text-white/70">Учебники и форма по завтрашнему расписанию</span>
+            </span>
+          </span>
+          <span className="text-emerald-300 font-bold shrink-0">→</span>
+        </button>
+      )}
+
+      {/* Все разделы: одинаковые плитки, сгруппированные по смыслу */}
+      {QUICK_GROUPS.map((group) => (
+        <div key={group.title} className="mt-4">
+          <h2 className="text-xs font-black text-white/60 uppercase tracking-wide mb-2">{group.title}</h2>
+          <div className="grid grid-cols-3 gap-2">
+            {group.items.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => (item.screen === 'calc' ? onOpenCalc() : onNavigate(item.screen))}
+                className="flex flex-col items-center justify-center gap-1 p-3 min-h-[72px] rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-400/40 active:scale-95 transition-all cursor-pointer"
+              >
+                <span className="text-xl">{item.icon}</span>
+                <span className="text-[11px] font-bold text-white/90 text-center leading-tight">{item.label}</span>
+              </button>
+            ))}
           </div>
         </div>
-        <div className="px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 text-[11px] font-bold border border-emerald-400/40 shrink-0">
-          Собрать →
-        </div>
-      </div>
-
-      {/* Разгруженное меню быстрого доступа (3 удобные вкладки вместо простыни кнопок) */}
-      <div className="mt-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-black text-cyan-300 flex items-center gap-1.5">
-            <span>⚡</span>
-            <span>{d.fast}</span>
-          </h2>
-          <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 gap-1 text-[11px] font-bold">
-            <button
-              type="button"
-              onClick={() => setActiveCategoryTab('study')}
-              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                activeCategoryTab === 'study'
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black shadow-md'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              📚 Учёба
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveCategoryTab('tools')}
-              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                activeCategoryTab === 'tools'
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black shadow-md'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              🛠️ Утилиты
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveCategoryTab('fun')}
-              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                activeCategoryTab === 'fun'
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white font-black shadow-md'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              🎮 Перемена
-            </button>
-          </div>
-        </div>
-
-        {activeCategoryTab === 'study' && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 animate-fadeIn">
-            <button type="button" className="btn cyan font-black" onClick={() => onNavigate('schedule')}>
-              <span>📅</span>
-              <span>{d.schedule}</span>
-            </button>
-            <button type="button" className="btn purple font-black" onClick={() => onNavigate('homework')}>
-              <span>📘</span>
-              <span>{d.hw}</span>
-            </button>
-            <button type="button" className="btn orange font-black" onClick={() => onNavigate('bells')}>
-              <span>🔔</span>
-              <span>Звонки</span>
-            </button>
-            <button type="button" className="btn green font-black" onClick={onOpenCalc}>
-              <span>🧮</span>
-              <span>Калькулятор</span>
-            </button>
-            <button type="button" className="btn cyan" onClick={() => onNavigate('quarter')}>
-              <span>📊</span>
-              <span>Четверть & Цель</span>
-            </button>
-            <button type="button" className="btn purple" onClick={() => onNavigate('formulas')}>
-              <span>📐</span>
-              <span>Формулы</span>
-            </button>
-            <button type="button" className="btn orange" onClick={() => onNavigate('tomorrow')}>
-              <span>🔮</span>
-              <span>{d.tomorrow}</span>
-            </button>
-            <button type="button" className="btn darkBtn" onClick={() => onNavigate('updates')}>
-              <span>🛠</span>
-              <span>+ Уроки</span>
-            </button>
-          </div>
-        )}
-
-        {activeCategoryTab === 'tools' && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 animate-fadeIn">
-            <button type="button" className="btn green font-black" onClick={() => onNavigate('backpack')}>
-              <span>🎒</span>
-              <span>Портфель</span>
-            </button>
-            <button type="button" className="btn purple" onClick={() => onNavigate('focus')}>
-              <span>🎧</span>
-              <span>Фокус-Звуки</span>
-            </button>
-            <button type="button" className="btn orange" onClick={() => onNavigate('pomodoro')}>
-              <span>🍅</span>
-              <span>Помодоро</span>
-            </button>
-            <button type="button" className="btn darkBtn" onClick={() => onNavigate('excuse')}>
-              <span>📝</span>
-              <span>Записки</span>
-            </button>
-            <button type="button" className="btn darkBtn" onClick={() => onNavigate('map')}>
-              <span>🗺</span>
-              <span>Кабинеты</span>
-            </button>
-            <button type="button" className="btn darkBtn" onClick={() => onNavigate('settings')}>
-              <span>⚙️</span>
-              <span>{d.settings}</span>
-            </button>
-          </div>
-        )}
-
-        {activeCategoryTab === 'fun' && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 animate-fadeIn">
-            <button type="button" className="btn cyan font-black" onClick={() => onNavigate('chat')}>
-              <span>💬</span>
-              <span>Школьный Чат</span>
-            </button>
-            <button type="button" className="btn purple font-black" onClick={() => onNavigate('games')}>
-              <span>🎮</span>
-              <span>{d.games} (8 игр)</span>
-            </button>
-            <button type="button" className="btn cyan font-black" onClick={() => onNavigate('profile')}>
-              <span>👤</span>
-              <span>Мой Профиль</span>
-            </button>
-            <button type="button" className="btn orange font-black" onClick={() => onNavigate('achievements')}>
-              <span>🏆</span>
-              <span>Достижения</span>
-            </button>
-            <button type="button" className="btn orange" onClick={() => onNavigate('news')}>
-              <span>📰</span>
-              <span>Школьные Новости</span>
-            </button>
-            <button type="button" className="btn orange" onClick={() => onNavigate('portfolio')}>
-              <span>🏅</span>
-              <span>Портфолио & ВсОШ</span>
-            </button>
-            <button type="button" className="btn purple" onClick={() => onNavigate('gpa')}>
-              <span>🎯</span>
-              <span>Ср. балл & Прогноз</span>
-            </button>
-          </div>
-        )}
-      </div>
+      ))}
     </div>
   );
 };

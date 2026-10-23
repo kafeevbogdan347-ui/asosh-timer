@@ -25,7 +25,6 @@ export const AddUpdateScreen: React.FC<AddUpdateScreenProps> = ({
   vibro,
   onShowToast,
 }) => {
-  const [activeTab, setActiveTab] = useState<'schedule' | 'devtools' | 'apk'>('schedule');
   const [day, setDay] = useState(DAYS[0]);
   const [num, setNum] = useState(1);
   const [sub, setSub] = useState('');
@@ -137,58 +136,16 @@ export const AddUpdateScreen: React.FC<AddUpdateScreenProps> = ({
     <div className="card screen-enter space-y-4">
       <div>
         <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2">
-          <span>🛠</span>
-          <span>Центр Управления и Разработки — {cls}</span>
+          <span>✏️</span>
+          <span>Своё расписание — {cls}</span>
         </h2>
         <p className="text-xs text-white/70">
-          Редактор расписания, Панель Разработчика (Dev Tools) и Сборщик WebIntoApp APK
+          Добавь урок, если расписание изменилось или его ещё нет в приложении. Изменения видны только тебе.
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1.5 p-1 bg-white/5 rounded-2xl border border-white/10">
-        <button
-          type="button"
-          className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'schedule'
-              ? 'bg-cyan-500 text-slate-950 font-black shadow-md'
-              : 'text-white/70 hover:bg-white/10'
-          }`}
-          onClick={() => setActiveTab('schedule')}
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>+ Уроки ({classUpdates.length})</span>
-        </button>
-
-        <button
-          type="button"
-          className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'devtools'
-              ? 'bg-cyan-500 text-slate-950 font-black shadow-md'
-              : 'text-white/70 hover:bg-white/10'
-          }`}
-          onClick={() => setActiveTab('devtools')}
-        >
-          <Terminal className="w-3.5 h-3.5" />
-          <span>Dev Tools</span>
-        </button>
-
-        <button
-          type="button"
-          className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'apk'
-              ? 'bg-cyan-500 text-slate-950 font-black shadow-md'
-              : 'text-white/70 hover:bg-white/10'
-          }`}
-          onClick={() => setActiveTab('apk')}
-        >
-          <Smartphone className="w-3.5 h-3.5" />
-          <span>Android APK</span>
-        </button>
-      </div>
-
       {/* TAB 1: SCHEDULE EDITOR */}
-      {activeTab === 'schedule' && (
+      {(
         <div className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-2.5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -291,169 +248,6 @@ export const AddUpdateScreen: React.FC<AddUpdateScreenProps> = ({
         </div>
       )}
 
-      {/* TAB 2: DEV TOOLS PANEL */}
-      {activeTab === 'devtools' && (
-        <div className="space-y-3">
-          <div className="p-3 bg-slate-900/90 rounded-2xl border border-cyan-400/30 space-y-2">
-            <b className="text-xs font-black text-cyan-300 flex items-center gap-1.5">
-              <Cpu className="w-4 h-4" />
-              <span>Симулятор звонков и событий расписания</span>
-            </b>
-            <p className="text-[11px] text-white/60">
-              Быстрая проверка воспроизведения звуковых сигналов и вибро-паттернов
-            </p>
-            <div className="grid grid-cols-3 gap-1.5">
-              <button
-                type="button"
-                className="btn text-[11px] py-2 px-1 justify-center"
-                onClick={() => handleSimulateBell('urgent')}
-              >
-                ⚠️ 2 мин до урока
-              </button>
-              <button
-                type="button"
-                className="btn green text-[11px] py-2 px-1 justify-center"
-                onClick={() => handleSimulateBell('ring')}
-              >
-                🔔 Звонок на урок
-              </button>
-              <button
-                type="button"
-                className="btn orange text-[11px] py-2 px-1 justify-center"
-                onClick={() => handleSimulateBell('break')}
-              >
-                🏖️ Перемена
-              </button>
-            </div>
-          </div>
-
-          <div className="p-3 bg-slate-900/90 rounded-2xl border border-white/10 space-y-2">
-            <b className="text-xs font-black text-amber-300 flex items-center gap-1.5">
-              <Database className="w-4 h-4" />
-              <span>Генератор тестовых данных</span>
-            </b>
-            <p className="text-[11px] text-white/60">
-              Заполняет расписание на 6 дней уроками по 6 предметов в день для тестирования
-            </p>
-            <button
-              type="button"
-              className="btn purple text-xs py-2.5 justify-center w-full"
-              onClick={handleFillTestData}
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>Автозаполнение расписания на всю неделю</span>
-            </button>
-          </div>
-
-          <div className="p-3 bg-slate-900/90 rounded-2xl border border-white/10 space-y-2">
-            <b className="text-xs font-black text-emerald-300 flex items-center gap-1.5">
-              <Volume2 className="w-4 h-4" />
-              <span>Тест 4 звуковых профилей синтезатора</span>
-            </b>
-            <div className="grid grid-cols-2 gap-1.5">
-              <button
-                type="button"
-                className="btn darkBtn text-[11px] py-2 justify-center"
-                onClick={() => playSound('coin', '1')}
-              >
-                🎵 1. Классика (Triangle)
-              </button>
-              <button
-                type="button"
-                className="btn darkBtn text-[11px] py-2 justify-center"
-                onClick={() => playSound('coin', '2')}
-              >
-                🕹️ 2. 8-Bit Retro
-              </button>
-              <button
-                type="button"
-                className="btn darkBtn text-[11px] py-2 justify-center"
-                onClick={() => playSound('coin', '3')}
-              >
-                🌊 3. Soft Sine
-              </button>
-              <button
-                type="button"
-                className="btn darkBtn text-[11px] py-2 justify-center"
-                onClick={() => playSound('coin', '4')}
-              >
-                🛸 4. Sci-Fi Sawtooth
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: ANDROID & WEB INTO APP APK BUILDER */}
-      {activeTab === 'apk' && (
-        <div className="space-y-3">
-          <div className="p-3 bg-gradient-to-r from-emerald-950/60 to-cyan-950/60 rounded-2xl border border-emerald-400/40 space-y-2 text-xs">
-            <div className="flex items-center gap-2 font-black text-emerald-300">
-              <Smartphone className="w-4 h-4" />
-              <span>Подготовка к сборке APK через WebIntoApp / PWA</span>
-            </div>
-            <p className="text-white/80 leading-relaxed">
-              Приложение полностью оптимизировано для работы в виде нативного Android APK. Вы можете экспортировать манифест и загрузить его в WebIntoApp или установить напрямую как PWA.
-            </p>
-          </div>
-
-          <div className="p-3 bg-white/6 rounded-2xl border border-white/10 space-y-2.5">
-            <div>
-              <label className="text-xs font-bold text-white/70">Имя пакета (Package ID):</label>
-              <input
-                type="text"
-                value={apkPkgName}
-                onChange={(e) => setApkPkgName(e.target.value)}
-                className="text-xs font-mono"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-white/70">Название приложения в телефоне:</label>
-              <input
-                type="text"
-                value={apkAppName}
-                onChange={(e) => setApkAppName(e.target.value)}
-                className="text-xs"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-white/70">Версия сборки (Build Version):</label>
-              <input
-                type="text"
-                value={apkVersion}
-                onChange={(e) => setApkVersion(e.target.value)}
-                className="text-xs font-mono"
-              />
-            </div>
-
-            <div className="space-y-1.5 pt-1 text-xs text-white/80">
-              <div className="flex items-center gap-1.5 text-emerald-400">
-                <CheckCircle className="w-3.5 h-3.5" />
-                <span>Офлайн-режим и локальный кэш без интернета</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-emerald-400">
-                <CheckCircle className="w-3.5 h-3.5" />
-                <span>Поддержка полноэкранного режима без рамок браузера</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-emerald-400">
-                <CheckCircle className="w-3.5 h-3.5" />
-                <span>Haptic-вибрация и аппаратное ускорение 60 FPS</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="btn green text-xs py-3 justify-center w-full mt-2 shadow-lg"
-              onClick={handleDownloadManifest}
-            >
-              <Download className="w-4 h-4" />
-              <span>Скачать WebIntoApp Manifest & Config</span>
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

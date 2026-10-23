@@ -108,8 +108,9 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
     setMatchedClass(null);
     const res = await checkClassCode(codeQuery);
     if (res.status === 'ok') {
-      setMatchedClass(res.info);
+      // Код верный — сразу входим в класс, без лишнего шага подтверждения
       setCodeStatus('idle');
+      handleApplyTopCode(res.info);
     } else {
       handleFailedCheck(res);
       setCodeStatus(res.status === 'error' ? 'error' : 'wrong');
@@ -168,30 +169,14 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
 
   return (
     <div className="space-y-3 screen-enter">
-      {/* Верхняя карточка с часами и логотипом */}
-      <div className="card text-center relative overflow-hidden">
-        <div className="mc-splash">{splash}</div>
-
-        <div className="w-32 h-32 rounded-full mx-auto my-3 grid place-items-center bg-gradient-to-tr from-cyan-400 to-blue-600 p-1 shadow-xl">
-          <div className="w-full h-full rounded-full bg-slate-900 flex flex-col items-center justify-center text-white">
-            <div className="text-2xl font-black tabular-nums">{timeStr || '--:--'}</div>
-            <div className="text-xs text-white/70 font-semibold">{dayName}</div>
-          </div>
-        </div>
-
-        <h1 className="text-3xl font-black select-none" onClick={onLogoTap}>
-          АСОШ №2
+      {/* Шапка */}
+      <div className="card text-center">
+        <h1 className="text-2xl font-black select-none text-cyan-300" onClick={onLogoTap}>
+          Выбери свой класс
         </h1>
-        <p className="text-white/70 text-xs mt-1 max-w-md mx-auto">{d.nosch}</p>
-
-        <button
-          type="button"
-          className="btn purple justify-center mt-3 text-sm"
-          onClick={onGoAbout}
-        >
-          <span>🔥</span>
-          <span>{d.aboutbtn}</span>
-        </button>
+        <p className="text-white/70 text-xs mt-1 max-w-md mx-auto">
+          Введи код, который дал классный руководитель. Код нужен один раз — дальше приложение запомнит класс.
+        </p>
       </div>
 
       {/* Вход по приватному коду класса (выдаётся классным руководителем) */}
@@ -202,13 +187,10 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
           </div>
           <div>
             <h2 className="text-sm font-black text-amber-300 flex items-center gap-1.5">
-              <span>Личный код класса</span>
-              <span className="text-[10px] bg-amber-500/20 text-amber-200 border border-amber-400/30 px-1.5 py-0.2 rounded-full font-mono font-bold">
-                🔒 ПРИВАТНЫЙ
-              </span>
+              <span>Код класса</span>
             </h2>
             <p className="text-[11px] text-white/60">
-              Код выдаётся классным руководителем и вводится полностью, вместе с классом
+              Вводи полностью, вместе с классом. Можно латиницей и без дефиса
             </p>
           </div>
         </div>
@@ -222,7 +204,7 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
         )}
 
         {/* Поле ввода личного кода */}
-        <form className="relative mb-2" onSubmit={handleCheckTopCode}>
+        <form className="flex gap-2 mb-2" onSubmit={handleCheckTopCode}>
           <input
             type="text"
             disabled={lockoutSec > 0}
@@ -232,16 +214,17 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
               setMatchedClass(null);
               setCodeStatus('idle');
             }}
-            placeholder={lockoutSec > 0 ? `Блокировка ввода (${lockoutSec}с)...` : "Введите секретный код класса от руководителя..."}
-            className="w-full bg-slate-950/80 border border-cyan-400/40 rounded-2xl px-3.5 py-2.5 pl-10 pr-28 text-sm font-mono text-cyan-200 focus:outline-none focus:border-amber-400 transition-colors uppercase tracking-wider placeholder-white/40 shadow-inner disabled:opacity-40 disabled:cursor-not-allowed"
+            placeholder={lockoutSec > 0 ? `Подожди ${lockoutSec} с…` : 'Например: 7А-XXXX'}
+            autoCapitalize="characters"
+            autoComplete="off"
+            className="flex-1 min-w-0 px-3.5 py-2.5 text-sm font-mono uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
           />
-          <Search className="w-4 h-4 text-cyan-400 absolute left-3.5 top-3.5 pointer-events-none" />
           <button
             type="submit"
             disabled={lockoutSec > 0 || !codeQuery.trim() || codeStatus === 'checking'}
-            className="absolute right-1.5 top-1.5 px-3 py-1.5 rounded-xl bg-cyan-500 text-slate-950 text-xs font-black hover:bg-cyan-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            className="shrink-0 px-4 rounded-2xl bg-cyan-500 text-slate-950 text-sm font-black hover:bg-cyan-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
-            {codeStatus === 'checking' ? 'Проверка…' : 'Проверить'}
+            {codeStatus === 'checking' ? '…' : 'Войти'}
           </button>
         </form>
 

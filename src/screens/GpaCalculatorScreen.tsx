@@ -36,11 +36,12 @@ export const GpaCalculatorScreen: React.FC<GpaCalculatorScreenProps> = ({
   onShowToast,
   onUnlockAchievement,
 }) => {
+  // Предметы без оценок: ученик вводит свои, демо-оценок не показываем
   const defaultSubjects: SubjectGrades[] = [
-    { id: '1', name: 'Алгебра', grades: [5, 4, 4, 5, 3, 5], target: 5 },
-    { id: '2', name: 'Русский язык', grades: [4, 4, 3, 5, 4], target: 5 },
-    { id: '3', name: 'Геометрия', grades: [5, 5, 4, 5], target: 5 },
-    { id: '4', name: 'Физика', grades: [4, 3, 4, 5], target: 4 },
+    { id: '1', name: 'Алгебра', grades: [], target: 5 },
+    { id: '2', name: 'Русский язык', grades: [], target: 5 },
+    { id: '3', name: 'Геометрия', grades: [], target: 5 },
+    { id: '4', name: 'Физика', grades: [], target: 5 },
   ];
 
   const [subjects, setSubjects] = useState<SubjectGrades[]>(() => {

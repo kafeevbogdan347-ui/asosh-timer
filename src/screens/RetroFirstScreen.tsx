@@ -303,7 +303,7 @@ export const RetroFirstScreen: React.FC<RetroFirstScreenProps> = ({
           className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-black shadow-lg transition-all active:scale-95"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>⚡ Вернуться в АСОШ №2 v11.0</span>
+          <span>⚡ Вернуться в АСОШ Таймер</span>
         </button>
 
         <div className="flex items-center gap-2 text-xs text-amber-300 font-bold bg-amber-400/10 px-3 py-1.5 rounded-xl border border-amber-400/30">
