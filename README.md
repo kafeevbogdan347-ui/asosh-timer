@@ -37,6 +37,12 @@ npm run dev            # http://localhost:3000
 
 Правила разрешают читать чат и добавлять сообщения до 400 символов. Менять и удалять чужие сообщения нельзя.
 
+## Презентация
+
+Слайды с речью: https://kafeevbogdan347-ui.github.io/asosh-timer/presentation.html (стрелки — листать, N — показать речь, F — во весь экран). Текст слайдов и готовые посты для чатов — в [PRESENTATION.md](PRESENTATION.md).
+
+Всё это собирается из одного файла `src/data/presentationContent.ts`. После правки текста выполните `npm run presentation:md`, чтобы обновить `PRESENTATION.md`; слайды на сайте обновятся сами при публикации.
+
 ## Публикация
 
 Сборка и публикация на GitHub Pages идут автоматически при каждом коммите в `main` (`.github/workflows/deploy.yml`).
