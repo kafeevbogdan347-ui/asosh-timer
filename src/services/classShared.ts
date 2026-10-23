@@ -46,24 +46,31 @@ function subscribe<T extends { id: string }>(
 ): () => void {
   let unsubscribe: Unsubscribe | null = null;
   let cancelled = false;
-  const { db } = initFirebase();
-  if (!db || !cls) {
-    onUpdate([]);
-    return () => {};
+  // Последний полученный список храним на устройстве: без интернета замены всё равно видны в расписании
+  const cacheKey = `asosh_${classPath(cls, section).replace(/\//g, '_')}`;
+  let cached: T[] = [];
+  try {
+    cached = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+  } catch {
+    cached = [];
   }
+  onUpdate(cached);
+  const { db } = initFirebase();
+  if (!db || !cls) return () => {};
   ensureSignedIn().then((ok) => {
-    if (cancelled) return;
-    if (!ok) {
-      onUpdate([]);
-      return;
-    }
+    if (cancelled || !ok) return;
     unsubscribe = onValue(
       query(ref(db, classPath(cls, section)), limitToLast(limit)),
       (snap) => {
         const val = snap.val() || {};
-        onUpdate(Object.keys(val).map((id) => ({ ...val[id], id }) as T));
-      },
-      () => onUpdate([])
+        const items = Object.keys(val).map((id) => ({ ...val[id], id }) as T);
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(items));
+        } catch {
+          // нет места — без кэша
+        }
+        onUpdate(items);
+      }
     );
   });
   return () => {

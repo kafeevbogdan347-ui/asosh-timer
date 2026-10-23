@@ -46,6 +46,7 @@ function collectLocalData(): Record<string, string> {
 export type TransferResult = { ok: true; link: string } | { ok: false; error: string };
 
 export async function createTransfer(): Promise<TransferResult> {
+  if (!navigator.onLine) return { ok: false, error: 'Для переноса по QR нужен интернет. Без сети используй резервную копию файлом.' };
   const { db } = initFirebase();
   if (!db || !(await ensureSignedIn())) return { ok: false, error: 'Нет подключения к интернету' };
 

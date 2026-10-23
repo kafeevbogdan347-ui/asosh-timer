@@ -175,6 +175,28 @@ export function subscribeToFirebaseMessages(
 ): (() => void) | null {
   const knownMessages = new Map<string, ChatMessage>();
 
+  // Последние сообщения храним на устройстве: без интернета чат показывает их, а не пустую комнату
+  const cacheKey = `asosh_chat_cache_${room}`;
+  try {
+    const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]') as ChatMessage[];
+    cached.forEach((m) => knownMessages.set(String(m.id), m));
+  } catch {
+    // повреждённый кэш просто игнорируем
+  }
+  // Сеть может не ответить вовсе — показываем сохранённое сразу
+  if (knownMessages.size) queueMicrotask(() => emitMerged());
+  const saveCache = () => {
+    try {
+      const keep = Array.from(knownMessages.values())
+        .filter((m) => !m.isSelfDestruct)
+        .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
+        .slice(-50);
+      localStorage.setItem(cacheKey, JSON.stringify(keep));
+    } catch {
+      // нет места — без кэша
+    }
+  };
+
   const emitMerged = () => {
     const now = Date.now();
     const list = Array.from(knownMessages.values()).filter(
@@ -228,6 +250,7 @@ export function subscribeToFirebaseMessages(
               });
             }
             // Пустая комната — тоже ответ: сообщаем экрану, что подключение есть
+            saveCache();
             emitMerged();
           },
           (error) => {
