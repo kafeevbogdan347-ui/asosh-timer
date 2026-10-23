@@ -3,6 +3,7 @@ import { HomeworkItem, LanguageType, SoundProfileType } from '../types';
 import { DICT } from '../data/constants';
 import { playSound, doVibro } from '../utils/audio';
 import { compressImage } from '../utils/image';
+import { ClassHomework } from '../services/classShared';
 import { Star, CheckCircle, Trash2, Plus, Sparkles, Filter, Camera, Image, X, Eye } from 'lucide-react';
 
 interface HomeworkScreenProps {
@@ -16,6 +17,11 @@ interface HomeworkScreenProps {
   soundProfile: SoundProfileType;
   vibro: boolean;
   onOpenAi?: () => void;
+  classHomework: ClassHomework[];
+  myUid: string;
+  onShareHomework: (h: { sub: string; text: string }) => Promise<boolean>;
+  onDeleteClassHomework: (id: string) => void;
+  onShowToast: (msg: string) => void;
 }
 
 export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
@@ -29,7 +35,19 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   soundProfile,
   vibro,
   onOpenAi,
+  classHomework,
+  myUid,
+  onShareHomework,
+  onDeleteClassHomework,
+  onShowToast,
 }) => {
+  const [shareWithClass, setShareWithClass] = useState(false);
+  // ДЗ класса за последние 2 недели, новые сверху
+  const recentClassHw = classHomework
+    .filter((h) => Date.now() - h.created_at < 14 * 24 * 3600 * 1000)
+    .sort((a, b) => b.created_at - a.created_at);
+  const alreadyMine = (h: ClassHomework) =>
+    homeworkList.some((m) => m.cls === cls && m.sub === h.sub && m.text === h.text);
   const [sub, setSub] = useState('');
   const [text, setText] = useState('');
   const [pinned, setPinned] = useState(false);
@@ -68,6 +86,12 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
       pinned,
       photoUrl: photoUrl || undefined,
     });
+    if (shareWithClass) {
+      // Фото не отправляем: только текст задания
+      onShareHomework({ sub: sub.trim(), text: text.trim() }).then((ok) =>
+        onShowToast(ok ? 'ДЗ отправлено всему классу 📣' : 'ДЗ сохранено, но классу не отправилось: нет интернета')
+      );
+    }
 
     setSub('');
     setText('');
@@ -226,11 +250,63 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
             </label>
           </div>
 
+          <div className="flex items-center gap-2 py-1">
+            <input
+              type="checkbox"
+              id="shareCheck"
+              checked={shareWithClass}
+              onChange={(e) => setShareWithClass(e.target.checked)}
+              className="w-5 h-5 cursor-pointer !mb-0"
+            />
+            <label htmlFor="shareCheck" className="text-xs font-bold text-cyan-300 cursor-pointer !m-0">
+              📣 Поделиться с классом (без фото)
+            </label>
+          </div>
+
           <button type="submit" className="btn green justify-center text-sm py-3 mt-1">
             <Plus className="w-4 h-4" />
             <span>{d.addhw}</span>
           </button>
         </form>
+
+        {/* ДЗ класса */}
+        {recentClassHw.length > 0 && (
+          <div className="mt-5 border-t border-white/10 pt-3 space-y-2">
+            <h3 className="text-sm font-black text-white/85">📣 ДЗ от класса</h3>
+            {recentClassHw.map((h) => (
+              <div key={h.id} className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <b className="text-sm text-cyan-200">{h.sub}</b>
+                  <div className="text-xs text-white/85 whitespace-pre-line break-words">{h.text}</div>
+                  <div className="text-[10px] text-white/50 mt-0.5">
+                    {h.author || 'ученик'} · {new Date(h.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {alreadyMine(h) ? (
+                    <span className="text-[10px] text-emerald-300 font-bold px-2">✓ у меня</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="text-[11px] font-bold px-2 py-1 rounded-lg bg-cyan-500/20 text-cyan-200 border border-cyan-400/40 cursor-pointer"
+                      onClick={() => {
+                        onAddHomework({ cls, sub: h.sub, text: h.text, done: false, pinned: false });
+                        onShowToast('Добавлено в мои ДЗ');
+                      }}
+                    >
+                      + Себе
+                    </button>
+                  )}
+                  {h.uid === myUid && (
+                    <button type="button" onClick={() => onDeleteClassHomework(h.id)} className="p-1 text-red-400 hover:text-red-300" title="Удалить для класса">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Фильтры */}
         <div className="flex flex-wrap gap-1.5 mt-5 mb-2 border-t border-white/10 pt-3">

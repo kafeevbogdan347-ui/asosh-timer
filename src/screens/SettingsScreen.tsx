@@ -64,6 +64,9 @@ import {
   wipeConfidentialData,
 } from '../utils/privacy';
 import { THEMES } from '../data/themes';
+import QRCode from 'qrcode';
+import { createTransfer } from '../services/transfer';
+import { isNativeApp, requestNotificationPermission } from '../services/bellNotifications';
 
 interface SettingsScreenProps {
   settings: AppSettings;
@@ -118,6 +121,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onToggleMaintenanceMode,
   onOpenMaintenanceScreen,
 }) => {
+  const [transferQr, setTransferQr] = useState('');
+  const [transferBusy, setTransferBusy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isApkModalOpen, setIsApkModalOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<SettingsSectionId>('all');
@@ -356,12 +361,26 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </p>
 
 
+          {/* Тема как в системе */}
+          <label className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white/5 border border-white/10 cursor-pointer !m-0">
+            <span>
+              <span className="block text-xs font-black text-white">🌗 Как в системе</span>
+              <span className="block text-[11px] text-white/60">Днём «Минимализм», ночью «Тёмная» — вслед за телефоном или компьютером</span>
+            </span>
+            <input
+              type="checkbox"
+              className="w-5 h-5 shrink-0"
+              checked={Boolean(settings.themeAuto)}
+              onChange={(e) => onUpdateSettings({ themeAuto: e.target.checked })}
+            />
+          </label>
+
           {/* Сетка тем с мини-превью */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
             {THEMES.filter(
               (t) => !searchQuery.trim() || `${t.name} ${t.desc}`.toLowerCase().includes(searchQuery.toLowerCase())
             ).map((t) => {
-              const active = settings.theme === t.id;
+              const active = !settings.themeAuto && settings.theme === t.id;
               return (
                 <button
                   key={t.id}
@@ -371,7 +390,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                     active ? 'border-cyan-400 scale-[1.02] shadow-lg' : 'border-transparent hover:scale-[1.01]'
                   }`}
                   onClick={() => {
-                    onUpdateSettings({ theme: t.id });
+                    onUpdateSettings({ theme: t.id, themeAuto: false });
                     playSound('settings', settings.soundProfile);
                     doVibro(settings.vibro, 15);
                     if (t.id === 'first') {
@@ -649,6 +668,34 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </div>
 
           <div className="space-y-2 pt-1">
+            <label className="flex items-center justify-between text-xs font-bold text-white cursor-pointer select-none p-2.5 rounded-xl bg-white/5 border border-white/10">
+              <div>
+                <div>Уведомления о звонках 📲</div>
+                <div className="text-[11px] text-white/60 font-normal">
+                  {isNativeApp()
+                    ? 'Напоминание за 5 минут до каждого урока, даже когда приложение закрыто'
+                    : 'Системное уведомление, когда приложение свёрнуто. При полностью закрытом — только в APK для Android'}
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                className="w-5 h-5 shrink-0"
+                checked={Boolean(settings.bellNotifications)}
+                onChange={async (e) => {
+                  if (!e.target.checked) {
+                    onUpdateSettings({ bellNotifications: false });
+                    return;
+                  }
+                  const ok = await requestNotificationPermission();
+                  if (!ok) {
+                    onShowToast('Разреши уведомления в настройках браузера или телефона');
+                    return;
+                  }
+                  onUpdateSettings({ bellNotifications: true });
+                  onShowToast('Уведомления о звонках включены 🔔');
+                }}
+              />
+            </label>
             <label className="flex items-center justify-between text-xs font-bold text-white cursor-pointer select-none p-2.5 rounded-xl bg-white/5 border border-white/10">
               <div>
                 <div>Предупреждать за 2 минуты до звонка 🔔</div>
@@ -1046,6 +1093,40 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               <span className="text-[10px] text-white/60 block">Предметов с оценками:</span>
               <b className="text-sm font-mono text-purple-300">{storageStats.gradesCount}</b>
             </div>
+          </div>
+
+          {/* Перенос на новый телефон по QR-коду */}
+          <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-400/30 space-y-2">
+            <div className="text-xs font-black text-white">📲 Перенести на новый телефон</div>
+            <p className="text-[11px] text-white/70">
+              Покажи QR-код новому телефону и наведи на него камеру. Данные шифруются, код действует 30 минут и срабатывает один раз.
+            </p>
+            {transferQr ? (
+              <div className="flex flex-col items-center gap-2">
+                <img src={transferQr} alt="QR-код для переноса" className="w-56 h-56 rounded-xl bg-white p-2" />
+                <button type="button" className="text-[11px] text-cyan-300 underline cursor-pointer" onClick={() => setTransferQr('')}>
+                  Скрыть код
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={transferBusy}
+                className="btn cyan w-full text-xs justify-center py-2.5 font-bold cursor-pointer disabled:opacity-60"
+                onClick={async () => {
+                  setTransferBusy(true);
+                  const res = await createTransfer();
+                  setTransferBusy(false);
+                  if ('error' in res) {
+                    onShowToast(res.error);
+                    return;
+                  }
+                  setTransferQr(await QRCode.toDataURL(res.link, { margin: 1, width: 448, errorCorrectionLevel: 'M' }));
+                }}
+              >
+                {transferBusy ? 'Готовлю…' : 'Показать QR-код'}
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">

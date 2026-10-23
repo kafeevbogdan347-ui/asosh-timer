@@ -27,6 +27,7 @@ interface MainScreenProps {
     daysLeft: number;
     breakName: string;
     isBreak: boolean;
+    daysToSummer: number;
   };
 }
 
@@ -39,6 +40,7 @@ const QUICK_GROUPS: { title: string; items: { icon: string; label: string; scree
       { icon: '🔮', label: 'Завтра', screen: 'tomorrow' },
       { icon: '🎯', label: 'Средний балл', screen: 'gpa' },
       { icon: '📊', label: 'Четверть', screen: 'quarter' },
+      { icon: '🗓️', label: 'Календарь', screen: 'calendar' },
       { icon: '📐', label: 'Формулы', screen: 'formulas' },
       { icon: '🧮', label: 'Калькулятор', screen: 'calc' },
     ],
@@ -59,7 +61,8 @@ const QUICK_GROUPS: { title: string; items: { icon: string; label: string; scree
       { icon: '🍅', label: 'Помодоро', screen: 'pomodoro' },
       { icon: '🎧', label: 'Фокус-звуки', screen: 'focus' },
       { icon: '🗺', label: 'Кабинеты', screen: 'map' },
-      { icon: '✏️', label: 'Своё расписание', screen: 'updates' },
+      { icon: '✏️', label: 'Замены', screen: 'updates' },
+      { icon: '📺', label: 'Экран для ТВ', screen: 'board' },
     ],
   },
 ];
@@ -150,6 +153,11 @@ export const MainScreen: React.FC<MainScreenProps> = ({
             className="bg-gradient-to-r from-cyan-400 to-blue-500 h-full rounded-full transition-all duration-500"
             style={{ width: `${Math.min(100, Math.max(0, quarterProgress.percent))}%` }}
           />
+        </div>
+        <div className="text-[11px] text-white/60 font-bold mt-1.5">
+          {quarterProgress.daysToSummer > 0
+            ? `☀️ До конца учебного года: ${quarterProgress.daysToSummer} дн.`
+            : '☀️ Учебный год закончился — лето!'}
         </div>
       </div>
 
