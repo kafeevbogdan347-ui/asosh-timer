@@ -590,6 +590,9 @@ export default function App() {
   const [classReplacements, setClassReplacements] = useState<ClassReplacement[]>([]);
   const [classHomework, setClassHomework] = useState<ClassHomework[]>([]);
   useEffect(() => {
+    // Сменили класс — замены и ДЗ прошлого класса не должны мелькать в расписании
+    setClassReplacements([]);
+    setClassHomework([]);
     if (!registered || !cls) return;
     const unsubR = subscribeClassReplacements(cls, setClassReplacements);
     const unsubH = subscribeClassHomework(cls, setClassHomework);
