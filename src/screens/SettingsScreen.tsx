@@ -63,6 +63,7 @@ import {
   setHideGradesInProfile,
   wipeConfidentialData,
 } from '../utils/privacy';
+import { THEMES } from '../data/themes';
 
 interface SettingsScreenProps {
   settings: AppSettings;
@@ -235,92 +236,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     }
   };
 
-  const themes: {
-    id: ThemeType;
-    label: string;
-    bg: string;
-    color: string;
-    accent: string;
-    category: 'neon' | 'ural' | 'space' | 'gaming' | 'light' | 'amoled' | 'nature' | 'gold';
-    border?: string;
-  }[] = [
-    { id: 'dark', label: '🌙 Тёмный Сапфир', bg: '#060d1f', color: '#fff', accent: '#00f0ff', category: 'amoled' },
-    { id: 'light', label: '☀️ Чистый Светлый', bg: '#f8fafc', color: '#0f172a', accent: '#2563eb', category: 'light' },
-    { id: 'dynamic_glass', label: '📱 iOS Dynamic Glass', bg: '#080d1a', color: '#fff', accent: '#38bdf8', category: 'neon', border: '1px solid #38bdf8' },
-    { id: 'vice_city', label: '⚡ GTA Vice City Neon', bg: '#150322', color: '#fff5fb', accent: '#06b6d4', category: 'neon', border: '1px solid #f43f5e' },
-    { id: 'cyber_sapphire', label: '💎 Кибер-Сапфир Ultra', bg: '#020617', color: '#f0f9ff', accent: '#0284c7', category: 'neon', border: '1px solid #38bdf8' },
-    { id: 'dragon_fire', label: '🐉 Драконье Пламя', bg: '#120202', color: '#fff5f5', accent: '#f97316', category: 'gaming', border: '1px solid #ef4444' },
-    { id: 'arctic_neon', label: '🧊 Полярный Неон', bg: '#030f18', color: '#f0fdfa', accent: '#06b6d4', category: 'neon', border: '1px solid #22d3ee' },
-    { id: 'saturn_gold', label: '🪐 Сатурн & Золото', bg: '#0d0a04', color: '#fefce8', accent: '#eab308', category: 'gold', border: '1px solid #eab308' },
-    { id: 'space', label: '🌌 Космос & Туманность', bg: '#070318', color: '#fbfbfe', accent: '#c084fc', category: 'space', border: '1px solid #c084fc' },
-    { id: 'synthwave', label: '⚡ Неоновый Дрифт 80s', bg: '#1a0826', color: '#fff0f9', accent: '#06b6d4', category: 'neon', border: '1px solid #f472b6' },
-    { id: 'ps', label: '🎮 PS5 Cosmic', bg: '#020b1e', color: '#fff', accent: '#38bdf8', category: 'gaming' },
-    { id: 'neon', label: '🟣 Кибер Неон', bg: '#0f051d', color: '#fff', accent: '#f43f5e', category: 'neon' },
-    { id: 'cyber', label: '💻 Хакер Матрица', bg: '#030803', color: '#86efac', accent: '#22c55e', category: 'gaming', border: '1px solid #22c55e' },
-    { id: 'amoled', label: '🖤 True AMOLED', bg: '#000000', color: '#fff', accent: '#38bdf8', category: 'amoled' },
-    { id: 'cyberpunk', label: '⚡ Cyberpunk 2077', bg: '#0b0813', color: '#fde047', accent: '#ec4899', category: 'gaming', border: '1px solid #06b6d4' },
-    { id: 'coffee', label: '☕ Карамельный Латте', bg: '#1a120b', color: '#faf0e6', accent: '#d4a373', category: 'nature' },
-    { id: 'mint', label: '🍃 Мятная Матча', bg: '#061e1a', color: '#f0fdfa', accent: '#2dd4bf', category: 'nature' },
-    { id: 'magma', label: '🌋 Вулканическая Лава', bg: '#130404', color: '#fff7ed', accent: '#ea580c', category: 'nature', border: '1px solid #ea580c' },
-    { id: 'retro', label: '👾 GameBoy 8-Bit', bg: '#141c10', color: '#ecfccb', accent: '#84cc16', category: 'gaming', border: '1px solid #84cc16' },
-    { id: 'aurora', label: '💎 Северное Сияние', bg: '#03141f', color: '#f0f9ff', accent: '#38bdf8', category: 'space' },
-    { id: 'emerald', label: '🌲 Изумрудный Лес', bg: '#021a0e', color: '#ecfdf5', accent: '#10b981', category: 'ural' },
-    { id: 'sunset', label: '🌅 Закат Горизонт', bg: '#1f041f', color: '#fff', accent: '#f97316', category: 'nature' },
-    { id: 'nordic', label: '❄️ Нордик Фрост', bg: '#f1f5f9', color: '#1e293b', accent: '#3b82f6', category: 'light' },
-    { id: 'sakura', label: '🌸 Сакура Блоссом', bg: '#1f0d19', color: '#fff1f2', accent: '#fb7185', category: 'nature' },
-    { id: 'tokyo', label: '🗼 Токио Ночь', bg: '#0a0f1d', color: '#fff', accent: '#a855f7', category: 'neon' },
-    { id: 'gold', label: '👑 Королевское Золото', bg: '#0d0b06', color: '#fef9c3', accent: '#eab308', category: 'gold', border: '1px solid #eab308' },
-    { id: 'crimson', label: '🩸 Кровавая Луна', bg: '#140508', color: '#fff', accent: '#ef4444', category: 'gaming' },
-    { id: 'violet', label: '💜 Ультрафиолет', bg: '#120324', color: '#faf5ff', accent: '#a855f7', category: 'neon' },
-    { id: 'fire_ember', label: '🔥 Огненный Уголь', bg: '#160401', color: '#fff7ed', accent: '#f97316', category: 'nature', border: '1px solid #f97316' },
-    { id: 'ocean_abyss', label: '🌊 Бездна Океана', bg: '#020817', color: '#f0f9ff', accent: '#38bdf8', category: 'amoled', border: '1px solid #38bdf8' },
-    { id: 'emerald_matrix', label: '💎 Нео-Кристалл', bg: '#021209', color: '#ecfdf5', accent: '#10b981', category: 'ural', border: '1px solid #10b981' },
-    { id: 'hyper_gold', label: '⚡ Гипер-Золото 24K', bg: '#100b02', color: '#fefce8', accent: '#facc15', category: 'gold', border: '1px solid #facc15' },
-    { id: 'galaxy_supernova', label: '🌌 Сверхновая Галактика', bg: '#09021a', color: '#faf5ff', accent: '#d946ef', category: 'space', border: '1px solid #d946ef' },
-    { id: 'neon_tokyo_drift', label: '⚡ Токио Нео-Дрифт', bg: '#03081a', color: '#ffffff', accent: '#f43f5e', category: 'neon', border: '1px solid #06b6d4' },
-    { id: 'holographic_ice', label: '🧊 Голографический Лёд', bg: '#020d18', color: '#f0fdfa', accent: '#2dd4bf', category: 'neon', border: '1px solid #2dd4bf' },
-    { id: 'ruby_obsidian', label: '🩸 Рубиновый Обсидиан', bg: '#0f0204', color: '#fff1f2', accent: '#e11d48', category: 'amoled', border: '1px solid #e11d48' },
-    { id: 'argayash_ural', label: '🌲 Уральский Аргаяш', bg: '#011409', color: '#f0fdf4', accent: '#22c55e', category: 'ural', border: '1px solid #22c55e' },
-    { id: 'quantum_amethyst', label: '🔮 Квантовый Аметист', bg: '#0b0217', color: '#faf5ff', accent: '#a855f7', category: 'space', border: '1px solid #a855f7' },
-    { id: 'solar_flare', label: '☀️ Солнечная Вспышка', bg: '#1a0800', color: '#fff7ed', accent: '#ea580c', category: 'space', border: '1px solid #ea580c' },
-    { id: 'phantom_glitch', label: '⚡ Фантомный Глитч', bg: '#030814', color: '#ffffff', accent: '#00f0ff', category: 'gaming', border: '1px solid #00f0ff' },
-    { id: 'deep_void', label: '🌌 Глубокий Вакуум', bg: '#000208', color: '#f8fafc', accent: '#6366f1', category: 'amoled', border: '1px solid #6366f1' },
-    { id: 'nebula_quartz', label: '🔮 Кварцевая Туманность', bg: '#0f031b', color: '#faf5ff', accent: '#e879f9', category: 'space', border: '1px solid #e879f9' },
-    { id: 'cyber_emerald_99', label: '⚡ Нео-Изумруд 2099', bg: '#010d06', color: '#f0fdf4', accent: '#4ade80', category: 'ural', border: '1px solid #4ade80' },
-    { id: 'super_mario_retro', label: '🍄 Ретро Пиксель 16-Bit', bg: '#150808', color: '#fef2f2', accent: '#ef4444', category: 'gaming', border: '1px solid #ef4444' },
-    { id: 'frost_diamond', label: '💎 Морозный Бриллиант', bg: '#030d17', color: '#f0f9ff', accent: '#38bdf8', category: 'nature', border: '1px solid #38bdf8' },
-    { id: 'blood_samurai', label: '⛩️ Нео-Самурай Киото', bg: '#100205', color: '#fff1f2', accent: '#e11d48', category: 'gaming', border: '1px solid #e11d48' },
-    { id: 'yandex_neo_gold', label: '🟡 Яндекс Нео-Золото', bg: '#0d0a00', color: '#fef9c3', accent: '#fc3f1d', category: 'gold', border: '1px solid #facc15' },
-    { id: 'ural_malachite', label: '🌲 Уральский Малахит', bg: '#021209', color: '#f0fdf4', accent: '#10b981', category: 'ural', border: '1px solid #34d399' },
-    { id: 'atomic_plasma', label: '⚡ Атомная Плазма', bg: '#060114', color: '#faf5ff', accent: '#00f0ff', category: 'space', border: '1px solid #a855f7' },
-    { id: 'tokyo_cyber_2099', label: '🌆 Киберпанк Токио 2099', bg: '#070014', color: '#ffffff', accent: '#f43f5e', category: 'neon', border: '1px solid #f43f5e' },
-    { id: 'spring_sakura_bloom', label: '🌸 Сакура Весна', bg: '#170410', color: '#fff1f2', accent: '#fb7185', category: 'nature', border: '1px solid #fb7185' },
-    { id: 'graviton_deep_space', label: '🛸 Гравитон Deep Space', bg: '#00040d', color: '#f8fafc', accent: '#818cf8', category: 'space', border: '1px solid #6366f1' },
-    { id: 'yandex_alice_purple', label: '💜 Яндекс Алиса Неон', bg: '#0e021a', color: '#faf5ff', accent: '#a855f7', category: 'neon', border: '1px solid #c084fc' },
-    { id: 'ural_uvildy_lake', label: '🌊 Озеро Увильды Аргаяш', bg: '#010c14', color: '#f0fdfa', accent: '#06b6d4', category: 'ural', border: '1px solid #22d3ee' },
-    { id: 'laser_grid_80s', label: '⚡ Лазерный Synth-Grid', bg: '#12001e', color: '#fff0f9', accent: '#ec4899', category: 'neon', border: '1px solid #f472b6' },
-    { id: 'golden_autumn_ural', label: '🍂 Золотая Осень Урала', bg: '#140801', color: '#fffbeb', accent: '#f59e0b', category: 'gold', border: '1px solid #f59e0b' },
-    { id: 'dark_matter_pulsar', label: '💫 Пульсар Тёмной Материи', bg: '#000008', color: '#f8fafc', accent: '#3b82f6', category: 'amoled', border: '1px solid #60a5fa' },
-    { id: 'cyber_emerald_core', label: '🔋 Ядерный Изумруд', bg: '#001006', color: '#ecfdf5', accent: '#10b981', category: 'ural', border: '1px solid #10b981' },
-    { id: 'first', label: '📜 Первый (Пасхалка 5Б)', bg: '#0f172a', color: '#f8fafc', accent: '#38bdf8', category: 'gaming', border: '1px solid #38bdf8' },
-  ];
 
-  // Оставляем короткий список тем без чужих брендов; остальные CSS-темы продолжают работать у тех, кто их уже выбрал
-  const CURATED_THEMES = [
-    'dark', 'light', 'amoled', 'nordic', 'space', 'aurora', 'emerald', 'argayash_ural',
-    'ural_uvildy_lake', 'golden_autumn_ural', 'sunset', 'sakura', 'coffee', 'ocean_abyss', 'violet', 'first',
-  ];
-
-  const filteredThemes = useMemo(() => {
-    return themes.filter((t) => {
-      const matchCat = CURATED_THEMES.includes(t.id) || t.id === settings.theme;
-      const matchSearch =
-        !searchQuery.trim() ||
-        t.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.id.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchCat && matchSearch;
-    });
-  }, [themes, searchQuery, settings.theme]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -436,38 +352,65 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </div>
 
           <p className="text-xs text-white/70">
-            Цветовая тема меняет фон, карточки и акцентный цвет.
+            Каждая тема меняет не только цвета, но и фон, форму карточек, шрифт и анимации.
           </p>
 
 
-          {/* Сетка тем */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-1 max-h-[360px] overflow-y-auto p-1 rounded-2xl bg-black/25 border border-white/8">
-            {filteredThemes.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                style={{ background: t.bg, color: t.color, border: t.border || '1px solid var(--line)' }}
-                className={`themeBtn text-xs font-bold py-2.5 px-2 flex flex-col items-center justify-center gap-1.5 transition-all rounded-xl ${
-                  settings.theme === t.id
-                    ? 'ring-2 ring-cyan-400 scale-[1.03] shadow-lg font-black'
-                    : 'opacity-85 hover:opacity-100 hover:scale-[1.01]'
-                }`}
-                onClick={() => {
-                  onUpdateSettings({ theme: t.id });
-                  playSound('settings', settings.soundProfile);
-                  doVibro(settings.vibro, 15);
-                  if (t.id === 'first') {
-                    onShowToast('📜 Пасхалка: Добро пожаловать в первую версию АСОШ Таймера 5Б!');
-                    if (onNavigate) onNavigate('retroFirst');
-                  }
-                }}
-              >
-                <div className="flex items-center gap-1.5 truncate max-w-full">
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm" style={{ background: t.accent }} />
-                  <span className="truncate">{t.label}</span>
-                </div>
-              </button>
-            ))}
+          {/* Сетка тем с мини-превью */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+            {THEMES.filter(
+              (t) => !searchQuery.trim() || `${t.name} ${t.desc}`.toLowerCase().includes(searchQuery.toLowerCase())
+            ).map((t) => {
+              const active = settings.theme === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  aria-pressed={active}
+                  className={`text-left rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${
+                    active ? 'border-cyan-400 scale-[1.02] shadow-lg' : 'border-transparent hover:scale-[1.01]'
+                  }`}
+                  onClick={() => {
+                    onUpdateSettings({ theme: t.id });
+                    playSound('settings', settings.soundProfile);
+                    doVibro(settings.vibro, 15);
+                    if (t.id === 'first') {
+                      onShowToast('📜 Пасхалка: добро пожаловать в первую версию приложения 5Б!');
+                      if (onNavigate) onNavigate('retroFirst');
+                    }
+                  }}
+                >
+                  {/* Мини-экран темы */}
+                  <div className="h-24 p-2.5 flex flex-col gap-1.5" style={{ background: t.preview.background }}>
+                    <div
+                      className="flex-1 p-2 flex flex-col justify-between"
+                      style={{
+                        background: t.preview.card,
+                        border: `1.5px solid ${t.preview.border}`,
+                        borderRadius: t.preview.radius,
+                        color: t.preview.text,
+                        fontFamily: t.preview.font,
+                      }}
+                    >
+                      <span className="text-[13px] font-bold leading-none">Аа 7А</span>
+                      <span
+                        className="self-start text-[9px] font-bold px-1.5 py-0.5"
+                        style={{ background: t.preview.accent, color: t.light ? '#fff' : '#000', borderRadius: t.preview.radius / 2 }}
+                      >
+                        10:45
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-2 bg-black/30">
+                    <div className="text-xs font-black text-white flex items-center gap-1">
+                      {active && <span>✓</span>}
+                      <span className="truncate">{t.name}</span>
+                    </div>
+                    <div className="text-[10px] text-white/60 leading-tight line-clamp-2">{t.desc}</div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
           {/* МАСШТАБ ТЕКСТА И UI */}
