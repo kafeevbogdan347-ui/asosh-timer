@@ -1,7 +1,7 @@
 // Service Worker для АСОШ №2
 // Обеспечивает мгновенный запуск в Android APK (MConvertor) и оффлайн-доступ
 
-const CACHE_NAME = 'asosh2-apk-cache-v3';
+const CACHE_NAME = 'asosh2-apk-cache-v4';
 // Пути считаются от папки, где лежит sw.js (на GitHub Pages это /asosh-timer/)
 const BASE = new URL('./', self.location).pathname;
 const ASSETS_TO_CACHE = [BASE, BASE + 'index.html', BASE + 'manifest.json', BASE + 'icon.svg'];
@@ -45,12 +45,15 @@ self.addEventListener('fetch', (event) => {
   // Страницу всегда берём из сети: в ней ссылки на файлы текущей версии.
   // Из кэша — только без интернета. Иначе после обновления сайта старая страница
   // ссылается на удалённые файлы и показывается белый экран.
+  // При плохом Wi-Fi ждём сеть не дольше 4 с, потом показываем страницу из кэша.
   if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request)
-        .then(saveCopy)
-        .catch(() => caches.match(event.request).then((r) => r || caches.match(BASE + 'index.html')))
-    );
+    const fromCache = () => caches.match(event.request).then((r) => r || caches.match(BASE + 'index.html'));
+    const network = fetch(event.request).then(saveCopy);
+    network.catch(() => {});
+    const slow = new Promise((resolve) => setTimeout(resolve, 4000))
+      .then(fromCache)
+      .then((cached) => cached || network);
+    event.respondWith(Promise.race([network, slow]).catch(fromCache));
     return;
   }
 

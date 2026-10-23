@@ -906,7 +906,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       ======================================================== */}
       {isSectionVisible(
         'device',
-        'экран устройство мобильный пк планшет dynamic island fullscreen cordova apk'
+        'экран устройство мобильный пк планшет dynamic island fullscreen cordova apk язык language'
       ) && (
         <div className="p-4 bg-white/6 rounded-3xl border border-white/12 space-y-3.5 shadow-md">
           <div className="flex items-center justify-between">
@@ -922,6 +922,25 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           <p className="text-xs text-white/70 leading-relaxed">
             Настройки отображения для смартфонов, планшетов и ПК, а также встроенная поддержка компиляции нативного Android APK:
           </p>
+
+          <div>
+            <label className="text-xs font-bold text-white/80">Язык интерфейса:</label>
+            <select
+              value={lang}
+              onChange={(e) => onLangChange(e.target.value as LanguageType)}
+              className="text-xs w-full mt-1"
+            >
+              <option value="ru">Русский</option>
+              <option value="ba">Башҡорт теле</option>
+              <option value="tj">Тоҷикӣ</option>
+              <option value="kk">Қазақша</option>
+              <option value="uz">O'zbekcha</option>
+              <option value="ky">Кыргызча</option>
+              <option value="be">Беларуская</option>
+              <option value="hy">Հայերեն</option>
+              <option value="az">Azərbaycan dili</option>
+            </select>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <button
@@ -1137,6 +1156,14 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           )}
         </div>
       )}
+
+      <button
+        type="button"
+        className="btn darkBtn w-full text-xs justify-center py-2.5 rounded-2xl cursor-pointer"
+        onClick={() => onNavigate('about')}
+      >
+        ℹ️ О приложении
+      </button>
 
       {/* Modal for MConvertor parameters */}
       <ApkSupportModal

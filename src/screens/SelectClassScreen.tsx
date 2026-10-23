@@ -7,6 +7,7 @@ import {
   isClassUnlocked,
   saveClassUnlocked,
   ClassCodeInfo,
+  CLASS_LIST,
 } from '../data/classCodes';
 import {
   checkClassCodeLockout,
@@ -16,7 +17,6 @@ import {
 import {
   KeyRound,
   Search,
-  Sparkles,
   Lock,
   Unlock,
   ShieldCheck,
@@ -53,7 +53,6 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
 }) => {
   const [selectedParallel, setSelectedParallel] = useState<number | null>(null);
   const [codeQuery, setCodeQuery] = useState('');
-  const [matchedClass, setMatchedClass] = useState<ClassCodeInfo | null>(null);
   const [codeStatus, setCodeStatus] = useState<'idle' | 'checking' | 'wrong' | 'error'>('idle');
 
   // Modal for unlocking a specific class clicked in the list
@@ -105,7 +104,6 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
     e?.preventDefault();
     if (lockoutSec > 0 || !codeQuery.trim() || codeStatus === 'checking') return;
     setCodeStatus('checking');
-    setMatchedClass(null);
     const res = await checkClassCode(codeQuery);
     if (res.status === 'ok') {
       // Код верный — сразу входим в класс, без лишнего шага подтверждения
@@ -128,6 +126,8 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
   const handleLetterClick = (fullCls: string) => {
     // If class already unlocked on this device, enter immediately
     if (isClassUnlocked(fullCls)) {
+      const info = CLASS_LIST.find((c) => c.className === fullCls);
+      if (info) onSelectShift(info.defaultShift);
       onSelectClass(fullCls);
     } else {
       // Prompt for private code
@@ -160,6 +160,7 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
       setTargetClassToUnlock(null);
       setModalInputCode('');
       setModalError(null);
+      onSelectShift(res.info.defaultShift);
       onSelectClass(targetCls);
     } else {
       const lockMsg = res.status === 'ok' ? handleFailedCheck({ status: 'wrong' }) : handleFailedCheck(res);
@@ -211,7 +212,6 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
             value={codeQuery}
             onChange={(e) => {
               setCodeQuery(e.target.value);
-              setMatchedClass(null);
               setCodeStatus('idle');
             }}
             placeholder={lockoutSec > 0 ? `Подожди ${lockoutSec} с…` : 'Например: 7А-XXXX'}
@@ -228,39 +228,7 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
           </button>
         </form>
 
-        {/* Результат моментального распознавания кода */}
-        {matchedClass ? (
-          <div className="p-2.5 bg-emerald-950/70 border border-emerald-400/50 rounded-2xl flex items-center justify-between gap-2 animate-in fade-in zoom-in-95 shadow-md">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-lg shrink-0 text-emerald-300 font-black">
-                {matchedClass.className}
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-black text-white">
-                    Класс {matchedClass.className} подтверждён!
-                  </span>
-                  <span className="text-[10px] text-emerald-300 font-bold bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-400/40 flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                    <span>Доступ открыт</span>
-                  </span>
-                </div>
-                <span className="text-[10px] text-emerald-300/80 block">
-                  {matchedClass.defaultShift} смена • Официальное расписание МОУ АСОШ №2
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => handleApplyTopCode(matchedClass)}
-              className="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 text-xs font-black shadow-md hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center gap-1.5 cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Войти в {matchedClass.className}</span>
-            </button>
-          </div>
-        ) : codeStatus === 'wrong' || codeStatus === 'error' ? (
+        {codeStatus === 'wrong' || codeStatus === 'error' ? (
           <div className="text-[11px] text-amber-300/90 px-1 flex items-center gap-1.5">
             <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             <span>
@@ -455,6 +423,14 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
           </div>
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={onGoAbout}
+        className="w-full py-2 text-xs font-bold text-white/60 hover:text-white/90 cursor-pointer"
+      >
+        ℹ️ О приложении
+      </button>
     </div>
   );
 };

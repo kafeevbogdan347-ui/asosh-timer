@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { HomeworkItem, LanguageType, SoundProfileType } from '../types';
 import { DICT } from '../data/constants';
 import { playSound, doVibro } from '../utils/audio';
+import { compressImage } from '../utils/image';
 import { Star, CheckCircle, Trash2, Plus, Sparkles, Filter, Camera, Image, X, Eye } from 'lucide-react';
 
 interface HomeworkScreenProps {
@@ -47,15 +48,12 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      if (base64) {
-        setPhotoUrl(base64);
+    compressImage(file, 1024, 0.7)
+      .then((dataUrl) => {
+        setPhotoUrl(dataUrl);
         playSound('click', soundProfile);
-      }
-    };
-    reader.readAsDataURL(file);
+      })
+      .catch(() => {});
   };
 
   const handleSubmit = (e: React.FormEvent) => {
