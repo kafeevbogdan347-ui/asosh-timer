@@ -127,6 +127,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [isApkModalOpen, setIsApkModalOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<SettingsSectionId>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const quality = settings.quality ?? (settings.perfLow ? 'eco' : 'normal');
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Sound Lab state
@@ -953,7 +954,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       ======================================================== */}
       {isSectionVisible(
         'device',
-        'экран устройство мобильный пк планшет dynamic island fullscreen cordova apk язык language'
+        'экран устройство мобильный пк планшет dynamic island fullscreen cordova apk язык language качество графики оптимизация экономия батарея максимум'
       ) && (
         <div className="p-4 bg-white/6 rounded-3xl border border-white/12 space-y-3.5 shadow-md">
           <div className="flex items-center justify-between">
@@ -1039,20 +1040,44 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               />
             </label>
 
-            <label className="flex items-center justify-between text-xs font-bold text-white cursor-pointer select-none p-2.5 rounded-xl bg-white/5 border border-white/10">
-              <div>
-                <div>Режим энергосбережения (Low Power Mode)</div>
-                <div className="text-[11px] text-white/60 font-normal">
-                  Отключает тяжёлые анимации и градиенты для сохранения заряда батареи
-                </div>
+            {/* Качество графики */}
+            <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-2">
+              <div className="text-xs font-bold text-white">🎨 Качество графики</div>
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  [
+                    ['eco', '🔋', 'Экономия'],
+                    ['normal', '⚖️', 'Обычное'],
+                    ['ultra', '✨', 'Максимум'],
+                  ] as const
+                ).map(([id, icon, label]) => {
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-pressed={quality === id}
+                      className={`choice !py-2 !px-1 flex flex-col items-center leading-tight ${quality === id ? 'active' : ''}`}
+                      onClick={() => {
+                        onUpdateSettings({ quality: id, perfLow: id === 'eco' });
+                        playSound('settings', settings.soundProfile);
+                        doVibro(settings.vibro, 15);
+                      }}
+                    >
+                      <span className="text-base">{icon}</span>
+                      <span className="text-xs font-black">{label}</span>
+                    </button>
+                  );
+                })}
               </div>
-              <input
-                type="checkbox"
-                checked={settings.perfLow}
-                onChange={(e) => onUpdateSettings({ perfLow: e.target.checked })}
-                className="w-5 h-5 accent-cyan-400 cursor-pointer"
-              />
-            </label>
+              <div className="text-[11px] text-white/60">
+                {quality === 'eco' &&
+                  'Без размытия, теней и фоновых анимаций — быстрее на слабых телефонах и бережёт батарею.'}
+                {quality === 'normal' &&
+                  'Баланс красоты и скорости — подходит для большинства телефонов.'}
+                {quality === 'ultra' &&
+                  'Толстое стекло, мягкое свечение и плавные переходы. Лучше для мощных телефонов и ПК.'}
+              </div>
+            </div>
           </div>
         </div>
       )}
