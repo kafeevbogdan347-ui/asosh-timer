@@ -53,7 +53,13 @@ jobs:
           BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           "$BT/zipalign" -f -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
           if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > release.p12
+            # Пробелы и переносы строк могли попасть в секрет при вставке — убираем их
+            CLEAN=$(printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]')
+            echo "Длина ключа в секрете: ${#CLEAN} символов (должно быть 3552)"
+            if ! printf '%s' "$CLEAN" | base64 -d > release.p12 2>/dev/null; then
+              echo "::error::Секрет ANDROID_KEYSTORE_BASE64 испорчен — вставь заново содержимое keystore-base64.txt"
+              exit 1
+            fi
             "$BT/apksigner" sign --ks release.p12 --ks-type PKCS12 --ks-pass env:KEYSTORE_PASSWORD --ks-key-alias asosh --out asosh-timer.apk aligned.apk
             rm release.p12
           else
