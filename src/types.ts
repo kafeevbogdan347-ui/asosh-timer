@@ -63,7 +63,18 @@ export type ThemeType =
   | 'winter'
   | 'neon_grid'
   | 'chalk'
-  | 'minimal';
+  | 'minimal'
+  | 'deep_sea'
+  | 'taiga'
+  | 'dawn'
+  | 'comic'
+  | 'lava'
+  | 'northern'
+  | 'blueprint'
+  | 'candy';
+
+// Качество графики: экономия заряда, обычное или максимальное
+export type QualityType = 'eco' | 'normal' | 'ultra';
 
 export type FontSizeType = 'font-sm' | 'font-md' | 'font-lg' | 'font-xl';
 
@@ -99,6 +110,7 @@ export interface AppSettings {
   compact: boolean;
   devicePC: boolean;
   perfLow: boolean;
+  quality?: QualityType;
   pomodoroWorkMin: number;
   pomodoroBreakMin: number;
   fpsOverlay?: boolean;

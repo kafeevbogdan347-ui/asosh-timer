@@ -108,6 +108,7 @@ export default function App() {
       try {
         const parsed = JSON.parse(saved);
         return {
+          ...parsed, // остальные настройки (тема как в системе, PIN, качество графики…) сохраняются как есть
           soundProfile: parsed.soundProfile || '1',
           vibro: parsed.vibro !== false,
           warn2: parsed.warn2 !== false,
@@ -527,7 +528,9 @@ export default function App() {
     if (settings.timerStyle === 'digital') body.classList.add('timer-digital');
     if (settings.compact) body.classList.add('compact');
     if (settings.devicePC) body.classList.add('device-pc');
-    if (settings.perfLow) body.classList.add('low');
+    const quality = settings.quality ?? (settings.perfLow ? 'eco' : 'normal');
+    if (quality === 'eco') body.classList.add('low', 'q-eco');
+    if (quality === 'ultra') body.classList.add('q-ultra');
     if (!settings.anim) body.classList.add('no-anim');
     if (!settings.splash) body.classList.add('hide-splash');
     if (!settings.mot) body.classList.add('hide-mot');

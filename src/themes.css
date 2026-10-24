@@ -561,3 +561,309 @@ body.theme-amoled [class*="from-lime-9"] {
   background: #050505 !important;
   background-image: none !important;
 }
+
+/* ============================================================
+   ГЛУБИНА МОРЯ
+   ============================================================ */
+body.theme-deep_sea {
+  --b1: #0e7490; --b2: #083344; --b3: #020617;
+  --card: rgba(8, 51, 68, 0.55); --card-hover: rgba(10, 70, 92, 0.7);
+  --line: rgba(103, 232, 249, 0.38); --muted: #a5f3fc; --ink: #ecfeff; --txt: #ecfeff;
+  --accent: #22d3ee; --accent-rgb: 34, 211, 238;
+  --sh: 0 14px 36px rgba(2, 6, 23, 0.55);
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(165, 243, 252, 0.35), transparent 55%),
+    linear-gradient(180deg, #0e7490 0%, #083344 55%, #020617 100%) !important;
+}
+body.theme-deep_sea::before, body.theme-deep_sea::after {
+  content: "";
+  position: fixed;
+  inset: 0 0 -400px 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 40px 60px, transparent 4px, rgba(255, 255, 255, 0.55) 5px, transparent 6px),
+    radial-gradient(circle at 160px 200px, transparent 2px, rgba(255, 255, 255, 0.5) 3px, transparent 4px),
+    radial-gradient(circle at 250px 90px, transparent 6px, rgba(255, 255, 255, 0.4) 7px, transparent 8px),
+    radial-gradient(circle at 100px 330px, transparent 3px, rgba(255, 255, 255, 0.45) 4px, transparent 5px);
+  background-size: 300px 400px;
+  animation: themeBubbles 18s linear infinite;
+  opacity: 0.7;
+}
+body.theme-deep_sea::after { background-size: 220px 300px; animation-duration: 28s; opacity: 0.4; }
+@keyframes themeBubbles { from { transform: translateY(0); } to { transform: translateY(-400px); } }
+body.theme-deep_sea .card {
+  border-radius: 24px;
+  border: 1px solid rgba(103, 232, 249, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), var(--sh);
+  backdrop-filter: blur(10px);
+}
+body.theme-deep_sea .btn { border-radius: 999px; background: linear-gradient(135deg, #0891b2, #22d3ee); color: #022c36; }
+body.theme-deep_sea .num { border-radius: 50%; background: #22d3ee; color: #083344; }
+body.theme-deep_sea .bellWidget { border-radius: 24px; border-color: rgba(103, 232, 249, 0.6); background: rgba(8, 51, 68, 0.6); }
+body.theme-deep_sea .nav-bar { border-radius: 999px; background: rgba(2, 20, 30, 0.85); border-color: rgba(103, 232, 249, 0.35); }
+
+/* ============================================================
+   ТАЙГА
+   ============================================================ */
+body.theme-taiga {
+  --b1: #0b1f17; --b2: #123524; --b3: #1d4430;
+  --card: rgba(20, 48, 34, 0.78); --card-hover: rgba(26, 62, 44, 0.9);
+  --line: rgba(163, 230, 53, 0.32); --muted: #bef264; --ink: #ecfccb; --txt: #f7fee7;
+  --accent: #a3e635; --accent-rgb: 163, 230, 53;
+  --sh: 0 14px 34px rgba(0, 10, 4, 0.6);
+  background:
+    linear-gradient(135deg, transparent 48%, rgba(5, 18, 11, 0.9) 49%) 0 100% / 60px 90px repeat-x,
+    linear-gradient(225deg, transparent 48%, rgba(5, 18, 11, 0.9) 49%) 30px 100% / 60px 90px repeat-x,
+    radial-gradient(ellipse at 80% 0%, rgba(253, 224, 71, 0.12), transparent 45%),
+    linear-gradient(180deg, #0b1f17, #123524 60%, #1d4430) !important;
+}
+body.theme-taiga::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(3px 3px at 40px 120px, #fde047, transparent),
+    radial-gradient(2px 2px at 180px 60px, #fef08a, transparent),
+    radial-gradient(3px 3px at 260px 220px, #fde047, transparent),
+    radial-gradient(2px 2px at 120px 280px, #fef9c3, transparent);
+  background-size: 320px 320px;
+  filter: drop-shadow(0 0 4px #fde047);
+  animation: themeFireflies 7s ease-in-out infinite alternate;
+}
+@keyframes themeFireflies { 0% { opacity: 0.2; transform: translate(0, 0); } 50% { opacity: 1; } 100% { opacity: 0.35; transform: translate(14px, -18px); } }
+body.theme-taiga h1, body.theme-taiga h2, body.theme-taiga h3 { font-family: Georgia, "Times New Roman", serif !important; letter-spacing: 0.01em; }
+body.theme-taiga .card { border-radius: 14px; border: 1px solid rgba(163, 230, 53, 0.28); backdrop-filter: blur(6px); }
+body.theme-taiga .btn { border-radius: 10px; background: linear-gradient(135deg, #4d7c0f, #65a30d); }
+body.theme-taiga .num { background: #a3e635; color: #14301f; border-radius: 8px; }
+body.theme-taiga .bellWidget { border-color: rgba(163, 230, 53, 0.5); background: rgba(12, 32, 22, 0.8); }
+body.theme-taiga .nav-bar { background: rgba(8, 24, 16, 0.92); border-color: rgba(163, 230, 53, 0.3); }
+
+/* ============================================================
+   ЛАВА
+   ============================================================ */
+body.theme-lava {
+  --b1: #1c0a05; --b2: #2a0d06; --b3: #120402;
+  --card: rgba(40, 10, 5, 0.66); --card-hover: rgba(60, 16, 8, 0.8);
+  --line: rgba(251, 146, 60, 0.42); --muted: #fdba74; --ink: #fff7ed; --txt: #fff7ed;
+  --accent: #fb923c; --accent-rgb: 251, 146, 60;
+  --sh: 0 0 30px rgba(234, 88, 12, 0.25);
+  background: #1c0a05 !important;
+}
+body.theme-lava::before, body.theme-lava::after {
+  content: "";
+  position: fixed;
+  width: 70vmax;
+  height: 70vmax;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.55;
+}
+body.theme-lava::before { left: -25vmax; bottom: -30vmax; background: radial-gradient(circle, #f97316, transparent 65%); animation: themeLavaA 16s ease-in-out infinite alternate; }
+body.theme-lava::after { right: -25vmax; top: -30vmax; background: radial-gradient(circle, #dc2626, transparent 65%); animation: themeLavaB 20s ease-in-out infinite alternate; }
+@keyframes themeLavaA { to { transform: translate(20vmax, -25vmax) scale(1.2); } }
+@keyframes themeLavaB { to { transform: translate(-20vmax, 25vmax) scale(0.85); } }
+body.theme-lava .card { border-radius: 22px; border: 1px solid rgba(251, 146, 60, 0.4); backdrop-filter: blur(12px); }
+body.theme-lava .btn { border-radius: 14px; background: linear-gradient(135deg, #dc2626, #f97316); }
+body.theme-lava .num { background: linear-gradient(135deg, #f97316, #facc15); color: #2a0d06; border-radius: 50%; }
+body.theme-lava h1, body.theme-lava h2 { text-shadow: 0 0 16px rgba(249, 115, 22, 0.6); }
+body.theme-lava .bellWidget { border-color: rgba(251, 146, 60, 0.6); box-shadow: 0 0 22px rgba(249, 115, 22, 0.3); }
+body.theme-lava .nav-bar { background: rgba(28, 10, 5, 0.9); border-color: rgba(251, 146, 60, 0.4); }
+
+/* ============================================================
+   СЕВЕРНОЕ СИЯНИЕ
+   ============================================================ */
+body.theme-northern {
+  --b1: #031716; --b2: #0c0a24; --b3: #050a18;
+  --card: rgba(255, 255, 255, 0.08); --card-hover: rgba(255, 255, 255, 0.13);
+  --line: rgba(110, 231, 183, 0.38); --muted: #a7f3d0; --ink: #f0fdfa; --txt: #f0fdfa;
+  --accent: #6ee7b7; --accent-rgb: 110, 231, 183;
+  --sh: 0 16px 40px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(180deg, #031716, #0c0a24 70%, #050a18) !important;
+}
+body.theme-northern::before {
+  content: "";
+  position: fixed;
+  inset: -20% -40% 40% -40%;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent 15%, rgba(16, 185, 129, 0.55) 30%, rgba(45, 212, 191, 0.35) 42%, rgba(139, 92, 246, 0.45) 58%, transparent 75%);
+  filter: blur(40px);
+  animation: themeAurora 14s ease-in-out infinite alternate;
+}
+@keyframes themeAurora { 0% { transform: translateX(-12%) skewY(-6deg); } 100% { transform: translateX(12%) skewY(5deg); } }
+body.theme-northern .card {
+  border-radius: 22px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), var(--sh);
+  backdrop-filter: blur(18px) saturate(1.4);
+}
+body.theme-northern .btn { border-radius: 14px; background: linear-gradient(135deg, #10b981, #8b5cf6); }
+body.theme-northern .num { background: linear-gradient(135deg, #34d399, #a78bfa); color: #0c0a24; border-radius: 12px; }
+body.theme-northern .bellWidget { border-color: rgba(110, 231, 183, 0.5); background: rgba(255, 255, 255, 0.07); }
+body.theme-northern .nav-bar { border-radius: 22px; background: rgba(5, 10, 24, 0.75); border-color: rgba(255, 255, 255, 0.15); }
+
+/* ============================================================
+   ЧЕРТЁЖ
+   ============================================================ */
+body.theme-blueprint {
+  --b1: #0b3a75; --b2: #0b3a75; --b3: #0a3368;
+  --card: rgba(11, 58, 117, 0.55); --card-hover: rgba(14, 70, 140, 0.7);
+  --line: rgba(255, 255, 255, 0.6); --muted: #cfe3ff; --ink: #ffffff; --txt: #ffffff;
+  --accent: #ffffff; --accent-rgb: 255, 255, 255;
+  --sh: none;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.22) 1px, transparent 1px) 0 0 / 100px 100px,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.22) 1px, transparent 1px) 0 0 / 100px 100px,
+    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px) 0 0 / 20px 20px,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px) 0 0 / 20px 20px,
+    #0b3a75 !important;
+}
+body.theme-blueprint h1, body.theme-blueprint h2, body.theme-blueprint h3, body.theme-blueprint .num, body.theme-blueprint .bellWidget {
+  font-family: "Courier New", "Lucida Console", ui-monospace, monospace !important;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+body.theme-blueprint .card {
+  background: rgba(11, 58, 117, 0.6);
+  border: 1.5px solid rgba(255, 255, 255, 0.75);
+  border-radius: 2px;
+  box-shadow: 4px 4px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: none;
+}
+body.theme-blueprint .btn { border-radius: 2px; background: transparent; border: 1.5px solid #fff; color: #fff; box-shadow: none; }
+body.theme-blueprint .btn:hover { background: rgba(255, 255, 255, 0.12); }
+body.theme-blueprint .num { background: #fff; color: #0b3a75; border-radius: 0; }
+body.theme-blueprint .lesson, body.theme-blueprint .cleanNext { border: 1px dashed rgba(255, 255, 255, 0.5); border-radius: 0; background: transparent; }
+body.theme-blueprint .lesson.current { border-style: solid; border-color: #fff; background: rgba(255, 255, 255, 0.08); }
+body.theme-blueprint .bellWidget { border: 1.5px solid #fff; border-radius: 0; background: rgba(11, 58, 117, 0.8); }
+body.theme-blueprint .nav-bar { border-radius: 2px; background: rgba(10, 51, 104, 0.95); border: 1.5px solid rgba(255, 255, 255, 0.7); }
+body.theme-blueprint [class*="rounded-2xl"], body.theme-blueprint [class*="rounded-3xl"] { border-radius: 3px !important; }
+
+/* ============================================================
+   РАССВЕТ (светлая)
+   ============================================================ */
+body.theme-dawn {
+  --b1: #fde4cf; --b2: #ffd6e0; --b3: #e9d5ff;
+  --card: rgba(255, 255, 255, 0.78); --card-hover: rgba(255, 255, 255, 0.92);
+  --line: rgba(249, 115, 22, 0.28); --muted: #9a3412; --ink: #7c2d12; --txt: #431407;
+  --accent: #f97316; --accent-rgb: 249, 115, 22;
+  --sh: 0 12px 30px rgba(194, 65, 12, 0.12);
+  background:
+    radial-gradient(circle at 50% 105%, rgba(253, 186, 116, 0.9), transparent 35%),
+    linear-gradient(180deg, #fde4cf 0%, #ffd6e0 55%, #e9d5ff 100%) !important;
+}
+body.theme-dawn .card { border-radius: 22px; border: 1px solid rgba(251, 183, 155, 0.7); backdrop-filter: blur(10px); }
+body.theme-dawn .btn { border-radius: 14px; background: linear-gradient(135deg, #f97316, #ec4899); color: #fff; }
+body.theme-dawn .btn.darkBtn { background: rgba(255, 255, 255, 0.7); color: #7c2d12; }
+body.theme-dawn .num { background: linear-gradient(135deg, #fb923c, #f472b6); color: #fff; border-radius: 50%; }
+body.theme-dawn .bellWidget { border-color: #fbb79b; background: rgba(255, 255, 255, 0.7); }
+body.theme-dawn .nav-bar { border-radius: 22px; background: rgba(255, 247, 237, 0.94); }
+
+/* ============================================================
+   КОМИКС (светлая)
+   ============================================================ */
+body.theme-comic {
+  --b1: #fff7c2; --b2: #fff7c2; --b3: #fff7c2;
+  --card: #ffffff; --card-hover: #ffffff;
+  --line: #111111; --muted: #3f3f46; --ink: #111111; --txt: #111111;
+  --accent: #ef4444; --accent-rgb: 239, 68, 68;
+  --sh: 5px 5px 0 #111;
+  background: radial-gradient(rgba(245, 196, 0, 0.55) 1.5px, transparent 2px) 0 0 / 12px 12px, #fff7c2 !important;
+}
+body.theme-comic h1, body.theme-comic h2, body.theme-comic h3, body.theme-comic .btn, body.theme-comic .motivator {
+  font-family: "Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive !important;
+}
+body.theme-comic h1, body.theme-comic h2 { text-transform: uppercase; letter-spacing: 0.02em; }
+body.theme-comic .card { background: #fff; border: 3px solid #111; border-radius: 8px; box-shadow: 6px 6px 0 #111; backdrop-filter: none; }
+body.theme-comic .btn { border: 3px solid #111; border-radius: 8px; background: #ef4444; color: #fff; box-shadow: 4px 4px 0 #111; }
+body.theme-comic .btn:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 #111; }
+body.theme-comic .btn.green { background: #22c55e; }
+body.theme-comic .btn.cyan { background: #3b82f6; }
+body.theme-comic .btn.orange { background: #f59e0b; }
+body.theme-comic .btn.purple { background: #a855f7; }
+body.theme-comic .btn.darkBtn { background: #fff; color: #111; }
+body.theme-comic .num { background: #facc15; color: #111; border: 2px solid #111; border-radius: 6px; }
+body.theme-comic .lesson, body.theme-comic .cleanNext { border: 2px solid #111; border-radius: 6px; background: #fff; }
+body.theme-comic .lesson.current { background: #fef08a; }
+body.theme-comic .bellWidget { background: #fff; border: 3px solid #111; border-radius: 8px; box-shadow: 5px 5px 0 #111; transform: rotate(-0.8deg); }
+body.theme-comic .nav-bar { background: #fff; border: 3px solid #111; border-radius: 10px; box-shadow: 0 -3px 0 #111; }
+body.theme-comic .nav-bar button.active { background: #facc15; color: #111; }
+
+/* ============================================================
+   КОНФЕТКА (светлая)
+   ============================================================ */
+body.theme-candy {
+  --b1: #fce7f3; --b2: #ede9fe; --b3: #dbeafe;
+  --card: rgba(255, 255, 255, 0.82); --card-hover: rgba(255, 255, 255, 0.95);
+  --line: rgba(236, 72, 153, 0.3); --muted: #9d174d; --ink: #831843; --txt: #500724;
+  --accent: #ec4899; --accent-rgb: 236, 72, 153;
+  --sh: 0 10px 26px rgba(236, 72, 153, 0.15);
+  background:
+    radial-gradient(circle at 15% 20%, rgba(249, 168, 212, 0.6), transparent 30%),
+    radial-gradient(circle at 85% 80%, rgba(196, 181, 253, 0.6), transparent 30%),
+    linear-gradient(135deg, #fce7f3, #ede9fe 50%, #dbeafe) !important;
+}
+body.theme-candy .card { border-radius: 30px; border: 2px solid rgba(249, 168, 212, 0.7); backdrop-filter: blur(8px); }
+body.theme-candy .btn { border-radius: 999px; background: linear-gradient(135deg, #f472b6, #a78bfa); color: #fff; }
+body.theme-candy .btn.darkBtn { background: rgba(255, 255, 255, 0.8); color: #831843; }
+body.theme-candy .num { border-radius: 50%; background: linear-gradient(135deg, #f9a8d4, #c4b5fd); color: #500724; }
+body.theme-candy .lesson, body.theme-candy .cleanNext { border-radius: 20px; }
+body.theme-candy .bellWidget { border-radius: 30px; border-color: #f9a8d4; background: rgba(255, 255, 255, 0.75); }
+body.theme-candy .nav-bar { border-radius: 999px; background: rgba(255, 255, 255, 0.92); }
+body.theme-candy [class*="rounded-2xl"] { border-radius: 22px !important; }
+
+/* ============================================================
+   КАЧЕСТВО ГРАФИКИ (Настройки → Производительность)
+   ============================================================ */
+
+/* Экономия: без размытия, теней, свечения и бесконечных анимаций — для слабых телефонов */
+body.q-eco *, body.q-eco *::before, body.q-eco *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  animation-duration: 0.001s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.08s !important;
+}
+body.q-eco { background-attachment: scroll !important; }
+body.q-eco .mc-splash { display: none !important; }
+
+/* Максимум: мягкое свечение, толстое стекло и плавные переходы */
+body.q-ultra {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+body.q-ultra #root::before {
+  content: "";
+  position: fixed;
+  inset: -10%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 25%, rgba(var(--accent-rgb), 0.16), transparent 35%),
+    radial-gradient(circle at 80% 75%, rgba(var(--accent-rgb), 0.12), transparent 40%);
+  animation: qUltraGlow 18s ease-in-out infinite alternate;
+}
+@keyframes qUltraGlow { to { transform: translate(4%, -3%) scale(1.08); } }
+body.q-ultra .card {
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 0 1px rgba(var(--accent-rgb), 0.08), var(--sh);
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s ease;
+}
+body.q-ultra .card:hover { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 0 1px rgba(var(--accent-rgb), 0.25), 0 18px 44px rgba(var(--accent-rgb), 0.16); }
+body.q-ultra .btn { transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.2s ease, box-shadow 0.2s ease; }
+body.q-ultra .btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+body.q-ultra .btn:active { transform: scale(0.97); }
+body.q-ultra .nav-bar { backdrop-filter: blur(24px) saturate(1.6); -webkit-backdrop-filter: blur(24px) saturate(1.6); }
+body.q-ultra .lesson.current { box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.5), 0 0 22px rgba(var(--accent-rgb), 0.25); }
+body.q-ultra .screen-enter { animation-duration: 0.45s; }
+body.q-ultra.no-anim #root::before { animation: none; }
