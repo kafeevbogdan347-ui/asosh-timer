@@ -130,6 +130,8 @@ export interface Achievement {
   icon: string;
   unlocked: boolean;
   unlockedAt?: string | number;
+  hint?: string; // как получить
+  screen?: ScreenId; // куда вести по кнопке «Перейти»
 }
 
 export interface HomeworkItem {

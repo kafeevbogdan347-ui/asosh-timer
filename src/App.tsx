@@ -173,69 +173,64 @@ export default function App() {
     return [];
   });
 
+  const todayStr = () => new Date().toLocaleDateString('ru-RU');
   const defaultAchievements: Achievement[] = [
-    { id: 'first_launch', title: 'Первый звонок', description: 'Запустили приложение АСОШ №2', icon: '🔔', unlocked: true, unlockedAt: 'Сегодня' },
-    { id: 'theme_explorer', title: 'Дизайнер', description: 'Опробовали разные темы оформления', icon: '🎨', unlocked: false },
-    { id: 'hw_starter', title: 'Прилежный ученик', description: 'Записали первое домашнее задание', icon: '📘', unlocked: false },
-    { id: 'pomodoro_finisher', title: 'Фокус-мастер', description: 'Завершили 25-минутную сессию Помодоро', icon: '⏱️', unlocked: false },
-    { id: 'backpack_ready', title: 'Портфель собран', description: 'Собрали все учебники по чек-листу на завтра', icon: '🎒', unlocked: false },
-    { id: 'snake_master', title: 'Повелитель питонов', description: 'Набрали 20+ очков в Школьной Змейке', icon: '🐍', unlocked: false },
-    { id: 'duel_champ', title: 'Ковбой парты', description: 'Одержали победу в дуэли на парте', icon: '⚔️', unlocked: false },
-    { id: 'math_genius', title: 'Калькулятор в голове', description: 'Набрали 15+ очков в математическом спринте', icon: '🧠', unlocked: false },
-    { id: 'memory_master', title: 'Эйдетическая память', description: 'Нашли все пары карточек в игре Память', icon: '🎴', unlocked: false },
-    { id: 'reflex_god', title: 'Молниеносный', description: 'Показали скорость реакции быстрее 250 мс', icon: '⚡', unlocked: false },
-    { id: 'tictactoe_win', title: 'Гроссмейстер', description: 'Обыграли компьютер в крестики-нолики', icon: '⭕', unlocked: false },
-    { id: 'dev_unlocked', title: 'Хакер Пентагона', description: 'Открыли секретную панель разработчика', icon: '💻', unlocked: false },
-    { id: 'top_student', title: 'Отличник четверти', description: 'Рассчитали средний балл ≥ 4.60 в симуляторе', icon: '🎯', unlocked: false },
-    { id: 'social_star', title: 'Звезда школы', description: 'Оформили профиль ученика и нашли друзей в АСОШ №2', icon: '🌟', unlocked: true, unlockedAt: 'Сегодня' },
-    { id: 'focus_zen', title: 'Дзен учебы', description: 'Включили звуки концентрации или школьный метроном', icon: '🎧', unlocked: false },
+    { id: 'first_launch', title: 'Первый звонок', description: 'Запустили приложение АСОШ №2', icon: '🔔', unlocked: true, unlockedAt: todayStr(), hint: 'Даётся за первый запуск' },
+    { id: 'theme_explorer', title: 'Дизайнер', description: 'Сменили тему оформления', icon: '🎨', unlocked: false, hint: 'Опции → Тема: выбери любую другую тему', screen: 'settings' },
+    { id: 'hw_starter', title: 'Прилежный ученик', description: 'Записали первое домашнее задание', icon: '📘', unlocked: false, hint: 'ДЗ → впиши предмет и задание → Добавить', screen: 'homework' },
+    { id: 'pomodoro_finisher', title: 'Фокус-мастер', description: 'Завершили сессию Помодоро на 25 минут или дольше', icon: '⏱️', unlocked: false, hint: 'Помодоро → выбери 25 или 45 минут → Старт и дождись конца', screen: 'pomodoro' },
+    { id: 'backpack_ready', title: 'Портфель собран', description: 'Отметили все вещи в портфеле на завтра', icon: '🎒', unlocked: false, hint: 'Портфель → поставь галочку у каждой вещи', screen: 'backpack' },
+    { id: 'snake_master', title: 'Повелитель питонов', description: 'Набрали 20+ очков в Школьной Змейке', icon: '🐍', unlocked: false, hint: 'Игры → Змейка: набери 20 очков за одну игру (золотое яблоко = 5)', screen: 'games' },
+    { id: 'duel_champ', title: 'Ковбой парты', description: 'Выиграли матч в дуэли на парте', icon: '⚔️', unlocked: false, hint: 'Игры → Дуэль: игра на двоих, первым возьми 3 раунда', screen: 'games' },
+    { id: 'math_genius', title: 'Калькулятор в голове', description: 'Набрали 15+ очков в математическом спринте', icon: '🧠', unlocked: false, hint: 'Игры → Математика: отвечай без ошибок подряд, серия даёт бонус', screen: 'games' },
+    { id: 'memory_master', title: 'Эйдетическая память', description: 'Нашли все пары карточек в игре Память', icon: '🎴', unlocked: false, hint: 'Игры → Память: открой все пары до конца', screen: 'games' },
+    { id: 'reflex_god', title: 'Молниеносный', description: 'Показали скорость реакции быстрее 250 мс', icon: '⚡', unlocked: false, hint: 'Игры → Реакция: нажми быстрее 250 мс после смены цвета (не раньше!)', screen: 'games' },
+    { id: 'tictactoe_win', title: 'Гроссмейстер', description: 'Победили крестиками в крестики-нолики', icon: '⭕', unlocked: false, hint: 'Игры → Крестики-нолики: выиграй за крестики (X)', screen: 'games' },
+    { id: 'portfolio_first', title: 'Копилка побед', description: 'Добавили первую запись в портфолио', icon: '📂', unlocked: false, hint: 'Портфолио → заполни олимпиаду или конкурс → Добавить', screen: 'portfolio' },
+    { id: 'top_student', title: 'Отличник четверти', description: 'Средний балл ≥ 4.60 по предмету в калькуляторе', icon: '🎯', unlocked: false, hint: 'Средний балл → добавь по одному предмету 5+ оценок со средним от 4.60', screen: 'gpa' },
+    { id: 'social_star', title: 'Звезда школы', description: 'Оформили профиль ученика', icon: '🌟', unlocked: false, hint: 'Профиль → Редактировать → впиши никнейм и имя → Сохранить', screen: 'profile' },
+    { id: 'focus_zen', title: 'Дзен учебы', description: 'Включили звуки концентрации', icon: '🎧', unlocked: false, hint: 'Фокус-звуки → включи дождь, библиотеку или альфа-ритм', screen: 'focus' },
+    { id: 'dev_unlocked', title: 'Хакер Пентагона', description: 'Открыли секретную панель разработчика', icon: '💻', unlocked: false, hint: 'Секрет 🤫 Только для тех, кто знает пароль разработчика' },
   ];
 
+  const ACH_KEY = 'asosh_achievements_v106';
   const [achievements, setAchievements] = useState<Achievement[]>(() => {
-    const saved = localStorage.getItem('asosh_achievements_v106');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return defaultAchievements.map((def) => {
-          const match = parsed.find((p: Achievement) => p.id === def.id);
-          return match ? { ...def, ...match } : def;
-        });
-      } catch {
-        return defaultAchievements;
-      }
+    try {
+      const parsed: Achievement[] = JSON.parse(localStorage.getItem(ACH_KEY) || '[]');
+      // Из сохранённого берём только факт и дату открытия: названия и подсказки всегда свежие из кода
+      return defaultAchievements.map((def) => {
+        const match = parsed.find((p) => p.id === def.id);
+        // Раньше «Звезда школы» выдавалась сразу при установке — такие отметки снимаем
+        if (!match || (match.id === 'social_star' && match.unlockedAt === 'Сегодня')) return def;
+        return { ...def, unlocked: match.unlocked, unlockedAt: match.unlockedAt === 'Сегодня' ? def.unlockedAt : match.unlockedAt };
+      });
+    } catch {
+      return defaultAchievements;
     }
-    return defaultAchievements;
   });
+  const achievementsRef = useRef(achievements);
+  achievementsRef.current = achievements;
 
+  const saveAchievements = (next: Achievement[]) => {
+    achievementsRef.current = next;
+    setAchievements(next);
+    localStorage.setItem(ACH_KEY, JSON.stringify(next.map(({ id, unlocked, unlockedAt }) => ({ id, unlocked, unlockedAt }))));
+  };
+
+  // Звук и тост — снаружи setState, чтобы не срабатывали дважды и не вызывались во время рендера
   const handleUnlockAchievement = (id: string) => {
-    setAchievements((prev) => {
-      const match = prev.find((a) => a.id === id);
-      if (match && !match.unlocked) {
-        const next = prev.map((a) =>
-          a.id === id
-            ? { ...a, unlocked: true, unlockedAt: new Date().toLocaleTimeString().slice(0, 5) }
-            : a
-        );
-        localStorage.setItem('asosh_achievements_v106', JSON.stringify(next));
-        playSound('levelup', settings.soundProfile);
-        doVibro(settings.vibro, 30);
-        showToast(`🏆 Достижение разблокировано: «${match.title}»!`);
-        return next;
-      }
-      return prev;
-    });
+    const match = achievementsRef.current.find((a) => a.id === id);
+    if (!match || match.unlocked) return;
+    saveAchievements(
+      achievementsRef.current.map((a) => (a.id === id ? { ...a, unlocked: true, unlockedAt: todayStr() } : a))
+    );
+    playSound('levelup', settings.soundProfile);
+    doVibro(settings.vibro, 30);
+    showToast(`🏆 Достижение открыто: «${match.title}»!`);
   };
 
   const handleUnlockAllAchievements = () => {
-    setAchievements((prev) => {
-      const next = prev.map((a) => ({
-        ...a,
-        unlocked: true,
-        unlockedAt: 'Прямо сейчас',
-      }));
-      localStorage.setItem('asosh_achievements_v106', JSON.stringify(next));
-      return next;
-    });
+    saveAchievements(achievementsRef.current.map((a) => ({ ...a, unlocked: true, unlockedAt: a.unlockedAt || todayStr() })));
   };
 
   // Simulated Time Machine for Developer Tools
@@ -320,6 +315,12 @@ export default function App() {
   const [selectedDaySchedule, setSelectedDaySchedule] = useState<string>(() => getTodayDayName());
   const [isCalcOpen, setIsCalcOpen] = useState(false);
   const [isDevOpen, setIsDevOpen] = useState(false);
+  // Достижение за открытие секретной панели
+  useEffect(() => {
+    if (isDevOpen) handleUnlockAchievement('dev_unlocked');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDevOpen]);
+
   const [isDevPasswordPromptOpen, setIsDevPasswordPromptOpen] = useState(false);
 
   // Secure Dev Suite Entry: STRICTLY FORBID entering without dev master password!
@@ -534,6 +535,7 @@ export default function App() {
 
   // Save settings
   const handleUpdateSettings = (newSettings: Partial<AppSettings>) => {
+    if (newSettings.theme && newSettings.theme !== settings.theme) handleUnlockAchievement('theme_explorer');
     setSettings((prev) => {
       const next = { ...prev, ...newSettings };
       localStorage.setItem('asosh_settings_v105', JSON.stringify(next));
@@ -1026,6 +1028,7 @@ export default function App() {
     setHomeworkList(updated);
     saveHomeworks(updated);
     showToast('ДЗ добавлено!');
+    handleUnlockAchievement('hw_starter');
   };
 
   const handleToggleHomework = (id: number) => {
@@ -1176,7 +1179,13 @@ export default function App() {
       if (d.settings) handleUpdateSettings(d.settings);
       if (d.homeworkList) { setHomeworkList(d.homeworkList); localStorage.setItem('asosh_hw_v105', JSON.stringify(d.homeworkList)); }
       if (d.lessonUpdates) { setLessonUpdates(d.lessonUpdates); localStorage.setItem('asosh_updates_v105', JSON.stringify(d.lessonUpdates)); }
-      if (d.achievements) { setAchievements(d.achievements); localStorage.setItem('asosh_achievements_v106', JSON.stringify(d.achievements)); }
+      if (Array.isArray(d.achievements)) {
+        const saved = d.achievements as Achievement[];
+        saveAchievements(achievementsRef.current.map((a) => {
+          const m = saved.find((x) => x.id === a.id);
+          return m?.unlocked ? { ...a, unlocked: true, unlockedAt: m.unlockedAt } : a;
+        }));
+      }
 
       showToast('Данные успешно импортированы! ✅');
       setCurrentScreen('main');
@@ -1429,6 +1438,7 @@ export default function App() {
             lang={lang}
             soundProfile={settings.soundProfile}
             vibro={settings.vibro}
+            onUnlockAchievement={handleUnlockAchievement}
           />
         )}
 
@@ -1442,6 +1452,7 @@ export default function App() {
             soundProfile={settings.soundProfile}
             vibro={settings.vibro}
             onShowToast={showToast}
+            onUnlockAchievement={handleUnlockAchievement}
           />
         )}
 
@@ -1505,8 +1516,7 @@ export default function App() {
         {currentScreen === 'achievements' && (
           <AchievementsScreen
             achievements={achievements}
-            lang={lang}
-            onShowToast={showToast}
+            onNavigate={(s) => setCurrentScreen(s)}
           />
         )}
 
@@ -1575,6 +1585,7 @@ export default function App() {
             vibro={settings.vibro}
             onShowToast={showToast}
             onNavigateToChat={() => setCurrentScreen('chat')}
+            onUnlockAchievement={handleUnlockAchievement}
           />
         )}
 
