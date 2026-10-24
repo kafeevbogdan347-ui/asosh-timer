@@ -8,6 +8,7 @@ interface PomodoroScreenProps {
   soundProfile: SoundProfileType;
   vibro: boolean;
   onShowToast: (msg: string) => void;
+  onUnlockAchievement?: (id: string) => void;
 }
 
 export const PomodoroScreen: React.FC<PomodoroScreenProps> = ({
@@ -15,6 +16,7 @@ export const PomodoroScreen: React.FC<PomodoroScreenProps> = ({
   soundProfile,
   vibro,
   onShowToast,
+  onUnlockAchievement,
 }) => {
   const [mode, setMode] = useState<'work' | 'break'>('work');
   const [durationMin, setDurationMin] = useState(25);
@@ -62,6 +64,7 @@ export const PomodoroScreen: React.FC<PomodoroScreenProps> = ({
       const nextTomatoes = tomatoes + 1;
       saveTomatoes(nextTomatoes);
       onShowToast('🍅 Помодорка завершена! Время отдохнуть 5 минут.');
+      if (durationMin >= 25) onUnlockAchievement?.('pomodoro_finisher');
       setMode('break');
       setDurationMin(5);
       setTimeLeftSec(5 * 60);

@@ -9,12 +9,14 @@ interface BackpackScreenProps {
   lang: LanguageType;
   soundProfile: SoundProfileType;
   vibro: boolean;
+  onUnlockAchievement?: (id: string) => void;
 }
 
 export const BackpackScreen: React.FC<BackpackScreenProps> = ({
   tomorrowLessons,
   soundProfile,
   vibro,
+  onUnlockAchievement,
 }) => {
   const [items, setItems] = useState<BackpackItem[]>([]);
   const [customText, setCustomText] = useState('');
@@ -111,6 +113,7 @@ export const BackpackScreen: React.FC<BackpackScreenProps> = ({
       return it;
     });
     saveBackpack(updated);
+    if (updated.length > 0 && updated.every((it) => it.checked)) onUnlockAchievement?.('backpack_ready');
   };
 
   const addCustomItem = () => {

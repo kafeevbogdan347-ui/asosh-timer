@@ -161,9 +161,8 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
           setSnakeHighScore(next);
           localStorage.setItem('asosh_snake_highscore', String(next));
         }
-        if (next >= 20) {
-          onUnlockAchievement?.('snake_master');
-        }
+        // Внутри setState нельзя обновлять App — откладываем
+        if (next >= 20) setTimeout(() => onUnlockAchievement?.('snake_master'), 0);
         return next;
       });
 

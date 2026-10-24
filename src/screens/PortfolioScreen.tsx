@@ -99,7 +99,7 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = ({
     saveItems([newItem, ...items]);
     setTitle('');
     onShowToast('🏆 Достижение успешно добавлено в портфолио!');
-    onUnlockAchievement?.('dev_unlocked');
+    onUnlockAchievement?.('portfolio_first');
   };
 
   const handleDelete = (id: string) => {

@@ -74,6 +74,7 @@ interface ProfileScreenProps {
   vibro: boolean;
   onShowToast: (msg: string) => void;
   onNavigateToChat?: () => void;
+  onUnlockAchievement?: (id: string) => void;
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
@@ -82,6 +83,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   vibro,
   onShowToast,
   onNavigateToChat,
+  onUnlockAchievement,
 }) => {
   const [myProfile, setMyProfile] = useState<UserProfile>(() => getMyProfile());
 
@@ -160,6 +162,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     playSound('coin', soundProfile);
     doVibro(vibro, 20);
     onShowToast('✅ Профиль успешно сохранен!');
+    onUnlockAchievement?.('social_star');
   };
 
   const handleAvatarFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
