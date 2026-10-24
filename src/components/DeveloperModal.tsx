@@ -758,7 +758,7 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
                     onClick={() => {
                       onUnlockAllAchievements?.();
                       playSound('victory', soundProfile);
-                      onShowToast('🏆 Все 12 достижений разблокированы!');
+                      onShowToast('🏆 Все достижения разблокированы!');
                     }}
                   >
                     <Award className="w-4 h-4" />
