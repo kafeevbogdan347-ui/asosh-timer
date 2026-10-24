@@ -26,6 +26,13 @@ import {
   Shield,
 } from 'lucide-react';
 
+const SCHOOL_KEY = 'asosh_school';
+const SCHOOLS = [
+  { id: 'asosh1', name: 'АСОШ №1', ready: false },
+  { id: 'asosh2', name: 'АСОШ №2', ready: true },
+  { id: 'krasnooktyabrsky', name: 'Красно\u00ADоктябрьская', ready: false },
+];
+
 interface SelectClassScreenProps {
   shift: string;
   subGroup: number;
@@ -79,6 +86,25 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
       return () => clearInterval(t);
     }
   }, [lockoutSec]);
+
+  // Выбор школы. Пока классы и коды есть только в АСОШ №2, остальные школы — «скоро»
+  const [school, setSchool] = useState<string>(() => {
+    try {
+      return localStorage.getItem(SCHOOL_KEY) || 'asosh2';
+    } catch {
+      return 'asosh2';
+    }
+  });
+  const pickSchool = (id: string) => {
+    setSchool(id);
+    setSelectedParallel(null);
+    try {
+      localStorage.setItem(SCHOOL_KEY, id);
+    } catch {
+      // без хранилища просто не запоминаем
+    }
+  };
+  const currentSchool = SCHOOLS.find((s) => s.id === school) || SCHOOLS[1];
 
   const d = DICT[lang] || DICT.ru;
   const splashes = lang === 'ba' ? SPLASHES_BA : SPLASHES_RU;
@@ -191,6 +217,37 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
         )}
       </div>
 
+      {/* Выбор школы */}
+      <div className="card">
+        <h2 className="text-lg font-black mb-3 text-cyan-300">🏫 Школа</h2>
+        <div className="grid grid-cols-3 gap-2">
+          {SCHOOLS.map((sch) => (
+            <button
+              key={sch.id}
+              type="button"
+              className={`choice py-2.5 px-1.5 flex flex-col items-center gap-0.5 ${school === sch.id ? 'active' : ''}`}
+              onClick={() => pickSchool(sch.id)}
+            >
+              <span className="text-xs sm:text-sm font-black leading-tight text-center">{sch.name}</span>
+              {!sch.ready && <span className="text-[10px] opacity-60 font-bold">скоро</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {!currentSchool.ready ? (
+        <div className="card text-center space-y-2 py-6">
+          <div className="text-4xl">🚧</div>
+          <h2 className="text-lg font-black">{currentSchool.name}: классы скоро появятся</h2>
+          <p className="text-xs text-white/70 max-w-sm mx-auto">
+            Пока в АСОШ Таймере есть расписание только для АСОШ №2. Мы добавим эту школу позже.
+          </p>
+          <button type="button" className="btn darkBtn justify-center text-sm mx-auto" onClick={() => pickSchool('asosh2')}>
+            Перейти к АСОШ №2
+          </button>
+        </div>
+      ) : (
+      <>
       {/* Вход по приватному коду класса (выдаётся классным руководителем) */}
       <div className="card bg-gradient-to-br from-slate-900/90 via-cyan-950/40 to-slate-900/90 border border-cyan-400/30 shadow-lg">
         <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/10">
@@ -365,6 +422,9 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
           </div>
         )}
       </div>
+
+      </>
+      )}
 
       {/* Модальное окно ввода приватного кода для выбранного класса */}
       {targetClassToUnlock && (
