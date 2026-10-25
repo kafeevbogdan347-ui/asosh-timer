@@ -1666,6 +1666,7 @@ export default function App() {
             lang={lang}
             soundProfile={settings.soundProfile}
             vibro={settings.vibro}
+            shift={shift}
           />
         )}
 

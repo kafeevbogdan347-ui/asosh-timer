@@ -867,3 +867,23 @@ body.q-ultra .nav-bar { backdrop-filter: blur(24px) saturate(1.6); -webkit-backd
 body.q-ultra .lesson.current { box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.5), 0 0 22px rgba(var(--accent-rgb), 0.25); }
 body.q-ultra .screen-enter { animation-duration: 0.45s; }
 body.q-ultra.no-anim #root::before { animation: none; }
+
+/* ============================================================
+   ЦВЕТНЫЕ ТЁМНЫЕ ТЕМЫ: тёмно-синие панели из Tailwind (slate/indigo-950 и т.п.)
+   делаем нейтрально-тёмными, чтобы сквозь них просвечивал цвет темы
+   ============================================================ */
+body:is(.theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint)
+  :is([class*="from-slate-9"], [class*="from-cyan-9"], [class*="from-blue-9"], [class*="from-indigo-9"], [class*="from-purple-9"], [class*="from-violet-9"], [class*="from-sky-9"]) {
+  background: rgba(0, 0, 0, 0.28) !important;
+  background-image: none !important;
+}
+body:is(.theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint)
+  :is([class*="bg-slate-9"], [class*="bg-indigo-9"], [class*="bg-blue-9"]) {
+  background-color: rgba(0, 0, 0, 0.32) !important;
+}
+/* Активные кнопки и вкладки (bg-cyan-400/500) — в акцентный цвет темы; акценты у этих тем светлые, поэтому текст тёмный */
+body:is(.theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint)
+  :is([class~="bg-cyan-400"], [class~="bg-cyan-500"]) {
+  background-color: var(--accent) !important;
+  color: #0b1020 !important;
+}

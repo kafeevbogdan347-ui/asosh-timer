@@ -842,8 +842,8 @@ body.device-pc .nav-bar {
 /* MINECRAFT SPLASH */
 .mc-splash {
   position: absolute;
-  top: 14px;
-  right: -6px;
+  top: -8px;
+  right: 2px;
   color: #ffff00;
   font-family: 'Comic Sans MS', sans-serif, system-ui;
   font-size: 13px;
@@ -853,7 +853,7 @@ body.device-pc .nav-bar {
   animation: pulseMC 0.6s infinite alternate;
   z-index: 10;
   pointer-events: none;
-  max-width: 220px;
+  max-width: 170px;
   text-align: center;
 }
 
@@ -1031,6 +1031,11 @@ body.hide-mot .motivator { display: none !important; }
     transition: border-color 0.2s;
     box-sizing: border-box;
   }
+  /* Текстовые поля по умолчанию на всю ширину; w-*, flex-1 и т.п. по-прежнему переопределяют */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  select, textarea {
+    width: 100%;
+  }
 }
 
 body.theme-light input, body.theme-light select, body.theme-light textarea {
@@ -1047,12 +1052,15 @@ input:focus, select:focus, textarea:focus {
   border-color: var(--accent);
 }
 
-label {
-  font-weight: 800;
-  font-size: 13px;
-  color: var(--muted);
-  display: block;
-  margin: 8px 0 4px;
+/* В слое base, иначе display: block перебивает классы flex и чекбоксы уезжают под текст */
+@layer base {
+  label {
+    font-weight: 800;
+    font-size: 13px;
+    color: var(--muted);
+    display: block;
+    margin: 8px 0 4px;
+  }
 }
 
 .nav-bar {
