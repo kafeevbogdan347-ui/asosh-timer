@@ -10,6 +10,7 @@ interface BellsScreenProps {
   lang?: LanguageType;
   soundProfile?: SoundProfileType;
   vibro?: boolean;
+  shift?: string;
 }
 
 // 35-min shortened schedule for holidays/events
@@ -38,8 +39,10 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
   lang = 'ru',
   soundProfile = '1' as SoundProfileType,
   vibro = true,
+  shift = '1',
 }) => {
-  const [selectedShift, setSelectedShift] = useState<'1' | '2' | 'short1' | 'short2'>('1');
+  // По умолчанию открываем смену своего класса
+  const [selectedShift, setSelectedShift] = useState<'1' | '2' | 'short1' | 'short2'>(shift === '2' ? '2' : '1');
   const [activePlayingBell, setActivePlayingBell] = useState<string | null>(null);
   const [currentTimeStr, setCurrentTimeStr] = useState<string>('');
   const [activeLessonInfo, setActiveLessonInfo] = useState<{
@@ -56,11 +59,13 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
     progress: 0,
   });
 
+  const isFriday = new Date().getDay() === 5;
+
   // Get active schedule array
   const getCurrentSchedule = (): [string, string][] => {
     switch (selectedShift) {
       case '1': return B1;
-      case '2': return B2;
+      case '2': return isFriday ? B2F : B2; // по пятницам 2-я смена начинается в 13:00
       case 'short1': return B_SHORT_1;
       case 'short2': return B_SHORT_2;
       default: return B1;
@@ -280,7 +285,7 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
             }`}
           >
             <Moon className="w-3.5 h-3.5" />
-            <span>2-я Смена (13:45)</span>
+            <span>2-я Смена ({isFriday ? '13:00' : '13:45'})</span>
           </button>
 
           <button

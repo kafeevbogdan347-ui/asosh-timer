@@ -294,9 +294,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   </span>
                 </div>
 
-                <p className="text-xs font-medium text-cyan-200/90 italic">
-                  «{myProfile.status}»
-                </p>
+                {myProfile.status && (
+                  <p className="text-xs font-medium text-cyan-200/90 italic">
+                    «{myProfile.status}»
+                  </p>
+                )}
 
                 {myProfile.bio && (
                   <p className="sensitive-data text-[11px] text-white/70 pt-1 leading-relaxed">
@@ -769,7 +771,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </div>
 
                 <div className="text-xs text-white/60 font-mono">@{selectedUserModal.username}</div>
-                <p className="text-xs text-cyan-200 italic pt-1">«{selectedUserModal.status}»</p>
+                {selectedUserModal.status && <p className="text-xs text-cyan-200 italic pt-1">«{selectedUserModal.status}»</p>}
                 {selectedUserModal.bio && (
                   <p className="text-[11px] text-white/70 pt-1 leading-relaxed">
                     {selectedUserModal.bio}

@@ -19,8 +19,8 @@ export const AchievementsScreen: React.FC<AchievementsScreenProps> = ({ achievem
   return (
     <div className="card screen-enter space-y-4">
       {/* Header */}
-      <div className="flex justify-between items-start">
-        <div>
+      <div className="flex justify-between items-start gap-3">
+        <div className="min-w-0">
           <h2 className="text-xl font-black text-amber-300 flex items-center gap-2">
             <Trophy className="w-6 h-6 text-amber-400" />
             <span>Школьные Достижения</span>

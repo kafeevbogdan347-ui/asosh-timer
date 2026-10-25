@@ -117,7 +117,7 @@ export const BoardScreen: React.FC<BoardScreenProps> = ({ cls, shift, time, stat
                   className={`lesson !m-0 text-base sm:text-xl ${i === status.currentIdx ? 'current' : ''}`}
                 >
                   <div className="num">{i + 1}</div>
-                  <div className="flex justify-between gap-2 min-w-0">
+                  <div className="flex flex-wrap justify-between gap-x-2 min-w-0">
                     <b className="truncate">{sub}</b>
                     <span className="text-white/60 tabular-nums shrink-0">
                       {bells[i] ? `${bells[i][0]}–${bells[i][1]}` : ''} {room ? `· ${room}` : ''}

@@ -64,6 +64,7 @@ import {
   wipeConfidentialData,
 } from '../utils/privacy';
 import { THEMES } from '../data/themes';
+import { useOnline } from '../utils/useOnline';
 import QRCode from 'qrcode';
 import { createTransfer } from '../services/transfer';
 import { isNativeApp, requestNotificationPermission } from '../services/bellNotifications';
@@ -128,6 +129,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [activeSection, setActiveSection] = useState<SettingsSectionId>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const quality = settings.quality ?? (settings.perfLow ? 'eco' : 'normal');
+  const online = useOnline();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Sound Lab state
@@ -297,6 +299,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             </div>
           </div>
         </div>
+
+        {!online && (
+          <div className="p-2.5 bg-amber-950/70 border border-amber-500/40 rounded-xl text-xs text-amber-200">
+            📴 <b>Ты офлайн — нет интернета.</b> Расписание, таймер, ДЗ и игры работают. Чат, общее ДЗ и замены обновятся, когда появится сеть.
+          </div>
+        )}
 
         {/* СТРОКА БЫСТРОГО ЖИВОГО ПОИСКА */}
         <div className="relative">
