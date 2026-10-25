@@ -36,6 +36,27 @@
         }
       }
     },
+    "asosh_stats": {
+      ".read": "auth != null",
+      "$day": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "$day.length === 10 && newData.hasChildren(['p', 't']) && newData.child('p').isString() && newData.child('p').val().length <= 10 && newData.child('t').isNumber()",
+          "os": { ".validate": "newData.isString() && newData.val().length <= 20" },
+          "br": { ".validate": "newData.isString() && newData.val().length <= 20" },
+          "q": { ".validate": "newData.isString() && newData.val().length <= 10" },
+          "sw": { ".validate": "newData.isNumber()" },
+          "sh": { ".validate": "newData.isNumber()" },
+          "dpr": { ".validate": "newData.isNumber()" },
+          "mem": { ".validate": "newData.isNumber()" },
+          "cpu": { ".validate": "newData.isNumber()" },
+          "pwa": { ".validate": "newData.isBoolean()" },
+          "p": { ".validate": true },
+          "t": { ".validate": true },
+          "$other": { ".validate": false }
+        }
+      }
+    },
     "asosh_transfer": {
       "$id": {
         ".read": "auth != null",
