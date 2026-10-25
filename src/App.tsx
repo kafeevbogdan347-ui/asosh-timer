@@ -188,7 +188,7 @@ export default function App() {
     { id: 'reflex_god', title: 'Молниеносный', description: 'Показали скорость реакции быстрее 250 мс', icon: '⚡', unlocked: false, hint: 'Игры → Реакция: нажми быстрее 250 мс после смены цвета (не раньше!)', screen: 'games' },
     { id: 'tictactoe_win', title: 'Гроссмейстер', description: 'Победили крестиками в крестики-нолики', icon: '⭕', unlocked: false, hint: 'Игры → Крестики-нолики: выиграй за крестики (X)', screen: 'games' },
     { id: 'portfolio_first', title: 'Копилка побед', description: 'Добавили первую запись в портфолио', icon: '📂', unlocked: false, hint: 'Портфолио → заполни олимпиаду или конкурс → Добавить', screen: 'portfolio' },
-    { id: 'top_student', title: 'Отличник четверти', description: 'Средний балл ≥ 4.60 по предмету в калькуляторе', icon: '🎯', unlocked: false, hint: 'Средний балл → добавь по одному предмету 5+ оценок со средним от 4.60', screen: 'gpa' },
+    { id: 'top_student', title: 'Отличник четверти', description: 'Средний балл ≥ 4.60 по предмету в калькуляторе', icon: '🎯', unlocked: false, hint: 'Калькулятор → Оценки → добавь по одному предмету 5+ оценок со средним от 4.60', screen: 'gpa' },
     { id: 'social_star', title: 'Звезда школы', description: 'Оформили профиль ученика', icon: '🌟', unlocked: false, hint: 'Профиль → Редактировать → впиши никнейм и имя → Сохранить', screen: 'profile' },
     { id: 'focus_zen', title: 'Дзен учебы', description: 'Включили звуки концентрации', icon: '🎧', unlocked: false, hint: 'Фокус-звуки → включи дождь, библиотеку или альфа-ритм', screen: 'focus' },
     { id: 'dev_unlocked', title: 'Хакер Пентагона', description: 'Открыли секретную панель разработчика', icon: '💻', unlocked: false, hint: 'Секрет 🤫 Только для тех, кто знает пароль разработчика' },
@@ -1246,6 +1246,10 @@ export default function App() {
         onClose={() => setIsCalcOpen(false)}
         soundProfile={settings.soundProfile}
         vibro={settings.vibro}
+        onOpenGrades={() => {
+          setIsCalcOpen(false);
+          setCurrentScreen('gpa');
+        }}
       />
 
       {/* Secret Developer Modal */}
@@ -1530,6 +1534,7 @@ export default function App() {
             vibro={settings.vibro}
             onShowToast={showToast}
             onUnlockAchievement={handleUnlockAchievement}
+            onOpenCalc={() => setIsCalcOpen(true)}
           />
         )}
 
