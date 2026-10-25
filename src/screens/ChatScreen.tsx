@@ -30,6 +30,7 @@ import {
 import { getMyProfile } from '../services/userService';
 import { playSound, doVibro } from '../utils/audio';
 import { useOnline } from '../utils/useOnline';
+import { PRIVACY_POLICY_URL } from '../utils/privacy';
 
 interface ChatScreenProps {
   cls: string;
@@ -507,15 +508,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           </button>
         </div>
 
-        {/* 152-ФЗ РФ Privacy Info Button */}
+        {/* Кнопка «Приватность»: где хранятся сообщения */}
         <button
           type="button"
           onClick={() => setIsPrivacyModalOpen(true)}
           className="px-2.5 py-1 rounded-xl bg-white/8 hover:bg-white/15 text-cyan-300 border border-cyan-400/20 flex items-center gap-1 text-[11px] font-bold shrink-0 cursor-pointer transition-colors"
-          title="Политика конфиденциальности чата (152-ФЗ)"
+          title="Какие данные хранит чат"
         >
           <Shield className="w-3 h-3 text-cyan-400" />
-          <span>152-ФЗ РФ</span>
+          <span>Приватность</span>
         </button>
       </div>
 
@@ -626,14 +627,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           </div>
         </div>
       )}
-      {/* 152-ФЗ РФ & Privacy Center Modal */}
+      {/* Окно «Приватность чата» */}
       {isPrivacyModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-cyan-400/40 rounded-3xl p-5 w-full max-w-md shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-cyan-400" />
-                <b className="text-base text-cyan-200">Конфиденциальность 152-ФЗ</b>
+                <b className="text-base text-cyan-200">Приватность чата</b>
               </div>
               <button
                 type="button"
@@ -650,12 +651,21 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <div className="space-y-3 text-xs text-white/80 leading-relaxed">
               <div className="p-3 bg-white/5 rounded-2xl border border-white/10 space-y-2">
                 <div className="flex items-center gap-2 text-cyan-300 font-bold">
-                  <span>🇷🇺</span>
-                  <span>Соответствие законодательству РФ</span>
+                  <span>☁️</span>
+                  <span>Где хранятся сообщения</span>
                 </div>
                 <p>
-                  Чат МОУ «АСОШ №2» спроектирован с соблюдением требований Федерального закона № 152-ФЗ «О персональных данных».
+                  Сообщения чата хранятся в облачной базе Firebase (сервис Google), а не только на телефоне. Их видят ученики, у которых открыт этот чат.
+                  Не пиши в чат номер телефона, адрес и пароли.
                 </p>
+                <a
+                  href={PRIVACY_POLICY_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block text-cyan-300 font-bold underline underline-offset-2"
+                >
+                  Политика конфиденциальности →
+                </a>
               </div>
 
               <div className="space-y-2">
@@ -674,7 +684,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   <span>Изоляция комнат:</span>
                 </div>
                 <p className="text-white/70 pl-5">
-                  Чат вашего класса доступен только ученикам вашего класса, подтвердившим персональный код классного руководителя.
+                  В приложении чат класса открывается только по коду, который выдаёт классный руководитель.
                 </p>
               </div>
 

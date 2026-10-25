@@ -146,7 +146,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
             📊 {quarterProgress.name}
             {!quarterProgress.isBreak && ` (${quarterProgress.percent}%)`}
           </span>
-          <span className="text-white/80">До {quarterProgress.breakName}: {quarterProgress.daysLeft} дн.</span>
+          <span className="text-white/80">{quarterProgress.breakName}: через {quarterProgress.daysLeft} дн.</span>
         </div>
         <div className="w-full bg-white/10 h-2.5 rounded-full overflow-hidden border border-white/15">
           <div

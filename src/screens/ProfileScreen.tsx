@@ -329,7 +329,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </div>
 
             {/* Stats Row */}
-            <div className="grid grid-cols-4 gap-2 mt-4 pt-3 border-t border-white/10 text-center">
+            <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-white/10 text-center">
               <div className="p-2 bg-white/5 rounded-xl border border-white/8">
                 <span className="sensitive-data block text-base font-black text-amber-300 font-mono">
                   {isHideGradesInProfile() ? '🔒' : realGpa}
@@ -341,18 +341,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   {myProfile.certificates?.length || 0}
                 </span>
                 <span className="text-[9px] text-white/60 uppercase">Грамот</span>
-              </div>
-              <div className="p-2 bg-white/5 rounded-xl border border-white/8">
-                <span className="block text-base font-black text-emerald-300 font-mono">
-                  {myProfile.friends?.length || 0}
-                </span>
-                <span className="text-[9px] text-white/60 uppercase">Друзей</span>
-              </div>
-              <div className="p-2 bg-white/5 rounded-xl border border-white/8">
-                <span className="block text-base font-black text-purple-300 font-mono">
-                  {myProfile.gamesScore || 0}
-                </span>
-                <span className="text-[9px] text-white/60 uppercase">Очков Игр</span>
               </div>
             </div>
           </div>

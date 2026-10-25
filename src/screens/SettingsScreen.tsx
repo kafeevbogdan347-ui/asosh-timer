@@ -62,6 +62,7 @@ import {
   isHideGradesInProfile,
   setHideGradesInProfile,
   wipeConfidentialData,
+  PRIVACY_POLICY_URL,
 } from '../utils/privacy';
 import { THEMES } from '../data/themes';
 import { useOnline } from '../utils/useOnline';
@@ -832,13 +833,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       ======================================================== */}
       {isSectionVisible(
         'privacy',
-        'приватность безопасность пин пароль 152 фз анти палево шпион скрыть оценки'
+        'приватность безопасность пин пароль политика конфиденциальности данные анти палево шпион скрыть оценки'
       ) && (
         <div className="p-4 bg-gradient-to-br from-slate-900/90 via-indigo-950/40 to-slate-900/90 rounded-3xl border border-indigo-400/35 space-y-3.5 shadow-lg">
           <div className="flex items-center justify-between">
             <b className="text-sm text-indigo-200 flex items-center gap-2 font-black">
               <ShieldCheck className="w-4 h-4 text-indigo-400" />
-              <span>5. Конфиденциальность и Безопасность (152-ФЗ РФ)</span>
+              <span>5. Конфиденциальность и безопасность</span>
             </b>
             <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 text-[10px] font-mono px-2 py-0.5 rounded-full font-bold">
               LOCAL-FIRST
@@ -846,7 +847,15 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </div>
 
           <p className="text-xs text-white/80 leading-relaxed">
-            Все ваши оценки, ФИО и заметки хранятся локально на вашем устройстве. Защитите экран от посторонних глаз и одноклассников:
+            Оценки, имя и заметки хранятся только на этом устройстве. В интернет уходят лишь сообщения чата и то, чем ты делишься с классом (ДЗ и замены).{' '}
+            <a
+              href={PRIVACY_POLICY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-indigo-300 font-bold underline underline-offset-2"
+            >
+              Политика конфиденциальности
+            </a>
           </p>
 
           {/* PIN-код приложения */}
