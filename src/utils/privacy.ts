@@ -3,6 +3,9 @@
 
 import { sha256Hex } from './sha256';
 
+// Страница политики конфиденциальности на сайте приложения
+export const PRIVACY_POLICY_URL = 'https://kafeevbogdan347-ui.github.io/asosh-timer-site/privacy.html';
+
 const PIN_STORAGE_KEY = 'asosh_privacy_pin_v1';
 const PIN_ENABLED_KEY = 'asosh_privacy_pin_enabled';
 const PRIVACY_BLUR_KEY = 'asosh_privacy_blur_mode';
