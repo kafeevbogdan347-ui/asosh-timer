@@ -268,7 +268,7 @@ export const DevPasswordModal: React.FC<DevPasswordModalProps> = ({
             {showHint && (
               <div className="mt-2 p-2.5 bg-white/5 border border-white/10 rounded-xl text-[11px] text-white/70 space-y-1 animate-fade-in">
                 <p>
-                  🔑 Пароль разработчика задаётся администратором сервера (переменная DEV_PASSWORD).
+                  🔑 Пароль разработчика задаётся при сборке приложения (переменная DEV_PASSWORD).
                 </p>
               </div>
             )}

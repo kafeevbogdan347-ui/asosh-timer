@@ -326,9 +326,9 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
                 <div className="p-3 bg-black/40 border border-white/10 rounded-xl text-xs text-white/70 leading-relaxed">
                   <span className="flex items-center gap-1.5 text-white font-bold mb-1">
                     <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Мастер-пароль хранится на сервере</span>
+                    <span>Где задаётся мастер-пароль</span>
                   </span>
-                  Пароль задаётся переменной <code className="text-cyan-300 font-mono">DEV_PASSWORD</code> в файле .env на сервере и проверяется там же. Чтобы сменить пароль, измените переменную и перезапустите сервер.
+                  Пароль задаётся переменной <code className="text-cyan-300 font-mono">DEV_PASSWORD</code> в секрете сборки (APP_ENV на GitHub). В приложение попадает только его хеш, сам пароль там не хранится. Чтобы сменить пароль, измените переменную и запустите сборку заново.
                 </div>
 
                 {/* Lock and Exit button */}
