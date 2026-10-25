@@ -9,6 +9,7 @@ interface CalcModalProps {
   onClose: () => void;
   soundProfile: SoundProfileType;
   vibro: boolean;
+  onOpenGrades?: () => void; // переключиться на калькулятор оценок
 }
 
 export const CalcModal: React.FC<CalcModalProps> = ({
@@ -16,6 +17,7 @@ export const CalcModal: React.FC<CalcModalProps> = ({
   onClose,
   soundProfile,
   vibro,
+  onOpenGrades,
 }) => {
   const [expr, setExpr] = useState('');
   const [display, setDisplay] = useState('0');
@@ -107,6 +109,16 @@ export const CalcModal: React.FC<CalcModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Один калькулятор — два режима */}
+        {onOpenGrades && (
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <button type="button" className="choice active !py-2 text-xs font-black">🧮 Обычный</button>
+            <button type="button" className="choice !py-2 text-xs font-black" onClick={onOpenGrades}>
+              🎯 Оценки
+            </button>
+          </div>
+        )}
 
         {showHistory && (
           <div className="mb-3 max-h-32 overflow-y-auto bg-black/40 p-2.5 rounded-2xl border border-white/10 text-xs text-white/80 space-y-1">
