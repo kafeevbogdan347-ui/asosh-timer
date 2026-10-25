@@ -21,6 +21,7 @@ import {
 } from './data/constants';
 import { getBaseLessonsForClass, hasOfficialSchedule } from './data/schoolSchedule';
 import { migrateTheme } from './data/themes';
+import { reportVisit } from './services/stats';
 import { playSound, doVibro } from './utils/audio';
 
 // Components
@@ -506,6 +507,15 @@ export default function App() {
     return () => mq.removeEventListener('change', onChange);
   }, []);
   const effectiveTheme = settings.themeAuto ? (systemDark ? 'dark' : 'minimal') : settings.theme;
+
+  // Анонимная статистика устройств: раз в день, через несколько секунд после запуска
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      reportVisit(settings.quality ?? (settings.perfLow ? 'eco' : 'normal'));
+    }, 5000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Sync body classes & font size
   useEffect(() => {
