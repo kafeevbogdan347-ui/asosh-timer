@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { APP_VERSION } from '../data/constants';
+import { StatsPanel } from './StatsPanel';
 import {
   Volume2,
   RefreshCw,
@@ -74,7 +75,7 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
   fpsOverlayActive,
   onToggleFpsOverlay,
 }) => {
-  const [tab, setTab] = useState<'security' | 'presentation' | 'apk' | 'mobile' | 'time' | 'data' | 'audio' | 'system'>('security');
+  const [tab, setTab] = useState<'security' | 'stats' | 'presentation' | 'apk' | 'mobile' | 'time' | 'data' | 'audio' | 'system'>('security');
   const [stressResult, setStressResult] = useState<string | null>(null);
   const [simBattery, setSimBattery] = useState(88);
   const [simNetwork, setSimNetwork] = useState<'online' | 'offline' | 'slow3g'>('online');
@@ -269,6 +270,7 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
         <div className="grid grid-cols-3 sm:grid-cols-9 gap-1 my-3 bg-slate-950/80 p-1.5 rounded-2xl border border-white/10">
           {[
             { id: 'security', label: '🔒 Пароль Dev', icon: Lock },
+            { id: 'stats', label: '📈 Статистика', icon: Activity },
             { id: 'presentation', label: '🎓 Презентация', icon: Presentation },
             { id: 'apk', label: '🤖 APK Сборка', icon: Smartphone },
             { id: 'mobile', label: '📱 Телефон', icon: Activity },
@@ -349,6 +351,8 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
               </div>
             </div>
           )}
+
+          {tab === 'stats' && <StatsPanel />}
 
           {/* 0. PRESENTATION TAB */}
           {tab === 'presentation' && (
