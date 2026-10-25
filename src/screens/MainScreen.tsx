@@ -38,7 +38,6 @@ const QUICK_GROUPS: { title: string; items: { icon: string; label: string; scree
     items: [
       { icon: '🔔', label: 'Звонки', screen: 'bells' },
       { icon: '🔮', label: 'Завтра', screen: 'tomorrow' },
-      { icon: '🎯', label: 'Средний балл', screen: 'gpa' },
       { icon: '📊', label: 'Четверть', screen: 'quarter' },
       { icon: '🗓️', label: 'Календарь', screen: 'calendar' },
       { icon: '📐', label: 'Формулы', screen: 'formulas' },

@@ -20,6 +20,7 @@ interface GpaCalculatorScreenProps {
   vibro: boolean;
   onShowToast: (msg: string) => void;
   onUnlockAchievement?: (id: string) => void;
+  onOpenCalc?: () => void; // переключиться на обычный калькулятор
 }
 
 interface SubjectGrades {
@@ -35,6 +36,7 @@ export const GpaCalculatorScreen: React.FC<GpaCalculatorScreenProps> = ({
   vibro,
   onShowToast,
   onUnlockAchievement,
+  onOpenCalc,
 }) => {
   // Предметы без оценок: ученик вводит свои, демо-оценок не показываем
   const defaultSubjects: SubjectGrades[] = [
@@ -187,11 +189,21 @@ export const GpaCalculatorScreen: React.FC<GpaCalculatorScreenProps> = ({
 
   return (
     <div className="card screen-enter space-y-4">
+      {/* Один калькулятор — два режима */}
+      {onOpenCalc && (
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" className="choice !py-2 text-xs font-black" onClick={onOpenCalc}>
+            🧮 Обычный
+          </button>
+          <button type="button" className="choice active !py-2 text-xs font-black">🎯 Оценки</button>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2">
           <span>🎯</span>
-          <span>Калькулятор Среднего Балла & Симулятор Четверти</span>
+          <span>Калькулятор оценок</span>
         </h2>
         <p className="text-xs text-white/70">
           Точный расчет среднего балла и прогноз: сколько пятерок нужно до желаемой оценки в четверти
