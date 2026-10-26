@@ -1157,13 +1157,18 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 className="btn cyan w-full text-xs justify-center py-2.5 font-bold cursor-pointer disabled:opacity-60"
                 onClick={async () => {
                   setTransferBusy(true);
-                  const res = await createTransfer();
-                  setTransferBusy(false);
-                  if ('error' in res) {
-                    onShowToast(res.error);
-                    return;
+                  try {
+                    const res = await createTransfer();
+                    if ('error' in res) {
+                      onShowToast(res.error);
+                      return;
+                    }
+                    setTransferQr(await QRCode.toDataURL(res.link, { margin: 1, width: 448, errorCorrectionLevel: 'M' }));
+                  } catch {
+                    onShowToast('Этот браузер не умеет переносить по QR. Используй резервную копию файлом.');
+                  } finally {
+                    setTransferBusy(false);
                   }
-                  setTransferQr(await QRCode.toDataURL(res.link, { margin: 1, width: 448, errorCorrectionLevel: 'M' }));
                 }}
               >
                 {transferBusy ? 'Готовлю…' : 'Показать QR-код'}
