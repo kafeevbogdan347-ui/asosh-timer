@@ -872,18 +872,54 @@ body.q-ultra.no-anim #root::before { animation: none; }
    ЦВЕТНЫЕ ТЁМНЫЕ ТЕМЫ: тёмно-синие панели из Tailwind (slate/indigo-950 и т.п.)
    делаем нейтрально-тёмными, чтобы сквозь них просвечивал цвет темы
    ============================================================ */
-body:is(.theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint)
+body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint)
   :is([class*="from-slate-9"], [class*="from-cyan-9"], [class*="from-blue-9"], [class*="from-indigo-9"], [class*="from-purple-9"], [class*="from-violet-9"], [class*="from-sky-9"]) {
   background: rgba(0, 0, 0, 0.28) !important;
   background-image: none !important;
 }
-body:is(.theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint)
+body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint)
   :is([class*="bg-slate-9"], [class*="bg-indigo-9"], [class*="bg-blue-9"]) {
   background-color: rgba(0, 0, 0, 0.32) !important;
 }
 /* Активные кнопки и вкладки (bg-cyan-400/500) — в акцентный цвет темы; акценты у этих тем светлые, поэтому текст тёмный */
-body:is(.theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint)
+body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint)
   :is([class~="bg-cyan-400"], [class~="bg-cyan-500"]) {
   background-color: var(--accent) !important;
   color: #0b1020 !important;
+}
+
+/* ============================================================
+   ТЁМНАЯ (базовая): графит вместо сплошного синего —
+   бирюзовый акцент, мягкий фиолетовый отсвет и янтарные номера уроков
+   ============================================================ */
+body.theme-dark {
+  --b1: #0b0d12; --b2: #0f1219; --b3: #12151d;
+  --card: rgba(255, 255, 255, 0.045); --card-hover: rgba(255, 255, 255, 0.07);
+  --line: rgba(255, 255, 255, 0.09); --muted: #9aa3b2;
+  --ink: #e8ebf1; --txt: #f5f7fa; --accent: #2dd4bf; --accent-rgb: 45, 212, 191;
+  --sh: 0 18px 40px rgba(0, 0, 0, 0.45);
+  background:
+    radial-gradient(ellipse at 12% -5%, rgba(45, 212, 191, 0.13), transparent 45%),
+    radial-gradient(ellipse at 95% 105%, rgba(139, 92, 246, 0.13), transparent 50%),
+    radial-gradient(ellipse at 90% 10%, rgba(251, 191, 36, 0.05), transparent 35%),
+    #0b0d12 !important;
+}
+body.theme-dark .card { border-color: rgba(255, 255, 255, 0.08); }
+body.theme-dark .btn { background: linear-gradient(135deg, #14b8a6, #2dd4bf); color: #04201c; }
+body.theme-dark .btn.darkBtn { background: rgba(255, 255, 255, 0.06); color: var(--txt); }
+body.theme-dark .num { background: rgba(255, 255, 255, 0.07); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
+body.theme-dark .lesson { background: rgba(255, 255, 255, 0.04); }
+body.theme-dark .lesson.current .num { background: #fbbf24; color: #1c1503; border-color: #fbbf24; }
+body.theme-dark .bellWidget {
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.14), rgba(139, 92, 246, 0.12));
+  border-color: rgba(45, 212, 191, 0.45);
+}
+body.theme-dark .nav-bar { background: rgba(14, 16, 22, 0.9); border-color: rgba(255, 255, 255, 0.08); }
+/* Заголовки и подписи, жёстко покрашенные в голубой (Tailwind cyan/sky/blue), — в бирюзу темы */
+body.theme-dark :is([class*="text-cyan-2"], [class*="text-cyan-3"], [class*="text-sky-2"], [class*="text-sky-3"], [class*="text-blue-2"], [class*="text-blue-3"]) { color: #5eead4 !important; }
+body.theme-dark :is([class*="text-cyan-4"], [class*="text-sky-4"], [class*="text-blue-4"]) { color: #2dd4bf !important; }
+body.theme-dark :is([class*="border-cyan-4"], [class*="border-cyan-5"]) { border-color: rgba(45, 212, 191, 0.35) !important; }
+/* Яркие голубые градиенты (кнопки, полосы прогресса) — тоже в бирюзу */
+body.theme-dark :is([class*="from-cyan-4"], [class*="from-cyan-5"], [class*="from-sky-4"], [class*="from-sky-5"], [class*="from-blue-4"], [class*="from-blue-5"]) {
+  background-image: linear-gradient(135deg, #14b8a6, #2dd4bf) !important;
 }
