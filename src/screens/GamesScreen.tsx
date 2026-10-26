@@ -33,7 +33,6 @@ import {
   Plane,
   Rocket,
 } from 'lucide-react';
-import { FriendGamePromo } from '../components/FriendGamePromo';
 
 interface GamesScreenProps {
   lang: LanguageType;
@@ -51,8 +50,7 @@ type ActiveGameId =
   | 'memory'
   | 'reaction'
   | 'flappy'
-  | 'plane'
-  | 'detective';
+  | 'plane';
 
 export const GamesScreen: React.FC<GamesScreenProps> = ({
   lang,
@@ -1215,9 +1213,8 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
       </div>
 
       {/* Game Selector Tabs */}
-      <div className="grid grid-cols-3 sm:grid-cols-9 gap-1.5 bg-slate-950/80 p-1.5 rounded-2xl border border-white/10">
+      <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 bg-slate-950/80 p-1.5 rounded-2xl border border-white/10">
         {[
-          { id: 'detective', label: '🕵️ Detective AI', highlight: true },
           { id: 'snake', label: '🐍 Змейка' },
           { id: 'flappy', label: '🚀 Флаппи' },
           { id: 'plane', label: '✈️ Самолётик' },
@@ -1236,11 +1233,7 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
             }}
             className={`py-2 px-1 text-[11px] font-bold rounded-xl transition-all text-center truncate ${
               activeGame === g.id
-                ? g.highlight
-                  ? 'bg-amber-500 text-slate-950 font-black shadow-lg ring-2 ring-amber-400/50'
-                  : 'bg-cyan-500 text-slate-950 font-extrabold shadow-md'
-                : g.highlight
-                ? 'text-amber-300 bg-amber-500/10 border border-amber-400/30 hover:bg-amber-500/20'
+                ? 'bg-cyan-500 text-slate-950 font-extrabold shadow-md'
                 : 'text-white/70 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -1248,48 +1241,6 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
           </button>
         ))}
       </div>
-
-      {/* Quick compact banner when playing other games */}
-      {activeGame !== 'detective' && (
-        <FriendGamePromo compact={true} onShowToast={onShowToast} />
-      )}
-
-      {/* ========================================= */}
-      {/* FEATURED: FRIEND'S GAME - DETECTIVE AI */}
-      {/* ========================================= */}
-      {activeGame === 'detective' && (
-        <div className="space-y-4">
-          <FriendGamePromo onShowToast={onShowToast} />
-
-          {/* Detailed Game Info & Guide */}
-          <div className="p-4 bg-slate-900/80 rounded-3xl border border-amber-400/30 space-y-3">
-            <h4 className="text-sm font-black text-amber-300 flex items-center gap-2">
-              <span>🔎</span>
-              <span>Об игре Detective AI Game</span>
-            </h4>
-            <p className="text-xs text-white/80 leading-relaxed">
-              «Detective AI Game» — захватывающий интерактивный инди-квест, созданный Дмитрием Паджетом. В игре вам предстоит примерить на себя роль настоящего детектива. С помощью искусственного интеллекта игра адаптируется под ваши вопросы и ответы подозреваемых, создавая неповторимый детективный опыт в каждом расследовании.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-xs">
-              <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-1">
-                <b className="text-amber-300 block">💡 Как начать играть:</b>
-                <span className="text-white/70">
-                  1. Нажмите кнопку «Играть на itch.io» выше.<br />
-                  2. Игра откроется прямо в вашем браузере (или доступна для ПК).<br />
-                  3. Опрашивайте свидетелей, ищите нестыковки и найдите преступника!
-                </span>
-              </div>
-              <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-1">
-                <b className="text-amber-300 block">⭐ Поддержка разработчика:</b>
-                <span className="text-white/70">
-                  Поставьте лайк вверху карточки, поделитесь ссылкой с одноклассниками в соцсетях и оставьте отзыв на странице itch.io!
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ========================================= */}
       {/* GAME 1: SNAKE */}
