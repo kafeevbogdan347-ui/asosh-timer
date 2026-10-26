@@ -22,6 +22,7 @@ export interface ClassHomework {
   text: string;
   forDate: string; // YYYY-MM-DD — к какому дню задано (может быть пустым)
   author: string;
+  teacher?: boolean; // задал учитель (правила базы разрешают это только учителям)
   uid: string;
   created_at: number;
 }
@@ -111,7 +112,7 @@ export const deleteClassReplacement = (cls: string, id: string) => del(cls, 'rep
 
 export const subscribeClassHomework = (cls: string, cb: (items: ClassHomework[]) => void) =>
   subscribe<ClassHomework>(cls, 'homework', cb, 200);
-export const addClassHomework = (cls: string, h: Pick<ClassHomework, 'sub' | 'text' | 'forDate' | 'author'>) =>
+export const addClassHomework = (cls: string, h: Pick<ClassHomework, 'sub' | 'text' | 'forDate' | 'author' | 'teacher'>) =>
   add(cls, 'homework', h);
 export const deleteClassHomework = (cls: string, id: string) => del(cls, 'homework', id);
 
