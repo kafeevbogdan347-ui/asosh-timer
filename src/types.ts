@@ -71,7 +71,13 @@ export type ThemeType =
   | 'lava'
   | 'northern'
   | 'blueprint'
-  | 'candy';
+  | 'candy'
+  | 'mocha'
+  | 'sunset_city'
+  | 'midnight_gold'
+  | 'blossom'
+  | 'kraft'
+  | 'fresh_mint';
 
 // Качество графики: экономия заряда, обычное или максимальное
 export type QualityType = 'eco' | 'normal' | 'ultra';
@@ -372,4 +378,5 @@ export type ScreenId =
   | 'maintenance'
   | 'calendar'
   | 'board'
+  | 'teacher'
 

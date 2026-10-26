@@ -15,6 +15,7 @@ import {
   B2F,
   SPLASHES_RU,
   SPLASHES_BA,
+  SPLASHES_TEACHER,
   MOTIVATORS_RU,
   MOTIVATORS_BA,
   SCHOOL_QUARTERS,
@@ -73,6 +74,8 @@ import { Achievement } from './types';
 import { LIGHT_THEME_IDS } from './data/themes';
 import { BoardScreen } from './screens/BoardScreen';
 import { CalendarScreen } from './screens/CalendarScreen';
+import { TeacherScreen } from './screens/TeacherScreen';
+import { TeacherInfo, BoardPost, getLocalTeacher, clearLocalTeacher, verifyTeacher, subscribeBoard, postsFor } from './services/teacher';
 import {
   ClassReplacement,
   ClassHomework,
@@ -95,6 +98,9 @@ export default function App() {
   // Гость выбирает класс без кода; чат и отправка замен/ДЗ классу — только после ввода кода
   const [isGuest, setIsGuest] = useState<boolean>(() => localStorage.getItem('asosh_guest') === '1');
   const [classVerified, setClassVerified] = useState<boolean>(() => !!accountVault.cls && isClassUnlocked(accountVault.cls));
+  // Режим учителя: имя хранится на телефоне, а права на публикации проверяет база
+  const [teacher, setTeacher] = useState<TeacherInfo | null>(getLocalTeacher);
+  const isTeacher = !!teacher;
   const [shift, setShift] = useState<string>(() => accountVault.shift);
   const [subGroup, setSubGroup] = useState<number>(() => accountVault.subGroup);
   const [lang, setLang] = useState<LanguageType>(() => accountVault.lang);
@@ -483,7 +489,7 @@ export default function App() {
   const [currentMotivator, setCurrentMotivator] = useState('');
 
   const refreshSplash = () => {
-    const pool = lang === 'ba' ? SPLASHES_BA : SPLASHES_RU;
+    const pool = teacher ? SPLASHES_TEACHER : lang === 'ba' ? SPLASHES_BA : SPLASHES_RU;
     setCurrentSplash(pool[Math.floor(Math.random() * pool.length)]);
   };
 
@@ -616,6 +622,26 @@ export default function App() {
       unsubH();
     };
   }, [cls, registered]);
+
+  // Объявления и события учителей (учитель видит ещё и записи «только учителям»)
+  const [boardPosts, setBoardPosts] = useState<BoardPost[]>([]);
+  useEffect(() => {
+    if (!registered) return;
+    return subscribeBoard(isTeacher, setBoardPosts);
+  }, [registered, isTeacher]);
+  const visiblePosts = postsFor(boardPosts, isTeacher, cls);
+
+  // Учитель остаётся учителем, только пока его запись есть в базе
+  useEffect(() => {
+    if (!teacher) return;
+    verifyTeacher().then((res) => {
+      if (res !== null) return;
+      clearLocalTeacher();
+      setTeacher(null);
+      showToast('Режим учителя выключен: код больше не действует');
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Дата дня недели: сегодня, завтра или день текущей недели (Пн–Вс)
   const dateKeyForDay = (dayName: string): string => {
@@ -1371,12 +1397,14 @@ export default function App() {
             lang={lang}
             timeStr={timeStr}
             dayName={currentDayName}
-            isGuest={isGuest}
+            isGuest={isGuest || isTeacher}
             onEnterAsGuest={() => {
               setIsGuest(true);
               localStorage.setItem('asosh_guest', '1');
               showToast('Выбери класс — код не нужен 👀');
             }}
+            teacherName={teacher?.name ?? null}
+            onTeacher={() => setCurrentScreen('teacher')}
           />
         )}
 
@@ -1411,6 +1439,8 @@ export default function App() {
                 Math.ceil((quarterEndMs(SCHOOL_QUARTERS[SCHOOL_QUARTERS.length - 1]) - nowMs) / DAY_MS)
               ),
             }}
+            announcements={visiblePosts}
+            isTeacher={isTeacher}
           />
         )}
 
@@ -1486,8 +1516,13 @@ export default function App() {
             vibro={settings.vibro}
             classHomework={classHomework}
             myUid={myUid()}
-            canShare={classVerified}
-            onShareHomework={(h) => addClassHomework(cls, { ...h, forDate: '', author: (studentName || 'Ученик').slice(0, 60) })}
+            canShare={classVerified || isTeacher}
+            isTeacher={isTeacher}
+            onShareHomework={(h) =>
+              teacher
+                ? addClassHomework(cls, { ...h, forDate: '', author: teacher.name.slice(0, 60), teacher: true })
+                : addClassHomework(cls, { ...h, forDate: '', author: (studentName || 'Ученик').slice(0, 60) })
+            }
             onDeleteClassHomework={(id) => {
               deleteClassHomework(cls, id);
               showToast('Удалено у класса');
@@ -1506,8 +1541,8 @@ export default function App() {
             onDeleteUpdate={handleDeleteUpdate}
             classReplacements={classReplacements}
             myUid={myUid()}
-            canShare={classVerified}
-            onAddClassReplacement={(r) => addClassReplacement(cls, { ...r, author: (studentName || 'Ученик').slice(0, 60) })}
+            canShare={classVerified || isTeacher}
+            onAddClassReplacement={(r) => addClassReplacement(cls, { ...r, author: (teacher?.name || studentName || 'Ученик').slice(0, 60) })}
             onDeleteClassReplacement={(id) => {
               deleteClassReplacement(cls, id);
               showToast('Замена удалена');
@@ -1611,7 +1646,38 @@ export default function App() {
           <AboutScreen onBack={() => setCurrentScreen(cls ? 'main' : 'select')} />
         )}
 
-        {currentScreen === 'calendar' && <CalendarScreen today={activeTime} onShowToast={showToast} />}
+        {currentScreen === 'calendar' && (
+          <CalendarScreen
+            today={activeTime}
+            onShowToast={showToast}
+            boardEvents={visiblePosts}
+            teacherName={teacher?.name ?? null}
+            cls={cls}
+            myUid={myUid()}
+          />
+        )}
+
+        {currentScreen === 'teacher' && (
+          <TeacherScreen
+            teacherName={teacher?.name ?? null}
+            cls={cls}
+            posts={boardPosts}
+            myUid={myUid()}
+            onLoggedIn={(name) => {
+              setTeacher({ name });
+              playSound('coin', settings.soundProfile);
+              showToast(`Здравствуйте, ${name}! Режим учителя включён 👩‍🏫`);
+            }}
+            onLogout={() => {
+              clearLocalTeacher();
+              setTeacher(null);
+              showToast('Режим учителя выключен');
+              setCurrentScreen(cls ? 'main' : 'select');
+            }}
+            onPickClass={() => setCurrentScreen('select')}
+            onShowToast={showToast}
+          />
+        )}
 
         {currentScreen === 'board' && (
           <BoardScreen

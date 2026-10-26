@@ -872,17 +872,17 @@ body.q-ultra.no-anim #root::before { animation: none; }
    ЦВЕТНЫЕ ТЁМНЫЕ ТЕМЫ: тёмно-синие панели из Tailwind (slate/indigo-950 и т.п.)
    делаем нейтрально-тёмными, чтобы сквозь них просвечивал цвет темы
    ============================================================ */
-body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint)
+body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint, .theme-mocha, .theme-sunset_city, .theme-midnight_gold)
   :is([class*="from-slate-9"], [class*="from-cyan-9"], [class*="from-blue-9"], [class*="from-indigo-9"], [class*="from-purple-9"], [class*="from-violet-9"], [class*="from-sky-9"]) {
   background: rgba(0, 0, 0, 0.28) !important;
   background-image: none !important;
 }
-body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint)
+body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint, .theme-mocha, .theme-sunset_city, .theme-midnight_gold)
   :is([class*="bg-slate-9"], [class*="bg-indigo-9"], [class*="bg-blue-9"]) {
   background-color: rgba(0, 0, 0, 0.32) !important;
 }
 /* Активные кнопки и вкладки (bg-cyan-400/500) — в акцентный цвет темы; акценты у этих тем светлые, поэтому текст тёмный */
-body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint)
+body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint, .theme-mocha, .theme-sunset_city, .theme-midnight_gold)
   :is([class~="bg-cyan-400"], [class~="bg-cyan-500"]) {
   background-color: var(--accent) !important;
   color: #0b1020 !important;
@@ -923,3 +923,168 @@ body.theme-dark :is([class*="border-cyan-4"], [class*="border-cyan-5"]) { border
 body.theme-dark :is([class*="from-cyan-4"], [class*="from-cyan-5"], [class*="from-sky-4"], [class*="from-sky-5"], [class*="from-blue-4"], [class*="from-blue-5"]) {
   background-image: linear-gradient(135deg, #14b8a6, #2dd4bf) !important;
 }
+
+/* ============================================================
+   КОФЕЙНЯ
+   ============================================================ */
+body.theme-mocha {
+  --b1: #1a120d; --b2: #221710; --b3: #140d09;
+  --card: rgba(255, 240, 225, 0.06); --card-hover: rgba(255, 240, 225, 0.09);
+  --line: rgba(224, 169, 109, 0.28); --muted: #cdb59c; --ink: #f5e9dc; --txt: #f5e9dc;
+  --accent: #e0a96d; --accent-rgb: 224, 169, 109;
+  --sh: 0 16px 36px rgba(0, 0, 0, 0.45);
+  background:
+    radial-gradient(ellipse at 85% 0%, rgba(224, 169, 109, 0.18), transparent 45%),
+    radial-gradient(ellipse at 0% 100%, rgba(139, 69, 19, 0.25), transparent 50%),
+    #1a120d !important;
+}
+body.theme-mocha h1, body.theme-mocha h2, body.theme-mocha h3 { font-family: Georgia, "Times New Roman", serif !important; }
+body.theme-mocha .card { border-radius: 20px; border: 1px solid rgba(224, 169, 109, 0.22); }
+body.theme-mocha .btn { background: linear-gradient(135deg, #a8693a, #e0a96d); color: #1a120d; }
+body.theme-mocha .btn.darkBtn { background: rgba(255, 240, 225, 0.06); color: var(--txt); }
+body.theme-mocha .num { background: #e0a96d; color: #1a120d; border-radius: 50%; }
+body.theme-mocha .bellWidget { background: linear-gradient(135deg, rgba(224, 169, 109, 0.18), rgba(139, 69, 19, 0.2)); border-color: rgba(224, 169, 109, 0.5); }
+body.theme-mocha .nav-bar { background: rgba(26, 18, 13, 0.92); border-color: rgba(224, 169, 109, 0.25); }
+
+/* ============================================================
+   ЗАКАТНЫЙ ГОРОД
+   ============================================================ */
+body.theme-sunset_city {
+  --b1: #2a1155; --b2: #5a1f66; --b3: #1a0b33;
+  --card: rgba(30, 10, 50, 0.55); --card-hover: rgba(45, 15, 70, 0.7);
+  --line: rgba(255, 138, 101, 0.35); --muted: #f9c4d2; --ink: #fff1f5; --txt: #fff1f5;
+  --accent: #ff8a65; --accent-rgb: 255, 138, 101;
+  --sh: 0 16px 36px rgba(20, 5, 40, 0.5);
+  background: linear-gradient(180deg, #2a1155 0%, #7a2a6e 55%, #f08a4b 100%) !important;
+  background-attachment: fixed !important;
+}
+/* Силуэт домов внизу экрана */
+body.theme-sunset_city::before {
+  content: "";
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 22vh;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(#1a0b33, #1a0b33) 0 100% / 9% 55% no-repeat,
+    linear-gradient(#1a0b33, #1a0b33) 8% 100% / 7% 80% no-repeat,
+    linear-gradient(#1a0b33, #1a0b33) 15% 100% / 10% 40% no-repeat,
+    linear-gradient(#1a0b33, #1a0b33) 26% 100% / 6% 95% no-repeat,
+    linear-gradient(#1a0b33, #1a0b33) 33% 100% / 12% 60% no-repeat,
+    linear-gradient(#1a0b33, #1a0b33) 46% 100% / 8% 75% no-repeat,
+    linear-gradient(#1a0b33, #1a0b33) 55% 100% / 11% 45% no-repeat,
+    linear-gradient(#1a0b33, #1a0b33) 67% 100% / 7% 90% no-repeat,
+    linear-gradient(#1a0b33, #1a0b33) 75% 100% / 10% 55% no-repeat,
+    linear-gradient(#1a0b33, #1a0b33) 86% 100% / 6% 70% no-repeat,
+    linear-gradient(#1a0b33, #1a0b33) 100% 100% / 9% 50% no-repeat;
+  opacity: 0.85;
+}
+body.theme-sunset_city .card { border-radius: 18px; backdrop-filter: blur(10px); border: 1px solid rgba(255, 138, 101, 0.3); }
+body.theme-sunset_city .btn { background: linear-gradient(135deg, #ff5e62, #ff9966); }
+body.theme-sunset_city .num { background: linear-gradient(135deg, #ff5e62, #ffb347); color: #2a1155; }
+body.theme-sunset_city h1, body.theme-sunset_city h2 { text-shadow: 0 0 14px rgba(255, 94, 98, 0.45); }
+body.theme-sunset_city .bellWidget { border-color: rgba(255, 138, 101, 0.6); background: rgba(42, 17, 85, 0.55); }
+body.theme-sunset_city .nav-bar { background: rgba(26, 11, 51, 0.9); border-color: rgba(255, 138, 101, 0.35); }
+
+/* ============================================================
+   ПОЛНОЧЬ И ЗОЛОТО
+   ============================================================ */
+body.theme-midnight_gold {
+  --b1: #0a0a0c; --b2: #0d0d10; --b3: #070708;
+  --card: rgba(255, 255, 255, 0.025); --card-hover: rgba(255, 255, 255, 0.05);
+  --line: rgba(212, 175, 55, 0.35); --muted: #c9bfa3; --ink: #f5f0e1; --txt: #f5f0e1;
+  --accent: #d4af37; --accent-rgb: 212, 175, 55;
+  --sh: 0 16px 40px rgba(0, 0, 0, 0.6);
+  background: radial-gradient(ellipse at 50% -10%, rgba(212, 175, 55, 0.14), transparent 55%), #0a0a0c !important;
+}
+body.theme-midnight_gold h1, body.theme-midnight_gold h2, body.theme-midnight_gold h3 {
+  font-family: Georgia, "Times New Roman", serif !important;
+  letter-spacing: 0.02em;
+}
+body.theme-midnight_gold .card { border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.35); box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.06), var(--sh); }
+body.theme-midnight_gold .btn { border-radius: 6px; background: linear-gradient(135deg, #b8860b, #f1d27a); color: #0a0a0c; }
+body.theme-midnight_gold .btn.darkBtn { background: transparent; color: #f1d27a; border: 1px solid rgba(212, 175, 55, 0.5); }
+body.theme-midnight_gold .num { border-radius: 4px; background: transparent; color: #d4af37; border: 1px solid #d4af37; }
+body.theme-midnight_gold .bellWidget { border-radius: 8px; border-color: #d4af37; background: rgba(212, 175, 55, 0.06); }
+body.theme-midnight_gold .nav-bar { border-radius: 10px; background: rgba(10, 10, 12, 0.95); border-color: rgba(212, 175, 55, 0.35); }
+body.theme-midnight_gold .nav-bar button.active { color: #d4af37; background: rgba(212, 175, 55, 0.1); }
+
+/* ============================================================
+   ЦВЕТУЩАЯ ВИШНЯ (светлая)
+   ============================================================ */
+body.theme-blossom {
+  --b1: #fff5f8; --b2: #fde2ec; --b3: #fbcfe0;
+  --card: rgba(255, 255, 255, 0.82); --card-hover: rgba(255, 255, 255, 0.95);
+  --line: rgba(219, 39, 119, 0.22); --muted: #9d3d62; --ink: #6b1d3a; --txt: #4a1028;
+  --accent: #db2777; --accent-rgb: 219, 39, 119;
+  --sh: 0 10px 26px rgba(219, 39, 119, 0.12);
+  background: linear-gradient(180deg, #fff5f8 0%, #fde2ec 100%) !important;
+}
+/* Падающие лепестки */
+body.theme-blossom::before, body.theme-blossom::after {
+  content: "";
+  position: fixed;
+  inset: -300px 0 0 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(5px 3px at 40px 50px, #f9a8d4 50%, transparent 60%),
+    radial-gradient(4px 3px at 150px 180px, #fbcfe8 50%, transparent 60%),
+    radial-gradient(6px 4px at 240px 90px, #f472b6 50%, transparent 60%),
+    radial-gradient(4px 3px at 90px 260px, #f9a8d4 50%, transparent 60%);
+  background-size: 300px 300px;
+  opacity: 0.7;
+  animation: themeSnow 26s linear infinite;
+}
+body.theme-blossom::after { background-size: 200px 220px; opacity: 0.45; animation-duration: 40s; }
+body.theme-blossom .card { border-radius: 24px; border: 1px solid #f4b6cc; backdrop-filter: blur(6px); }
+body.theme-blossom .btn { border-radius: 999px; background: linear-gradient(135deg, #ec4899, #f9a8d4); color: #fff; }
+body.theme-blossom .btn.darkBtn { background: rgba(255, 255, 255, 0.8); color: #6b1d3a; }
+body.theme-blossom .num { border-radius: 50%; background: #fbcfe8; color: #9d174d; }
+body.theme-blossom .bellWidget { border-color: #f4b6cc; background: rgba(255, 255, 255, 0.75); }
+body.theme-blossom .nav-bar { border-radius: 999px; background: rgba(255, 255, 255, 0.92); }
+
+/* ============================================================
+   КРАФТ (светлая)
+   ============================================================ */
+body.theme-kraft {
+  --b1: #d9c4a0; --b2: #d9c4a0; --b3: #cfb68c;
+  --card: #efe3cc; --card-hover: #f3e9d6;
+  --line: rgba(122, 90, 58, 0.45); --muted: #6b5236; --ink: #3b2a1a; --txt: #3b2a1a;
+  --accent: #a0442c; --accent-rgb: 160, 68, 44;
+  --sh: 2px 3px 0 rgba(59, 42, 26, 0.18);
+  background:
+    radial-gradient(rgba(122, 90, 58, 0.12) 1px, transparent 1px) 0 0 / 6px 6px,
+    #d9c4a0 !important;
+}
+body.theme-kraft h1, body.theme-kraft h2, body.theme-kraft h3, body.theme-kraft .num, body.theme-kraft .bellWidget {
+  font-family: "Courier New", "American Typewriter", ui-monospace, monospace !important;
+}
+body.theme-kraft .card { background: #efe3cc; border: 2px dashed rgba(122, 90, 58, 0.45); border-radius: 6px; box-shadow: 3px 4px 0 rgba(59, 42, 26, 0.12); backdrop-filter: none; }
+body.theme-kraft .btn { border-radius: 4px; background: #a0442c; color: #fff8ec; box-shadow: 2px 2px 0 rgba(59, 42, 26, 0.3); }
+body.theme-kraft .btn.darkBtn { background: transparent; color: #3b2a1a; border: 2px solid #7a5a3a; }
+body.theme-kraft .num { background: transparent; color: #a0442c; border: 2px solid #a0442c; border-radius: 50%; transform: rotate(-6deg); }
+body.theme-kraft .bellWidget { background: #f3e9d6; border: 2px solid #7a5a3a; border-radius: 4px; }
+body.theme-kraft .nav-bar { background: #efe3cc; border: 2px solid #7a5a3a; border-radius: 6px; }
+body.theme-kraft [class*="rounded-2xl"], body.theme-kraft [class*="rounded-3xl"] { border-radius: 6px !important; }
+
+/* ============================================================
+   МЯТНАЯ СВЕЖЕСТЬ (светлая)
+   ============================================================ */
+body.theme-fresh_mint {
+  --b1: #ecfdf5; --b2: #d1fae5; --b3: #a7f3d0;
+  --card: #ffffff; --card-hover: #ffffff;
+  --line: rgba(5, 150, 105, 0.25); --muted: #3f6f5f; --ink: #064e3b; --txt: #052e22;
+  --accent: #059669; --accent-rgb: 5, 150, 105;
+  --sh: 0 10px 24px rgba(5, 150, 105, 0.1);
+  background: linear-gradient(160deg, #ecfdf5, #d1fae5) !important;
+}
+body.theme-fresh_mint .card { border-radius: 22px; border: 1px solid #a7f3d0; }
+body.theme-fresh_mint .btn { border-radius: 14px; background: linear-gradient(135deg, #059669, #34d399); color: #fff; }
+body.theme-fresh_mint .btn.darkBtn { background: #f0fdf4; color: #064e3b; }
+body.theme-fresh_mint .num { border-radius: 12px; background: #d1fae5; color: #047857; }
+body.theme-fresh_mint .bellWidget { background: #ffffff; border-color: #6ee7b7; }
+body.theme-fresh_mint .nav-bar { background: rgba(255, 255, 255, 0.95); border-color: #a7f3d0; }
