@@ -23,9 +23,9 @@ export const THEMES: ThemeInfo[] = [
   {
     id: 'dark',
     name: 'Тёмная',
-    desc: 'Классика приложения: сапфировый фон и стекло',
+    desc: 'Графит с бирюзовым акцентом и мягким фиолетовым отсветом',
     light: false,
-    preview: { background: 'linear-gradient(160deg,#040916,#0a1b40)', card: 'rgba(14,28,64,.8)', border: 'rgba(56,189,248,.4)', text: '#fff', accent: '#00f0ff', radius: 10, font: 'system-ui' },
+    preview: { background: 'radial-gradient(circle at 15% 0%,rgba(45,212,191,.25),transparent 55%), radial-gradient(circle at 100% 100%,rgba(139,92,246,.25),transparent 55%), #0b0d12', card: 'rgba(255,255,255,.06)', border: 'rgba(255,255,255,.14)', text: '#f5f7fa', accent: '#2dd4bf', radius: 10, font: 'system-ui' },
   },
   {
     id: 'notebook',
