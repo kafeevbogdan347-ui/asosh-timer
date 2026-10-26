@@ -650,7 +650,7 @@ export default function App() {
     updates.forEach((u) => {
       if (applied.has(u.num)) return;
       applied.add(u.num);
-      map[u.num - 1] = [u.sub, parseRoom(u.room)];
+      map[u.num - 1] = u.sub === 'Урока не будет' ? ['—', ''] : [u.sub, parseRoom(u.room)];
     });
 
     // 4. Замены класса на эту дату важнее всего; при нескольких побеждает самая новая
@@ -1487,7 +1487,7 @@ export default function App() {
             classHomework={classHomework}
             myUid={myUid()}
             canShare={classVerified}
-            onShareHomework={(h) => addClassHomework(cls, { ...h, forDate: '', author: studentName || 'Ученик' })}
+            onShareHomework={(h) => addClassHomework(cls, { ...h, forDate: '', author: (studentName || 'Ученик').slice(0, 60) })}
             onDeleteClassHomework={(id) => {
               deleteClassHomework(cls, id);
               showToast('Удалено у класса');
@@ -1507,7 +1507,7 @@ export default function App() {
             classReplacements={classReplacements}
             myUid={myUid()}
             canShare={classVerified}
-            onAddClassReplacement={(r) => addClassReplacement(cls, { ...r, author: studentName || 'Ученик' })}
+            onAddClassReplacement={(r) => addClassReplacement(cls, { ...r, author: (studentName || 'Ученик').slice(0, 60) })}
             onDeleteClassReplacement={(id) => {
               deleteClassReplacement(cls, id);
               showToast('Замена удалена');
@@ -1573,7 +1573,7 @@ export default function App() {
             <div className="text-5xl">🔒</div>
             <h2 className="text-xl font-black text-cyan-300">Чат класса — только по коду</h2>
             <p className="text-sm text-white/70">
-              Ты вошёл как гость. Чтобы писать в чат {cls}, введи код класса — его даёт классный руководитель.
+              {isGuest ? 'Ты вошёл как гость. ' : ''}Чтобы писать в чат {cls}, введи код класса — его даёт классный руководитель.
             </p>
             <button type="button" className="btn green w-full justify-center" onClick={() => setCurrentScreen('select')}>
               Ввести код класса

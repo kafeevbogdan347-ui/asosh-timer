@@ -174,6 +174,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
               onChange={(e) => setSub(e.target.value)}
               placeholder={d.phsub}
               className="text-sm"
+              maxLength={60}
             />
           </div>
 
@@ -185,6 +186,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
               placeholder={d.phtask}
               className="text-sm"
               rows={2}
+              maxLength={1000}
             />
           </div>
 

@@ -37,13 +37,21 @@ export const BoardScreen: React.FC<BoardScreenProps> = ({ cls, shift, time, stat
   // Не даём экрану проектора/ноутбука погаснуть, пока открыт этот режим
   useEffect(() => {
     let lock: WakeLockSentinel | null = null;
+    let active = true;
     const request = () => {
       if (document.visibilityState !== 'visible' || !('wakeLock' in navigator)) return;
-      navigator.wakeLock.request('screen').then((l) => (lock = l)).catch(() => {});
+      navigator.wakeLock
+        .request('screen')
+        .then((l) => {
+          if (active) lock = l;
+          else l.release().catch(() => {});
+        })
+        .catch(() => {});
     };
     request();
     document.addEventListener('visibilitychange', request);
     return () => {
+      active = false;
       document.removeEventListener('visibilitychange', request);
       lock?.release().catch(() => {});
     };
