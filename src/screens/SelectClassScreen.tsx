@@ -39,6 +39,8 @@ interface SelectClassScreenProps {
   dayName: string;
   isGuest: boolean;
   onEnterAsGuest: () => void;
+  teacherName: string | null; // учитель выбирает любой класс без кода
+  onTeacher: () => void;
 }
 
 export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
@@ -54,6 +56,8 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
   dayName,
   isGuest,
   onEnterAsGuest,
+  teacherName,
+  onTeacher,
 }) => {
   const [selectedParallel, setSelectedParallel] = useState<number | null>(null);
   const [codeQuery, setCodeQuery] = useState('');
@@ -180,15 +184,22 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
           Выбери свой класс
         </h1>
         <p className="text-white/70 text-xs mt-1 max-w-md mx-auto">
-          {isGuest
+          {teacherName
+            ? `${teacherName}, вы вошли как учитель — выберите любой класс ниже без кода.`
+            : isGuest
             ? 'Ты вошёл как гость — выбери класс ниже без кода. Чат класса откроется, когда введёшь код.'
             : 'Введи код, который дал классный руководитель. Код нужен один раз — дальше приложение запомнит класс.'}
         </p>
-        {!isGuest && (
-          <button type="button" className="btn darkBtn justify-center text-xs mt-3 mx-auto" onClick={onEnterAsGuest}>
-            👀 Нет кода? Войти как гость
+        <div className="flex flex-wrap justify-center gap-2 mt-3">
+          {!isGuest && (
+            <button type="button" className="btn darkBtn justify-center text-xs" onClick={onEnterAsGuest}>
+              👀 Нет кода? Войти как гость
+            </button>
+          )}
+          <button type="button" className="btn darkBtn justify-center text-xs" onClick={onTeacher}>
+            👩‍🏫 {teacherName ? 'Кабинет учителя' : 'Я учитель'}
           </button>
-        )}
+        </div>
       </div>
 
       {/* Вход по приватному коду класса (выдаётся классным руководителем) */}

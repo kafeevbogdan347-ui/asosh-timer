@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScreenId, LanguageType } from '../types';
 import { DICT } from '../data/constants';
+import { BoardPost, AUDIENCE_LABEL } from '../services/teacher';
 
 interface MainScreenProps {
   cls: string;
@@ -29,6 +30,8 @@ interface MainScreenProps {
     isBreak: boolean;
     daysToSummer: number;
   };
+  announcements: BoardPost[]; // объявления учителей для этого класса и всей школы
+  isTeacher: boolean;
 }
 
 // Разделы, которых нет в нижнем меню (Уроки, ДЗ, Игры и Опции открываются оттуда)
@@ -81,8 +84,17 @@ export const MainScreen: React.FC<MainScreenProps> = ({
   lang,
   showBackpackHint,
   quarterProgress,
+  announcements,
+  isTeacher,
 }) => {
   const d = DICT[lang] || DICT.ru;
+  // Учителю — плитка кабинета в группе «Класс»
+  const groups = isTeacher
+    ? QUICK_GROUPS.map((g) => (g.title === 'Класс' ? { ...g, items: [{ icon: '👩‍🏫', label: 'Кабинет учителя', screen: 'teacher' as ScreenId }, ...g.items] } : g))
+    : QUICK_GROUPS;
+  const freshAnn = announcements
+    .filter((a) => a.kind === 'ann' && Date.now() - a.created_at < 30 * 24 * 3600 * 1000)
+    .slice(0, 3);
 
   return (
     <div className="card screen-enter">
@@ -160,6 +172,27 @@ export const MainScreen: React.FC<MainScreenProps> = ({
         </div>
       </div>
 
+      {/* Объявления учителей */}
+      {freshAnn.length > 0 && (
+        <div className="my-3 space-y-2">
+          {freshAnn.map((a) => (
+            <div key={a.id} className="p-3 rounded-2xl bg-amber-500/10 border border-amber-400/35">
+              <div className="flex items-start justify-between gap-2">
+                <b className="text-sm text-amber-200">📢 {a.title}</b>
+                <span className="text-[10px] text-white/50 shrink-0">
+                  {new Date(a.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                </span>
+              </div>
+              {a.text && <div className="text-xs text-white/85 whitespace-pre-line break-words mt-0.5">{a.text}</div>}
+              <div className="text-[10px] text-white/55 mt-1">
+                👩‍🏫 {a.author} · {a.cls || 'вся школа'}
+                {isTeacher && ` · ${AUDIENCE_LABEL[a.aud]}`}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Портфель на завтра — только вечером, когда он нужен */}
       {showBackpackHint && (
         <button
@@ -179,7 +212,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
       )}
 
       {/* Все разделы: одинаковые плитки, сгруппированные по смыслу */}
-      {QUICK_GROUPS.map((group) => (
+      {groups.map((group) => (
         <div key={group.title} className="mt-4">
           <h2 className="text-xs font-black text-white/60 uppercase tracking-wide mb-2">{group.title}</h2>
           <div className="grid grid-cols-3 gap-2">

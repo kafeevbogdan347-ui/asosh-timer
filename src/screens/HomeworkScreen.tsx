@@ -24,6 +24,7 @@ interface HomeworkScreenProps {
   onShowToast: (msg: string) => void;
   // Гость без кода класса не может делиться ДЗ с классом
   canShare: boolean;
+  isTeacher?: boolean; // учитель задаёт ДЗ всему классу
 }
 
 export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
@@ -43,12 +44,13 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   onDeleteClassHomework,
   onShowToast,
   canShare,
+  isTeacher = false,
 }) => {
-  const [shareWithClass, setShareWithClass] = useState(false);
-  // ДЗ класса за последние 2 недели, новые сверху
+  const [shareWithClass, setShareWithClass] = useState(isTeacher);
+  // ДЗ класса за последние 2 недели: сначала от учителя, внутри — новые сверху
   const recentClassHw = classHomework
     .filter((h) => Date.now() - h.created_at < 14 * 24 * 3600 * 1000)
-    .sort((a, b) => b.created_at - a.created_at);
+    .sort((a, b) => Number(!!b.teacher) - Number(!!a.teacher) || b.created_at - a.created_at);
   const alreadyMine = (h: ClassHomework) =>
     homeworkList.some((m) => m.cls === cls && m.sub === h.sub && m.text === h.text);
   const [sub, setSub] = useState('');
@@ -264,7 +266,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
               className="w-5 h-5 cursor-pointer !mb-0"
             />
             <label htmlFor="shareCheck" className="text-xs font-bold text-cyan-300 cursor-pointer !m-0">
-              📣 Поделиться с классом (без фото)
+              {isTeacher ? `👩‍🏫 Задать классу ${cls} (увидят все ученики)` : '📣 Поделиться с классом (без фото)'}
             </label>
           </div>}
 
@@ -279,11 +281,12 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
           <div className="mt-5 border-t border-white/10 pt-3 space-y-2">
             <h3 className="text-sm font-black text-white/85">📣 ДЗ от класса</h3>
             {recentClassHw.map((h) => (
-              <div key={h.id} className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-start justify-between gap-2">
+              <div key={h.id} className={`p-3 rounded-2xl border flex items-start justify-between gap-2 ${h.teacher ? 'bg-amber-500/10 border-amber-400/40' : 'bg-white/5 border-white/10'}`}>
                 <div className="min-w-0">
                   <b className="text-sm text-cyan-200">{h.sub}</b>
                   <div className="text-xs text-white/85 whitespace-pre-line break-words">{h.text}</div>
                   <div className="text-[10px] text-white/50 mt-0.5">
+                    {h.teacher && <span className="text-amber-300 font-bold">👩‍🏫 Учитель · </span>}
                     {h.author || 'ученик'} · {new Date(h.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
                   </div>
                 </div>

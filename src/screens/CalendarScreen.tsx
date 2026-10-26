@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { SCHOOL_QUARTERS } from '../data/constants';
 import { toDateKey } from '../services/classShared';
+import { BoardPost, BoardAudience, AUDIENCE_LABEL, addBoardPost, deleteBoardPost } from '../services/teacher';
 
 // Календарь учебного года: каникулы и четверти, праздники и свои события (контрольные, сокращённые дни)
 type EventKind = 'test' | 'short' | 'other';
@@ -20,6 +21,7 @@ interface CalEntry {
   title: string;
   icon: string;
   mine?: boolean;
+  post?: BoardPost; // событие учителя из общей базы
 }
 
 const STORAGE_KEY = 'asosh_calendar_events';
@@ -66,14 +68,23 @@ function loadEvents(): MyEvent[] {
 interface CalendarScreenProps {
   today: Date;
   onShowToast: (msg: string) => void;
+  boardEvents: BoardPost[]; // события учителей, которые видит этот человек
+  teacherName: string | null;
+  cls: string;
+  myUid: string;
 }
 
-export const CalendarScreen: React.FC<CalendarScreenProps> = ({ today, onShowToast }) => {
+// Кому видно событие: «только мне» хранится на телефоне, остальное — в общей базе (только для учителей)
+type Visibility = 'me' | BoardAudience;
+
+export const CalendarScreen: React.FC<CalendarScreenProps> = ({ today, onShowToast, boardEvents, teacherName, cls, myUid }) => {
   const todayKey = toDateKey(today);
   const [events, setEvents] = useState<MyEvent[]>(loadEvents);
   const [date, setDate] = useState(todayKey);
   const [title, setTitle] = useState('');
   const [kind, setKind] = useState<EventKind>('test');
+  const [vis, setVis] = useState<Visibility>('me');
+  const [forClass, setForClass] = useState(true);
 
   const save = (list: MyEvent[]) => {
     setEvents(list);
@@ -105,18 +116,27 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ today, onShowToa
       list.push({ id: `h-${h.md}`, date: `${year}-${h.md}`, title: h.title, icon: '🎉' });
     });
     events.forEach((e) => list.push({ id: e.id, date: e.date, title: e.title, icon: KIND[e.kind].icon, mine: true }));
+    boardEvents
+      .filter((p) => p.kind === 'event' && p.date)
+      .forEach((p) => list.push({ id: `b-${p.id}`, date: p.date!, title: p.title, icon: '📣', post: p }));
     // Будущие и идущие сейчас (каникулы, которые ещё не закончились)
     return list
       .filter((e) => (e.endDate || e.date) >= todayKey)
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  }, [events, todayKey]);
+  }, [events, boardEvents, todayKey]);
 
   const lastDay = SCHOOL_QUARTERS[SCHOOL_QUARTERS.length - 1].end;
   const daysToSummer = dayDiff(todayKey, lastDay);
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = title.trim() || KIND[kind].label;
+    if (vis !== 'me' && teacherName) {
+      const ok = await addBoardPost({ kind: 'event', title: `${KIND[kind].icon} ${text}`.slice(0, 120), date, aud: vis, cls: forClass ? cls : '', author: teacherName.slice(0, 60) });
+      if (ok) setTitle('');
+      onShowToast(ok ? `Событие опубликовано: ${AUDIENCE_LABEL[vis]}` : 'Не получилось опубликовать. Проверьте интернет.');
+      return;
+    }
     save([...events, { id: `ev-${Date.now()}`, date, title: text, kind }]);
     setTitle('');
     onShowToast('Событие добавлено 📅');
@@ -133,7 +153,28 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ today, onShowToa
       </div>
 
       <form onSubmit={handleAdd} className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-2">
-        <div className="text-xs font-black text-white/80">Добавить своё событие</div>
+        <div className="text-xs font-black text-white/80">{teacherName ? 'Добавить событие' : 'Добавить своё событие'}</div>
+        {teacherName && (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              {(['me', 'all', 'students', 'teachers'] as Visibility[]).map((v) => (
+                <button key={v} type="button" className={`choice !py-1.5 !px-1 text-[11px] ${vis === v ? 'active' : ''}`} onClick={() => setVis(v)}>
+                  {v === 'me' ? '🔒 Только мне' : AUDIENCE_LABEL[v]}
+                </button>
+              ))}
+            </div>
+            {vis !== 'me' && cls && (
+              <div className="grid grid-cols-2 gap-1.5">
+                <button type="button" className={`choice !py-1.5 text-[11px] ${forClass ? 'active' : ''}`} onClick={() => setForClass(true)}>
+                  Класс {cls}
+                </button>
+                <button type="button" className={`choice !py-1.5 text-[11px] ${!forClass ? 'active' : ''}`} onClick={() => setForClass(false)}>
+                  Вся школа
+                </button>
+              </div>
+            )}
+          </>
+        )}
         <div className="flex flex-wrap gap-1.5">
           {(Object.keys(KIND) as EventKind[]).map((k) => (
             <button key={k} type="button" className={`choice !py-1.5 !px-2.5 text-xs ${kind === k ? 'active' : ''}`} onClick={() => setKind(k)}>
@@ -174,9 +215,20 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ today, onShowToa
                   <span className="text-[11px] text-white/60">
                     {fmt(e.date)}
                     {e.endDate ? ` — ${fmt(e.endDate)}` : ''}
+                    {e.post && ` · 👩‍🏫 ${e.post.author} · ${e.post.cls || 'вся школа'}${teacherName ? ` · ${AUDIENCE_LABEL[e.post.aud]}` : ''}`}
                   </span>
                 </div>
                 <span className="text-[11px] font-bold text-white/70 shrink-0">{now ? 'сейчас' : diff === 1 ? 'завтра' : `через ${diff} дн.`}</span>
+                {e.post && e.post.uid === myUid && (
+                  <button
+                    type="button"
+                    className="p-1 text-red-400 hover:text-red-300 shrink-0"
+                    onClick={async () => onShowToast((await deleteBoardPost(e.post!)) ? 'Событие удалено' : 'Не получилось удалить')}
+                    title="Удалить для всех"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
                 {e.mine && (
                   <button type="button" className="p-1 text-red-400 hover:text-red-300 shrink-0" onClick={() => save(events.filter((x) => x.id !== e.id))} title="Удалить">
                     <Trash2 className="w-4 h-4" />
