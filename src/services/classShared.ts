@@ -82,7 +82,8 @@ function subscribe<T extends { id: string }>(
 
 async function add(cls: string, section: Section, data: Record<string, unknown>): Promise<boolean> {
   const { db } = initFirebase();
-  if (!db || !(await ensureSignedIn())) return false;
+  // Без сети запись ждала бы интернет бесконечно, и кнопка не отпускалась бы
+  if (!db || !navigator.onLine || !(await ensureSignedIn())) return false;
   try {
     await push(ref(db, classPath(cls, section)), { ...data, uid: myUid(), created_at: Date.now() });
     return true;
@@ -94,7 +95,7 @@ async function add(cls: string, section: Section, data: Record<string, unknown>)
 
 async function del(cls: string, section: Section, id: string): Promise<boolean> {
   const { db } = initFirebase();
-  if (!db || !(await ensureSignedIn())) return false;
+  if (!db || !navigator.onLine || !(await ensureSignedIn())) return false;
   try {
     await remove(ref(db, `${classPath(cls, section)}/${id}`));
     return true;

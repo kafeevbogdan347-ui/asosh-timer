@@ -20,12 +20,39 @@ interface TeacherScreenProps {
   onLoggedIn: (name: string) => void;
   onLogout: () => void;
   onPickClass: () => void;
+  onBack: () => void;
   onShowToast: (msg: string) => void;
 }
 
 const fmtDate = (key: string) => new Date(key + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
 
-export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, posts, myUid, onLoggedIn, onLogout, onPickClass, onShowToast }) => {
+// Снаружи кабинета: App обновляется каждую секунду, и компонент внутри пересоздавался бы вместе с кнопками
+const PostRow: React.FC<{ p: BoardPost; canDelete: boolean; onShowToast: (msg: string) => void }> = ({ p, canDelete, onShowToast }) => (
+  <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-start justify-between gap-2">
+    <div className="min-w-0">
+      <b className="text-sm block">
+        {p.kind === 'ann' ? '📢' : '🗓'} {p.title}
+      </b>
+      {p.text && <div className="text-xs text-white/80 whitespace-pre-line break-words">{p.text}</div>}
+      <div className="text-[10px] text-white/50 mt-0.5">
+        {AUDIENCE_LABEL[p.aud]} · {p.cls || 'вся школа'}
+        {p.date ? ` · ${fmtDate(p.date)}` : ''} · {p.author}
+      </div>
+    </div>
+    {canDelete && (
+      <button
+        type="button"
+        className="p-1 text-red-400 hover:text-red-300 shrink-0"
+        title="Удалить"
+        onClick={async () => onShowToast((await deleteBoardPost(p)) ? 'Удалено' : 'Не получилось удалить')}
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    )}
+  </div>
+);
+
+export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, posts, myUid, onLoggedIn, onLogout, onPickClass, onBack, onShowToast }) => {
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -82,6 +109,9 @@ export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, 
           <button type="submit" className="btn green w-full justify-center" disabled={busy}>
             {busy ? 'Проверяю код…' : 'Войти как учитель'}
           </button>
+          <button type="button" className="btn darkBtn w-full justify-center text-xs" onClick={onBack}>
+            ← Назад
+          </button>
         </form>
         <p className="text-[11px] text-white/50">
           Ученикам этот раздел не нужен — им хватает кода класса от классного руководителя.
@@ -119,31 +149,6 @@ export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, 
   const mine = posts.filter((p) => p.uid === myUid);
   const colleagues = posts.filter((p) => p.aud === 'teachers' && p.uid !== myUid);
 
-  const PostRow: React.FC<{ p: BoardPost; canDelete: boolean }> = ({ p, canDelete }) => (
-    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-start justify-between gap-2">
-      <div className="min-w-0">
-        <b className="text-sm block">
-          {p.kind === 'ann' ? '📢' : '🗓'} {p.title}
-        </b>
-        {p.text && <div className="text-xs text-white/80 whitespace-pre-line break-words">{p.text}</div>}
-        <div className="text-[10px] text-white/50 mt-0.5">
-          {AUDIENCE_LABEL[p.aud]} · {p.cls || 'вся школа'}
-          {p.date ? ` · ${fmtDate(p.date)}` : ''} · {p.author}
-        </div>
-      </div>
-      {canDelete && (
-        <button
-          type="button"
-          className="p-1 text-red-400 hover:text-red-300 shrink-0"
-          title="Удалить"
-          onClick={async () => onShowToast((await deleteBoardPost(p)) ? 'Удалено' : 'Не получилось удалить')}
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      )}
-    </div>
-  );
-
   return (
     <div className="card screen-enter space-y-4">
       <div>
@@ -171,7 +176,7 @@ export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, 
         {kind === 'ann' ? (
           <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Текст объявления (необязательно)" rows={3} maxLength={1000} className="text-sm" />
         ) : (
-          <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className="text-sm" />
+          <input type="date" value={date} min={toDateKey(new Date())} onChange={(e) => e.target.value && setDate(e.target.value)} className="text-sm" />
         )}
         <div>
           <div className="text-xs font-bold text-white/70 mb-1">Кто увидит</div>
@@ -204,7 +209,7 @@ export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, 
         <div className="space-y-2">
           <h3 className="text-sm font-black text-white/85">Мои публикации</h3>
           {mine.map((p) => (
-            <PostRow key={p.id} p={p} canDelete />
+            <PostRow key={p.id} p={p} canDelete onShowToast={onShowToast} />
           ))}
         </div>
       )}
@@ -213,7 +218,7 @@ export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, 
         <div className="space-y-2">
           <h3 className="text-sm font-black text-white/85">Для учителей</h3>
           {colleagues.map((p) => (
-            <PostRow key={p.id} p={p} canDelete={false} />
+            <PostRow key={p.id} p={p} canDelete={false} onShowToast={onShowToast} />
           ))}
         </div>
       )}

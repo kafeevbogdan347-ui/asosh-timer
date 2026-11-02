@@ -102,6 +102,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
     setText('');
     setPinned(false);
     setPhotoUrl('');
+    setShareWithClass(isTeacher);
     if (fileInputRef.current) fileInputRef.current.value = '';
     playSound('coin', soundProfile);
     doVibro(vibro, 20);

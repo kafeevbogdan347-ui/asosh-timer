@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScreenId, LanguageType } from '../types';
 import { DICT } from '../data/constants';
 import { BoardPost, AUDIENCE_LABEL } from '../services/teacher';
@@ -69,6 +69,16 @@ const QUICK_GROUPS: { title: string; items: { icon: string; label: string; scree
   },
 ];
 
+const HIDDEN_ANN_KEY = 'asosh_hidden_announcements';
+const loadHiddenAnn = (): string[] => {
+  try {
+    const list = JSON.parse(localStorage.getItem(HIDDEN_ANN_KEY) || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+};
+
 export const MainScreen: React.FC<MainScreenProps> = ({
   cls,
   shift,
@@ -92,8 +102,18 @@ export const MainScreen: React.FC<MainScreenProps> = ({
   const groups = isTeacher
     ? QUICK_GROUPS.map((g) => (g.title === 'Класс' ? { ...g, items: [{ icon: '👩‍🏫', label: 'Кабинет учителя', screen: 'teacher' as ScreenId }, ...g.items] } : g))
     : QUICK_GROUPS;
+  const [hiddenAnn, setHiddenAnn] = useState<string[]>(loadHiddenAnn);
+  const hideAnn = (id: string) => {
+    const next = [...hiddenAnn, id];
+    setHiddenAnn(next);
+    try {
+      localStorage.setItem(HIDDEN_ANN_KEY, JSON.stringify(next.slice(-100)));
+    } catch {
+      // нет места — скроется только до перезапуска
+    }
+  };
   const freshAnn = announcements
-    .filter((a) => a.kind === 'ann' && Date.now() - a.created_at < 30 * 24 * 3600 * 1000)
+    .filter((a) => a.kind === 'ann' && Date.now() - a.created_at < 30 * 24 * 3600 * 1000 && !hiddenAnn.includes(a.id))
     .slice(0, 3);
 
   return (
@@ -157,7 +177,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
             📊 {quarterProgress.name}
             {!quarterProgress.isBreak && ` (${quarterProgress.percent}%)`}
           </span>
-          <span className="text-white/80">{quarterProgress.breakName}: через {quarterProgress.daysLeft} дн.</span>
+          {quarterProgress.daysLeft > 0 && <span className="text-white/80">{quarterProgress.breakName}: через {quarterProgress.daysLeft} дн.</span>}
         </div>
         <div className="w-full bg-white/10 h-2.5 rounded-full overflow-hidden border border-white/15">
           <div
@@ -179,8 +199,19 @@ export const MainScreen: React.FC<MainScreenProps> = ({
             <div key={a.id} className="p-3 rounded-2xl bg-amber-500/10 border border-amber-400/35">
               <div className="flex items-start justify-between gap-2">
                 <b className="text-sm text-amber-200">📢 {a.title}</b>
-                <span className="text-[10px] text-white/50 shrink-0">
-                  {new Date(a.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                <span className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[10px] text-white/50">
+                    {new Date(a.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                  </span>
+                  <button
+                    type="button"
+                    className="w-6 h-6 grid place-items-center rounded-lg text-white/60 hover:bg-white/10 cursor-pointer"
+                    aria-label="Скрыть объявление"
+                    title="Скрыть"
+                    onClick={() => hideAnn(a.id)}
+                  >
+                    ✕
+                  </button>
                 </span>
               </div>
               {a.text && <div className="text-xs text-white/85 whitespace-pre-line break-words mt-0.5">{a.text}</div>}

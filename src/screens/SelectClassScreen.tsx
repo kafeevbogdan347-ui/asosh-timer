@@ -358,7 +358,7 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
                       ) : (
                         <span className="text-amber-300/80 flex items-center gap-1">
                           <Lock className="w-2.5 h-2.5 text-amber-400" />
-                          <span>{isGuest ? 'Гостем, без чата' : 'Требуется код'}</span>
+                          <span>{teacherName ? 'Без кода' : isGuest ? 'Гостем, без чата' : 'Требуется код'}</span>
                         </span>
                       )}
                     </div>
