@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { SCHOOL_QUARTERS } from '../data/constants';
+import { HOLIDAYS, SCHOOL_QUARTERS } from '../data/constants';
 import { toDateKey } from '../services/classShared';
 import { BoardPost, BoardAudience, AUDIENCE_LABEL, addBoardPost, deleteBoardPost } from '../services/teacher';
 
@@ -30,15 +30,6 @@ const KIND: Record<EventKind, { icon: string; label: string }> = {
   short: { icon: '⏱', label: 'Сокращённый день' },
   other: { icon: '📌', label: 'Другое' },
 };
-
-// Государственные праздники, попадающие на учебный год
-const HOLIDAYS: { md: string; title: string }[] = [
-  { md: '11-04', title: 'День народного единства' },
-  { md: '02-23', title: 'День защитника Отечества' },
-  { md: '03-08', title: 'Международный женский день' },
-  { md: '05-01', title: 'Праздник Весны и Труда' },
-  { md: '05-09', title: 'День Победы' },
-];
 
 const dayDiff = (from: string, to: string) => {
   const [a, b] = [from, to].map((k) => {
@@ -85,6 +76,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ today, onShowToa
   const [kind, setKind] = useState<EventKind>('test');
   const [vis, setVis] = useState<Visibility>('me');
   const [forClass, setForClass] = useState(true);
+  const [publishing, setPublishing] = useState(false);
 
   const save = (list: MyEvent[]) => {
     setEvents(list);
@@ -132,7 +124,10 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ today, onShowToa
     e.preventDefault();
     const text = title.trim() || KIND[kind].label;
     if (vis !== 'me' && teacherName) {
+      if (publishing) return;
+      setPublishing(true);
       const ok = await addBoardPost({ kind: 'event', title: `${KIND[kind].icon} ${text}`.slice(0, 120), date, aud: vis, cls: forClass ? cls : '', author: teacherName.slice(0, 60) });
+      setPublishing(false);
       if (ok) setTitle('');
       onShowToast(ok ? `Событие опубликовано: ${AUDIENCE_LABEL[vis]}` : 'Не получилось опубликовать. Проверьте интернет.');
       return;
@@ -183,7 +178,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ today, onShowToa
           ))}
         </div>
         <div className="flex flex-wrap gap-2">
-          <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className="text-sm px-2 py-2 w-full sm:w-40" />
+          <input type="date" value={date} min={todayKey} onChange={(e) => e.target.value && setDate(e.target.value)} className="text-sm px-2 py-2 w-full sm:w-40" />
           <input
             type="text"
             value={title}
@@ -192,7 +187,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ today, onShowToa
             maxLength={60}
             className="flex-1 min-w-[140px] text-sm px-3 py-2"
           />
-          <button type="submit" className="btn green !py-2 !px-3 shrink-0" aria-label="Добавить">
+          <button type="submit" className="btn green !py-2 !px-3 shrink-0" aria-label="Добавить" disabled={publishing}>
             <Plus className="w-4 h-4" />
           </button>
         </div>
@@ -218,7 +213,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ today, onShowToa
                     {e.post && ` · 👩‍🏫 ${e.post.author} · ${e.post.cls || 'вся школа'}${teacherName ? ` · ${AUDIENCE_LABEL[e.post.aud]}` : ''}`}
                   </span>
                 </div>
-                <span className="text-[11px] font-bold text-white/70 shrink-0">{now ? 'сейчас' : diff === 1 ? 'завтра' : `через ${diff} дн.`}</span>
+                <span className="text-[11px] font-bold text-white/70 shrink-0">{now ? (e.endDate ? 'сейчас' : 'сегодня') : diff === 1 ? 'завтра' : `через ${diff} дн.`}</span>
                 {e.post && e.post.uid === myUid && (
                   <button
                     type="button"

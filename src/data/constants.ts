@@ -983,3 +983,16 @@ export const DICT: Record<string, Record<string, string>> = {
     tomatoesCount: 'Tamamlanmış pomodorolar',
   },
 };
+
+// Государственные праздники, попадающие на учебный год
+export const HOLIDAYS: { md: string; title: string }[] = [
+  { md: '11-04', title: 'День народного единства' },
+  { md: '02-23', title: 'День защитника Отечества' },
+  { md: '03-08', title: 'Международный женский день' },
+  { md: '05-01', title: 'Праздник Весны и Труда' },
+  { md: '05-09', title: 'День Победы' },
+];
+
+// Каникулы: дата (YYYY-MM-DD) не попадает ни в одну четверть
+export const isVacationDay = (dateKey: string) => !SCHOOL_QUARTERS.some((q) => dateKey >= q.start && dateKey <= q.end);
+export const isHolidayDay = (dateKey: string) => HOLIDAYS.some((h) => h.md === dateKey.slice(5));

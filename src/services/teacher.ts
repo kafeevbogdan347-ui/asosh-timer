@@ -73,7 +73,9 @@ export async function loginTeacher(rawCode: string, rawName: string): Promise<{ 
     return { ok: true };
   } catch (err) {
     console.warn('Teacher login failed:', err);
-    return { ok: false, error: 'Неверный код учителя' };
+    // Неизвестный код отклоняют правила базы; всё остальное — проблема со связью
+    const denied = /permission.denied/i.test(String((err as { code?: string })?.code || err));
+    return { ok: false, error: denied ? 'Неверный код учителя' : 'Не удалось проверить код. Проверьте интернет и попробуйте ещё раз.' };
   }
 }
 
@@ -137,7 +139,7 @@ export function subscribeBoard(isTeacher: boolean, onUpdate: (posts: BoardPost[]
     (isTeacher ? (['pub', 'teach'] as const) : (['pub'] as const)).forEach((key) => {
       unsubs.push(
         onValue(
-          query(ref(db, `asosh_board/${key}`), limitToLast(100)),
+          query(ref(db, `asosh_board/${key}`), limitToLast(300)),
           (snap) => {
             const val = snap.val() || {};
             parts[key] = Object.keys(val).map((id) => ({ ...val[id], id }) as BoardPost);
@@ -158,7 +160,7 @@ export function subscribeBoard(isTeacher: boolean, onUpdate: (posts: BoardPost[]
 
 export async function addBoardPost(post: Omit<BoardPost, 'id' | 'uid' | 'created_at'>): Promise<boolean> {
   const { db } = initFirebase();
-  if (!db || !(await ensureSignedIn())) return false;
+  if (!db || !navigator.onLine || !(await ensureSignedIn())) return false;
   try {
     const clean = Object.fromEntries(Object.entries(post).filter(([, v]) => v !== '' && v !== undefined));
     await push(ref(db, boardPath(post.aud)), { ...clean, cls: post.cls, uid: myUid(), created_at: Date.now() });
@@ -171,7 +173,7 @@ export async function addBoardPost(post: Omit<BoardPost, 'id' | 'uid' | 'created
 
 export async function deleteBoardPost(post: BoardPost): Promise<boolean> {
   const { db } = initFirebase();
-  if (!db || !(await ensureSignedIn())) return false;
+  if (!db || !navigator.onLine || !(await ensureSignedIn())) return false;
   try {
     await remove(ref(db, `${boardPath(post.aud)}/${post.id}`));
     return true;

@@ -19,6 +19,8 @@ import {
   MOTIVATORS_RU,
   MOTIVATORS_BA,
   SCHOOL_QUARTERS,
+  isVacationDay,
+  isHolidayDay,
 } from './data/constants';
 import { getBaseLessonsForClass, hasOfficialSchedule } from './data/schoolSchedule';
 import { migrateTheme } from './data/themes';
@@ -699,9 +701,15 @@ export default function App() {
     return result;
   };
 
-  const currentLessons = getLessonsForDay(currentDayName);
+  // На каникулах и в праздники уроков нет, хотя расписание по дням недели остаётся
+  const isDayOff = (dateKey: string) => isVacationDay(dateKey) || isHolidayDay(dateKey);
+  const todayDateKey = toDateKey(activeTime);
+  const vacationToday = isVacationDay(todayDateKey);
+  const todayOff = isDayOff(todayDateKey);
+  const tomorrowOff = isDayOff(dateKeyForDay(tomorrowDayName));
+  const currentLessons = todayOff ? [] : getLessonsForDay(currentDayName);
   const currentBells = getDayBells(currentDayName);
-  const tomorrowLessons = getLessonsForDay(tomorrowDayName);
+  const tomorrowLessons = tomorrowOff ? [] : getLessonsForDay(tomorrowDayName);
   const tomorrowBells = getDayBells(tomorrowDayName);
 
   // Compute current lesson / break state
@@ -789,6 +797,7 @@ export default function App() {
         }
       : { ...lessonStatus, nowText: 'Уроки на сегодня закончены 🎉' };
   }
+  if (todayOff) lessonStatus = { ...lessonStatus, nowText: vacationToday ? 'Сейчас каникулы 🏖️' : 'Сегодня праздник 🎉' };
 
   // APK: заранее ставим напоминания за 5 минут до каждого урока на 7 дней вперёд
   const nativeReminders = (() => {
@@ -796,6 +805,7 @@ export default function App() {
     const list: { at: Date; title: string; body: string }[] = [];
     for (let d = 0; d < 7; d++) {
       const date = new Date(activeTime.getFullYear(), activeTime.getMonth(), activeTime.getDate() + d);
+      if (isDayOff(toDateKey(date))) continue;
       const dayName = DAYS[(dayIndex + d) % 7];
       const bells = getDayBells(dayName);
       getLessonsForDay(dayName).forEach(([sub, room], i) => {
@@ -857,7 +867,7 @@ export default function App() {
     const minutes = activeTime.getMinutes();
     if (hours === 20 && minutes === 0 && !eveningBackpackRemindedRef.current) {
       eveningBackpackRemindedRef.current = true;
-      showToast('🎒 20:00 — Не забудь собрать портфель на завтра!');
+      if (tomorrowLessons.length > 0) showToast('🎒 20:00 — Не забудь собрать портфель на завтра!');
     }
     if (hours !== 20) {
       eveningBackpackRemindedRef.current = false;
@@ -885,10 +895,25 @@ export default function App() {
   let bellIcon = '📅';
   let bellUrgent = false;
 
-  if (currentLessons.length === 0) {
-    bellTitle = 'Расписание обновляется';
-    bellTimeText = '--:--';
-    bellIcon = '📅';
+  const dayWord = (n: number) => {
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return 'день';
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'дня';
+    return 'дней';
+  };
+  const nextStudyStart = SCHOOL_QUARTERS.find((q) => q.start > todayDateKey)?.start;
+  const vacationDaysLeft = nextStudyStart
+    ? Math.max(1, Math.ceil((new Date(`${nextStudyStart}T00:00:00`).getTime() - activeTime.getTime()) / (24 * 3600 * 1000)))
+    : 0;
+
+  if (vacationToday) {
+    bellTitle = nextStudyStart ? 'Каникулы, до учёбы:' : 'Каникулы';
+    bellTimeText = nextStudyStart ? `${vacationDaysLeft} ${dayWord(vacationDaysLeft)}` : '—';
+    bellIcon = '🏖️';
+  } else if (todayOff) {
+    bellTitle = 'Сегодня праздник, уроков нет';
+    bellTimeText = '—';
+    bellIcon = '🎉';
   } else if (lessonStatus.type === 'lesson') {
     bellTitle = 'До конца урока осталось:';
     bellTimeText = formatSec(lessonStatus.remainSec);
@@ -932,11 +957,12 @@ export default function App() {
 
   const dayOfWeek = activeTime.getDay();
   let weekendText = '';
-  if (dayOfWeek === 6) weekendText = 'Суббота! Отдых 🥳';
-  else if (dayOfWeek === 0) weekendText = 'Воскресенье! Завтра в школу ⚡';
+  if (vacationToday) weekendText = nextStudyStart ? `Каникулы: ещё ${vacationDaysLeft} ${dayWord(vacationDaysLeft)}` : 'Лето! 🌞';
+  else if (dayOfWeek === 6) weekendText = 'Суббота! Отдых 🥳';
+  else if (dayOfWeek === 0) weekendText = tomorrowOff ? 'Воскресенье! Отдых 🥳' : 'Воскресенье! Завтра в школу ⚡';
   else {
     const left = 6 - dayOfWeek;
-    weekendText = `Осталось учиться: ${left} ${left === 1 ? 'день' : 'дня'}`;
+    weekendText = `Осталось учиться: ${left} ${dayWord(left)}`;
   }
 
   // Quarter calculation
@@ -946,7 +972,7 @@ export default function App() {
   const quarterStartMs = (q: (typeof SCHOOL_QUARTERS)[number]) => new Date(`${q.start}T00:00:00`).getTime();
   const quarterEndMs = (q: (typeof SCHOOL_QUARTERS)[number]) => new Date(`${q.end}T23:59:59`).getTime();
 
-  let activeQuarter: { name: string; breakName: string } = { name: 'Каникулы', breakName: 'учёбы' };
+  let activeQuarter: { name: string; breakName: string } = { name: 'Каникулы', breakName: 'Учёба' };
   let quarterPercent = 100;
   let quarterDaysLeft = 0;
 
@@ -962,7 +988,7 @@ export default function App() {
   } else {
     const prevQuarter = [...SCHOOL_QUARTERS].reverse().find((q) => nowMs > quarterEndMs(q));
     const nextQuarter = SCHOOL_QUARTERS.find((q) => nowMs < quarterStartMs(q));
-    if (prevQuarter) activeQuarter = { name: prevQuarter.breakName, breakName: 'учёбы' };
+    if (prevQuarter) activeQuarter = { name: prevQuarter.breakName, breakName: 'Учёба' };
     if (nextQuarter) quarterDaysLeft = Math.max(0, Math.ceil((quarterStartMs(nextQuarter) - nowMs) / DAY_MS));
   }
 
@@ -1323,7 +1349,7 @@ export default function App() {
       {currentScreen !== 'retroFirst' && currentScreen !== 'maintenance' && currentScreen !== 'board' && (
         <TopBar
           timeStr={timeStr}
-          minimal={currentScreen === 'onboarding' || currentScreen === 'select'}
+          minimal={currentScreen === 'onboarding' || currentScreen === 'select' || (currentScreen === 'teacher' && !cls)}
           onOpenCalc={() => setIsCalcOpen(true)}
           onOpenAchievements={() => setCurrentScreen('achievements')}
           unlockedCount={achievements.filter((a) => a.unlocked).length}
@@ -1427,7 +1453,7 @@ export default function App() {
             onOpenCalc={() => setIsCalcOpen(true)}
             onLogoTap={handleLogoTap}
             lang={lang}
-            showBackpackHint={activeTime.getHours() >= 15 && dayOfWeek <= 4}
+            showBackpackHint={activeTime.getHours() >= 15 && tomorrowLessons.length > 0}
             quarterProgress={{
               name: activeQuarter.name,
               percent: quarterPercent,
@@ -1524,8 +1550,7 @@ export default function App() {
                 : addClassHomework(cls, { ...h, forDate: '', author: (studentName || 'Ученик').slice(0, 60) })
             }
             onDeleteClassHomework={(id) => {
-              deleteClassHomework(cls, id);
-              showToast('Удалено у класса');
+              deleteClassHomework(cls, id).then((ok) => showToast(ok ? 'Удалено у класса' : 'Не получилось удалить. Проверь интернет.'));
             }}
             onShowToast={showToast}
           />
@@ -1544,8 +1569,7 @@ export default function App() {
             canShare={classVerified || isTeacher}
             onAddClassReplacement={(r) => addClassReplacement(cls, { ...r, author: (teacher?.name || studentName || 'Ученик').slice(0, 60) })}
             onDeleteClassReplacement={(id) => {
-              deleteClassReplacement(cls, id);
-              showToast('Замена удалена');
+              deleteClassReplacement(cls, id).then((ok) => showToast(ok ? 'Замена удалена' : 'Не получилось удалить. Проверь интернет.'));
             }}
             today={activeTime}
             lang={lang}
@@ -1675,6 +1699,7 @@ export default function App() {
               setCurrentScreen(cls ? 'main' : 'select');
             }}
             onPickClass={() => setCurrentScreen('select')}
+            onBack={() => setCurrentScreen(cls ? 'main' : 'select')}
             onShowToast={showToast}
           />
         )}
@@ -1754,7 +1779,7 @@ export default function App() {
       </main>
 
       {/* Bottom Navigation Bar */}
-      {currentScreen !== 'retroFirst' && currentScreen !== 'maintenance' && (
+      {currentScreen !== 'retroFirst' && currentScreen !== 'maintenance' && !(currentScreen === 'teacher' && !cls) && (
         <NavBar
           currentScreen={currentScreen}
           onNavigate={(s) => setCurrentScreen(s)}
