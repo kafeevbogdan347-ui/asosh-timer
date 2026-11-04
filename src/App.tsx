@@ -1270,7 +1270,7 @@ export default function App() {
   const activeHwCount = homeworkList.filter((h) => h.cls === cls && !h.done).length;
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${currentScreen === 'board' ? 'board-mode' : ''}`}>
       {/* FPS Overlay Counter */}
       {fpsOverlayActive && (
         <div className="fixed top-2 right-2 z-[9999] bg-slate-950/90 border border-emerald-400 text-emerald-400 font-mono text-[11px] font-black px-2.5 py-1 rounded-lg backdrop-blur-sm pointer-events-none shadow-lg">

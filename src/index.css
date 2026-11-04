@@ -825,6 +825,13 @@ body.device-pc .nav-bar {
   padding: 14px 12px calc(110px + env(safe-area-inset-bottom, 0px));
   transition: max-width 0.3s;
 }
+/* Экран для ТВ занимает всю ширину: его шрифты заданы в vw и в колонке 880px вылезали за край */
+.app-container.board-mode,
+body.device-pc .app-container.board-mode,
+body.compact .app-container.board-mode {
+  max-width: none;
+  padding: 12px 24px;
+}
 
 .card {
   background: linear-gradient(180deg, var(--card), rgba(255, 255, 255, 0.04));
