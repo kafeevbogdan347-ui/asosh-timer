@@ -4,6 +4,7 @@ import { LessonUpdate, LanguageType, SoundProfileType } from '../types';
 import { playSound, doVibro } from '../utils/audio';
 import { Plus, Trash2, Users, User, Lock } from 'lucide-react';
 import { ClassReplacement, toDateKey } from '../services/classShared';
+import { checkBeforePublish } from '../components/HumanCheck';
 
 interface AddUpdateScreenProps {
   cls: string;
@@ -82,6 +83,11 @@ export const AddUpdateScreen: React.FC<AddUpdateScreenProps> = ({
       onAddUpdate({ id: `${cls}-${day}-${num}-${Date.now()}`, cls, day, num, sub: subject, room: room.trim() });
       onShowToast('Урок сохранён ✨');
     } else {
+      const modError = await checkBeforePublish(subject, room);
+      if (modError) {
+        onShowToast(modError);
+        return;
+      }
       setSaving(true);
       const ok = await onAddClassReplacement({ date, num, sub: subject, room: room.trim() });
       setSaving(false);

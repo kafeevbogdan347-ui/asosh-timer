@@ -1,6 +1,7 @@
 import { ref, push, remove, onValue, query, limitToLast, Unsubscribe } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
 import { initFirebase, ensureSignedIn } from './firebaseChat';
+import { censorFields } from '../utils/moderation';
 
 // Общие данные класса в Firebase: замены уроков и домашка.
 // Видны всем, кто вошёл в класс; удалить запись может только её автор (см. database.rules.json).
@@ -64,7 +65,8 @@ function subscribe<T extends { id: string }>(
       query(ref(db, classPath(cls, section)), limitToLast(limit)),
       (snap) => {
         const val = snap.val() || {};
-        const items = Object.keys(val).map((id) => ({ ...val[id], id }) as T);
+        // Мат, попавший в базу в обход приложения, показываем звёздочками
+        const items = Object.keys(val).map((id) => censorFields({ ...val[id], id }) as T);
         try {
           localStorage.setItem(cacheKey, JSON.stringify(items));
         } catch {

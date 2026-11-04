@@ -6,6 +6,7 @@
 import { ref, get, update, push, remove, onValue, query, limitToLast } from 'firebase/database';
 import { initFirebase, ensureSignedIn } from './firebaseChat';
 import { myUid } from './classShared';
+import { censorFields } from '../utils/moderation';
 
 const LOCAL_KEY = 'asosh_teacher';
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -142,7 +143,7 @@ export function subscribeBoard(isTeacher: boolean, onUpdate: (posts: BoardPost[]
           query(ref(db, `asosh_board/${key}`), limitToLast(300)),
           (snap) => {
             const val = snap.val() || {};
-            parts[key] = Object.keys(val).map((id) => ({ ...val[id], id }) as BoardPost);
+            parts[key] = Object.keys(val).map((id) => censorFields({ ...val[id], id }) as BoardPost);
             emit();
           },
           () => {
