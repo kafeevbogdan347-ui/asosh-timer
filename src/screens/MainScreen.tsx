@@ -172,12 +172,12 @@ export const MainScreen: React.FC<MainScreenProps> = ({
         className="cleanNext cursor-pointer hover:bg-white/12 transition-colors my-3"
         onClick={() => onNavigate('quarter')}
       >
-        <div className="flex justify-between items-center text-xs mb-1.5 font-bold">
-          <span className="text-cyan-300">
+        <div className="flex flex-wrap justify-between items-center gap-x-3 gap-y-0.5 text-xs mb-1.5 font-bold">
+          <span className="text-cyan-300 whitespace-nowrap">
             📊 {quarterProgress.name}
             {!quarterProgress.isBreak && ` (${quarterProgress.percent}%)`}
           </span>
-          {quarterProgress.daysLeft > 0 && <span className="text-white/80">{quarterProgress.breakName}: через {quarterProgress.daysLeft} дн.</span>}
+          {quarterProgress.daysLeft > 0 && <span className="text-white/80 whitespace-nowrap">{quarterProgress.breakName}: через {quarterProgress.daysLeft} дн.</span>}
         </div>
         <div className="w-full bg-white/10 h-2.5 rounded-full overflow-hidden border border-white/15">
           <div

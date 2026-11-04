@@ -321,28 +321,28 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
         <div className="flex flex-wrap gap-1.5 mt-5 mb-2 border-t border-white/10 pt-3">
           <button
             type="button"
-            className={`choice !py-1 !px-3 text-xs font-bold ${filter === 'all' ? 'active' : ''}`}
+            className={`choice !py-1 !px-3 !text-xs font-bold ${filter === 'all' ? 'active' : ''}`}
             onClick={() => setFilter('all')}
           >
             Все ({currentClassHw.length})
           </button>
           <button
             type="button"
-            className={`choice !py-1 !px-3 text-xs font-bold ${filter === 'pinned' ? 'active !bg-amber-400 !text-slate-950 border-amber-400' : ''}`}
+            className={`choice !py-1 !px-3 !text-xs font-bold ${filter === 'pinned' ? 'active !bg-amber-400 !text-slate-950 border-amber-400' : ''}`}
             onClick={() => setFilter('pinned')}
           >
             ⭐ Закрепленные
           </button>
           <button
             type="button"
-            className={`choice !py-1 !px-3 text-xs font-bold ${filter === 'active' ? 'active' : ''}`}
+            className={`choice !py-1 !px-3 !text-xs font-bold ${filter === 'active' ? 'active' : ''}`}
             onClick={() => setFilter('active')}
           >
             В процессе
           </button>
           <button
             type="button"
-            className={`choice !py-1 !px-3 text-xs font-bold ${filter === 'done' ? 'active' : ''}`}
+            className={`choice !py-1 !px-3 !text-xs font-bold ${filter === 'done' ? 'active' : ''}`}
             onClick={() => setFilter('done')}
           >
             Выполненные
