@@ -127,7 +127,7 @@ export const FormulasScreen: React.FC<FormulasScreenProps> = ({ lang }) => {
           <button
             key={cat.id}
             type="button"
-            className={`choice !py-1.5 !px-3 text-xs font-bold ${
+            className={`choice !py-1.5 !px-3 !text-xs font-bold ${
               activeTab === cat.id ? 'active !bg-cyan-400 !text-slate-950 border-cyan-400' : ''
             }`}
             onClick={() => setActiveTab(cat.id as typeof activeTab)}

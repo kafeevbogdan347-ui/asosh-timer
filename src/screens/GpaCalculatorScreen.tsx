@@ -192,10 +192,10 @@ export const GpaCalculatorScreen: React.FC<GpaCalculatorScreenProps> = ({
       {/* Один калькулятор — два режима */}
       {onOpenCalc && (
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" className="choice !py-2 text-xs font-black" onClick={onOpenCalc}>
+          <button type="button" className="choice !py-2 !text-xs font-black" onClick={onOpenCalc}>
             🧮 Обычный
           </button>
-          <button type="button" className="choice active !py-2 text-xs font-black">🎯 Оценки</button>
+          <button type="button" className="choice active !py-2 !text-xs font-black">🎯 Оценки</button>
         </div>
       )}
 

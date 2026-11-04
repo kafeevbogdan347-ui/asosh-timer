@@ -120,7 +120,7 @@ export const PomodoroScreen: React.FC<PomodoroScreenProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <button
           type="button"
-          className={`choice py-2 text-xs font-bold ${
+          className={`choice !py-2 !text-xs font-bold ${
             mode === 'work' && durationMin === 25 ? 'active !bg-cyan-400 !text-slate-950' : ''
           }`}
           onClick={() => changePreset('work', 25)}
@@ -129,7 +129,7 @@ export const PomodoroScreen: React.FC<PomodoroScreenProps> = ({
         </button>
         <button
           type="button"
-          className={`choice py-2 text-xs font-bold ${
+          className={`choice !py-2 !text-xs font-bold ${
             mode === 'work' && durationMin === 15 ? 'active !bg-cyan-400 !text-slate-950' : ''
           }`}
           onClick={() => changePreset('work', 15)}
@@ -138,7 +138,7 @@ export const PomodoroScreen: React.FC<PomodoroScreenProps> = ({
         </button>
         <button
           type="button"
-          className={`choice py-2 text-xs font-bold ${
+          className={`choice !py-2 !text-xs font-bold ${
             mode === 'work' && durationMin === 45 ? 'active !bg-cyan-400 !text-slate-950' : ''
           }`}
           onClick={() => changePreset('work', 45)}
@@ -147,7 +147,7 @@ export const PomodoroScreen: React.FC<PomodoroScreenProps> = ({
         </button>
         <button
           type="button"
-          className={`choice py-2 text-xs font-bold ${
+          className={`choice !py-2 !text-xs font-bold ${
             mode === 'break' ? 'active !bg-emerald-400 !text-slate-950' : ''
           }`}
           onClick={() => changePreset('break', 5)}

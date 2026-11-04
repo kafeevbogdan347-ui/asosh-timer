@@ -113,8 +113,8 @@ export const CalcModal: React.FC<CalcModalProps> = ({
         {/* Один калькулятор — два режима */}
         {onOpenGrades && (
           <div className="grid grid-cols-2 gap-2 mb-3">
-            <button type="button" className="choice active !py-2 text-xs font-black">🧮 Обычный</button>
-            <button type="button" className="choice !py-2 text-xs font-black" onClick={onOpenGrades}>
+            <button type="button" className="choice active !py-2 !text-xs font-black">🧮 Обычный</button>
+            <button type="button" className="choice !py-2 !text-xs font-black" onClick={onOpenGrades}>
               🎯 Оценки
             </button>
           </div>

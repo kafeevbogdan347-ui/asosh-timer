@@ -90,7 +90,7 @@ export const QuarterScreen: React.FC<QuarterScreenProps> = ({ lang }) => {
           <button
             key={q.id}
             type="button"
-            className={`choice py-2.5 text-xs font-bold ${
+            className={`choice !py-2.5 !text-xs font-bold ${
               activeQuarterIdx === i ? 'active' : ''
             }`}
             onClick={() => setActiveQuarterIdx(i)}

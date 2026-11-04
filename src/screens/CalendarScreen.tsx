@@ -153,17 +153,17 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ today, onShowToa
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               {(['me', 'all', 'students', 'teachers'] as Visibility[]).map((v) => (
-                <button key={v} type="button" className={`choice !py-1.5 !px-1 text-[11px] ${vis === v ? 'active' : ''}`} onClick={() => setVis(v)}>
+                <button key={v} type="button" className={`choice !py-1.5 !px-1 !text-[11px] ${vis === v ? 'active' : ''}`} onClick={() => setVis(v)}>
                   {v === 'me' ? '🔒 Только мне' : AUDIENCE_LABEL[v]}
                 </button>
               ))}
             </div>
             {vis !== 'me' && cls && (
               <div className="grid grid-cols-2 gap-1.5">
-                <button type="button" className={`choice !py-1.5 text-[11px] ${forClass ? 'active' : ''}`} onClick={() => setForClass(true)}>
+                <button type="button" className={`choice !py-1.5 !text-[11px] ${forClass ? 'active' : ''}`} onClick={() => setForClass(true)}>
                   Класс {cls}
                 </button>
-                <button type="button" className={`choice !py-1.5 text-[11px] ${!forClass ? 'active' : ''}`} onClick={() => setForClass(false)}>
+                <button type="button" className={`choice !py-1.5 !text-[11px] ${!forClass ? 'active' : ''}`} onClick={() => setForClass(false)}>
                   Вся школа
                 </button>
               </div>
@@ -172,7 +172,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ today, onShowToa
         )}
         <div className="flex flex-wrap gap-1.5">
           {(Object.keys(KIND) as EventKind[]).map((k) => (
-            <button key={k} type="button" className={`choice !py-1.5 !px-2.5 text-xs ${kind === k ? 'active' : ''}`} onClick={() => setKind(k)}>
+            <button key={k} type="button" className={`choice !py-1.5 !px-2.5 !text-xs ${kind === k ? 'active' : ''}`} onClick={() => setKind(k)}>
               {KIND[k].icon} {KIND[k].label}
             </button>
           ))}
@@ -206,7 +206,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ today, onShowToa
               <div className={`flex items-center gap-3 p-2.5 rounded-2xl border ${now ? 'bg-cyan-500/10 border-cyan-400/40' : 'bg-white/5 border-white/10'}`}>
                 <span className="text-xl shrink-0">{e.icon}</span>
                 <div className="flex-1 min-w-0">
-                  <b className="text-sm block truncate">{e.title}</b>
+                  <b className="text-sm block break-words">{e.title}</b>
                   <span className="text-[11px] text-white/60">
                     {fmt(e.date)}
                     {e.endDate ? ` — ${fmt(e.endDate)}` : ''}

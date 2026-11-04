@@ -136,10 +136,10 @@ export const AddUpdateScreen: React.FC<AddUpdateScreenProps> = ({
             <div>
               <label className="text-xs font-bold text-white/70">День</label>
               <div className="flex gap-1.5">
-                <button type="button" className={`choice !py-2 !px-3 text-xs ${date === todayKey ? 'active' : ''}`} onClick={() => setDate(todayKey)}>
+                <button type="button" className={`choice !py-2 !px-3 !text-xs ${date === todayKey ? 'active' : ''}`} onClick={() => setDate(todayKey)}>
                   Сегодня
                 </button>
-                <button type="button" className={`choice !py-2 !px-3 text-xs ${date === tomorrowKey ? 'active' : ''}`} onClick={() => setDate(tomorrowKey)}>
+                <button type="button" className={`choice !py-2 !px-3 !text-xs ${date === tomorrowKey ? 'active' : ''}`} onClick={() => setDate(tomorrowKey)}>
                   Завтра
                 </button>
                 <input

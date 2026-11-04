@@ -158,10 +158,10 @@ export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, 
 
       <form onSubmit={handlePublish} className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-2.5">
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" className={`choice !py-2 text-xs ${kind === 'ann' ? 'active' : ''}`} onClick={() => setKind('ann')}>
+          <button type="button" className={`choice !py-2 !text-xs ${kind === 'ann' ? 'active' : ''}`} onClick={() => setKind('ann')}>
             📢 Объявление
           </button>
-          <button type="button" className={`choice !py-2 text-xs ${kind === 'event' ? 'active' : ''}`} onClick={() => setKind('event')}>
+          <button type="button" className={`choice !py-2 !text-xs ${kind === 'event' ? 'active' : ''}`} onClick={() => setKind('event')}>
             🗓 Событие
           </button>
         </div>
@@ -182,7 +182,7 @@ export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, 
           <div className="text-xs font-bold text-white/70 mb-1">Кто увидит</div>
           <div className="grid grid-cols-3 gap-1.5">
             {(Object.keys(AUDIENCE_LABEL) as BoardAudience[]).map((a) => (
-              <button key={a} type="button" className={`choice !py-2 !px-1 text-[11px] ${aud === a ? 'active' : ''}`} onClick={() => setAud(a)}>
+              <button key={a} type="button" className={`choice !py-2 !px-1 !text-[11px] ${aud === a ? 'active' : ''}`} onClick={() => setAud(a)}>
                 {AUDIENCE_LABEL[a]}
               </button>
             ))}
