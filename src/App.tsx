@@ -75,6 +75,7 @@ import { MaintenanceScreen } from './screens/MaintenanceScreen';
 import { Achievement } from './types';
 import { LIGHT_THEME_IDS } from './data/themes';
 import { BoardScreen } from './screens/BoardScreen';
+import { HumanCheckHost } from './components/HumanCheck';
 import { CalendarScreen } from './screens/CalendarScreen';
 import { TeacherScreen } from './screens/TeacherScreen';
 import { TeacherInfo, BoardPost, getLocalTeacher, clearLocalTeacher, verifyTeacher, subscribeBoard, postsFor } from './services/teacher';
@@ -1286,6 +1287,9 @@ export default function App() {
       )}
 
       {/* 4-digit PIN Authentication Modal */}
+      {/* Проверка «Я не робот» перед публикацией для класса */}
+      <HumanCheckHost />
+
       <PinLockModal
         isOpen={isPinLocked}
         onSuccess={() => setIsPinLocked(false)}

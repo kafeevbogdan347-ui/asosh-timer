@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { HOLIDAYS, SCHOOL_QUARTERS } from '../data/constants';
 import { toDateKey } from '../services/classShared';
+import { checkBeforePublish } from '../components/HumanCheck';
 import { BoardPost, BoardAudience, AUDIENCE_LABEL, addBoardPost, deleteBoardPost } from '../services/teacher';
 
 // Календарь учебного года: каникулы и четверти, праздники и свои события (контрольные, сокращённые дни)
@@ -125,6 +126,11 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ today, onShowToa
     const text = title.trim() || KIND[kind].label;
     if (vis !== 'me' && teacherName) {
       if (publishing) return;
+      const modError = await checkBeforePublish(text);
+      if (modError) {
+        onShowToast(modError);
+        return;
+      }
       setPublishing(true);
       const ok = await addBoardPost({ kind: 'event', title: `${KIND[kind].icon} ${text}`.slice(0, 120), date, aud: vis, cls: forClass ? cls : '', author: teacherName.slice(0, 60) });
       setPublishing(false);

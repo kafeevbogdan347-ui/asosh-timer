@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
+import { censor } from '../utils/moderation';
 import {
   getDatabase,
   ref,
@@ -239,10 +240,10 @@ export function subscribeToFirebaseMessages(
                 const item = data[key];
                 knownMessages.set(key, {
                   id: key,
-                  username: item.username || 'Ученик',
+                  username: censor(item.username || 'Ученик'),
                   userId: item.userId || '',
                   avatar: item.avatar || '',
-                  content: item.content || '',
+                  content: censor(item.content || ''),
                   created_at: item.created_at || (item.timestamp ? new Date(item.timestamp).toISOString() : new Date().toISOString()),
                   isIncognito: !!item.isIncognito,
                   isSelfDestruct: !!item.isSelfDestruct,

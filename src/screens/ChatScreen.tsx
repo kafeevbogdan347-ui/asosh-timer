@@ -30,6 +30,7 @@ import {
 import { getMyProfile } from '../services/userService';
 import { playSound, doVibro } from '../utils/audio';
 import { useOnline } from '../utils/useOnline';
+import { checkBeforePublish } from '../components/HumanCheck';
 import { PRIVACY_POLICY_URL } from '../utils/privacy';
 
 interface ChatScreenProps {
@@ -146,6 +147,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     if (!trimmed || sending || cooldown) return;
     if (!online) {
       setErrorStatus('Нет интернета — сообщение не отправлено');
+      return;
+    }
+    const modError = await checkBeforePublish(trimmed);
+    if (modError) {
+      setErrorStatus(modError);
       return;
     }
 

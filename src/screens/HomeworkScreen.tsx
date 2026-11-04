@@ -3,6 +3,7 @@ import { HomeworkItem, LanguageType, SoundProfileType } from '../types';
 import { DICT } from '../data/constants';
 import { playSound, doVibro } from '../utils/audio';
 import { compressImage } from '../utils/image';
+import { checkBeforePublish } from '../components/HumanCheck';
 import { ClassHomework } from '../services/classShared';
 import { Star, CheckCircle, Trash2, Plus, Sparkles, Filter, Camera, Image, X, Eye } from 'lucide-react';
 
@@ -93,9 +94,16 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
     });
     if (shareWithClass) {
       // Фото не отправляем: только текст задания
-      onShareHomework({ sub: sub.trim(), text: text.trim() }).then((ok) =>
-        onShowToast(ok ? 'ДЗ отправлено всему классу 📣' : 'ДЗ сохранено, но классу не отправилось: нет интернета')
-      );
+      const shared = { sub: sub.trim(), text: text.trim() };
+      checkBeforePublish(shared.sub, shared.text).then((modError) => {
+        if (modError) {
+          onShowToast(`ДЗ сохранено у тебя, но классу не отправлено. ${modError}`);
+          return;
+        }
+        onShareHomework(shared).then((ok) =>
+          onShowToast(ok ? 'ДЗ отправлено всему классу 📣' : 'ДЗ сохранено, но классу не отправилось: нет интернета')
+        );
+      });
     }
 
     setSub('');

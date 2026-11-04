@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { CLASS_LIST } from '../data/classCodes';
 import { toDateKey } from '../services/classShared';
+import { checkBeforePublish } from '../components/HumanCheck';
 import {
   BoardAudience,
   BoardPost,
@@ -124,6 +125,11 @@ export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, 
     e.preventDefault();
     if (!title.trim()) {
       onShowToast('Напишите заголовок');
+      return;
+    }
+    const modError = await checkBeforePublish(title, text);
+    if (modError) {
+      onShowToast(modError);
       return;
     }
     setBusy(true);
