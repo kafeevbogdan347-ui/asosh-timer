@@ -1182,9 +1182,12 @@ body.theme-light .asoshik-bubble.bot { background: rgba(15, 23, 42, 0.06); borde
 @keyframes asoshik-dot { 0%, 80%, 100% { opacity: 0.3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-4px); } }
 .asoshik-avatar { flex-shrink: 0; }
 .asoshik-avatar .asoshik-eyes { transform-origin: 32px 32px; animation: asoshik-blink 4s infinite; }
-.asoshik-avatar.thinking { animation: asoshik-ring 0.5s infinite alternate ease-in-out; }
+.asoshik-avatar .asoshik-spark { transform-origin: 50px 13px; animation: asoshik-spark 2.4s infinite ease-in-out; }
+.asoshik-avatar.thinking { animation: asoshik-bob 0.7s infinite alternate ease-in-out; }
+.asoshik-avatar.thinking .asoshik-spark { animation-duration: 0.7s; }
 @keyframes asoshik-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
-@keyframes asoshik-ring { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
+@keyframes asoshik-spark { 0%, 100% { transform: scale(0.8) rotate(0deg); opacity: 0.7; } 50% { transform: scale(1.15) rotate(45deg); opacity: 1; } }
+@keyframes asoshik-bob { from { transform: translateY(1px) scale(1); } to { transform: translateY(-2px) scale(1.04); } }
 @media (prefers-reduced-motion: reduce) {
-  .asoshik-avatar .asoshik-eyes, .asoshik-avatar.thinking, .asoshik-typing span { animation: none; }
+  .asoshik-avatar .asoshik-eyes, .asoshik-avatar .asoshik-spark, .asoshik-avatar.thinking, .asoshik-typing span { animation: none; }
 }

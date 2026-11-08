@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { Send, Trash2 } from 'lucide-react';
 import {
   AssistantMessage,
@@ -17,25 +17,29 @@ interface AssistantScreenProps {
   vibro: boolean;
 }
 
-// Маскот Асошика: школьный будильник с глазами. Цвет берёт из темы (--accent)
-export const AsoshikAvatar: React.FC<{ size?: number; thinking?: boolean }> = ({ size = 40, thinking = false }) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" className={`asoshik-avatar ${thinking ? 'thinking' : ''}`} aria-hidden="true">
-    <circle cx="14" cy="13" r="7" fill="var(--accent)" opacity="0.85" />
-    <circle cx="50" cy="13" r="7" fill="var(--accent)" opacity="0.85" />
-    <path d="M18 56 l-4 6 M46 56 l4 6" stroke="var(--accent)" strokeWidth="4" strokeLinecap="round" />
-    <circle cx="32" cy="35" r="24" fill="var(--accent)" />
-    <circle cx="32" cy="35" r="19" fill="#0b1220" />
-    <g className="asoshik-eyes">
-      <ellipse cx="24.5" cy="32" rx="3.6" ry="4.6" fill="#fff" />
-      <ellipse cx="39.5" cy="32" rx="3.6" ry="4.6" fill="#fff" />
-      <circle cx="25.3" cy="33" r="1.8" fill="#0b1220" />
-      <circle cx="40.3" cy="33" r="1.8" fill="#0b1220" />
-    </g>
-    <path d="M25 42 q7 6 14 0" stroke="#fff" strokeWidth="2.6" fill="none" strokeLinecap="round" />
-    <circle cx="19" cy="40" r="2.4" fill="#fb7185" opacity="0.7" />
-    <circle cx="45" cy="40" r="2.4" fill="#fb7185" opacity="0.7" />
-  </svg>
-);
+// Маскот Асошика: градиентная капля с лицом и искоркой. Середина градиента — цвет темы (--accent)
+export const AsoshikAvatar: React.FC<{ size?: number; thinking?: boolean }> = ({ size = 40, thinking = false }) => {
+  const gid = `asoshik-g-${useId().replace(/:/g, '')}`;
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" className={`asoshik-avatar ${thinking ? 'thinking' : ''}`} aria-hidden="true">
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#a78bfa" />
+          <stop offset="0.5" stopColor="var(--accent)" />
+          <stop offset="1" stopColor="#38bdf8" />
+        </linearGradient>
+      </defs>
+      <path d="M32 6 C46 6 58 16 58 32 C58 47 47 58 32 58 C17 58 6 48 6 32 C6 17 18 6 32 6Z" fill={`url(#${gid})`} />
+      <path d="M18 16 C24 10 34 9 40 12" stroke="#fff" strokeOpacity="0.5" strokeWidth="3" fill="none" strokeLinecap="round" />
+      <g className="asoshik-eyes">
+        <rect x="21" y="27" width="6" height="10" rx="3" fill="#fff" />
+        <rect x="37" y="27" width="6" height="10" rx="3" fill="#fff" />
+      </g>
+      <path d="M27 43 q5 4 10 0" stroke="#fff" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+      <path className="asoshik-spark" d="M50 8 l1.6 3.6 3.6 1.6 -3.6 1.6 -1.6 3.6 -1.6 -3.6 -3.6 -1.6 3.6 -1.6Z" fill="#fde68a" />
+    </svg>
+  );
+};
 
 const SUGGESTIONS = [
   'Какой у меня следующий урок?',
