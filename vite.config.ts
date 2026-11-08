@@ -1,12 +1,10 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { createHash } from 'crypto';
 import path from 'path';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { normalizeCode } from './src/utils/normalizeCode';
+import { classCheckHash, devPasswordHash } from './src/utils/kdf';
 import { buildPresentationHtml, buildPresentationMarkdown } from './src/data/presentationContent';
-
-const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
 
 // Слайды и текст презентации собираются из src/data/presentationContent.ts,
 // чтобы на сайте всегда была актуальная версия: …/presentation.html и …/presentation.md
@@ -33,17 +31,20 @@ function presentationPlugin(): Plugin {
   };
 }
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
-  // CLASS_CODES="5А:код,5Б:код,..." → в приложение попадают только отпечатки кодов
-  const classCodeHashes = (env.CLASS_CODES || '')
-    .split(',')
-    .map((pair) => pair.split(':').map((s) => s.trim()))
-    .filter(([className, code]) => className && code)
-    .map(([className, code]) => ({ className, hash: sha256(normalizeCode(code)) }));
+  // CLASS_CODES="5А:код,5Б:код,..." → в приложение попадают только медленные отпечатки кодов (PBKDF2)
+  const classCodeHashes = await Promise.all(
+    (env.CLASS_CODES || '')
+      .split(',')
+      .map((pair) => pair.split(':').map((s) => s.trim()))
+      .filter(([className, code]) => className && code)
+      .map(async ([className, code]) => ({ className, hash: await classCheckHash(normalizeCode(code)) }))
+  );
 
   const devPassword = (env.DEV_PASSWORD || '').trim();
+  const devPasswordHashValue = devPassword ? await devPasswordHash(devPassword) : '';
 
   return {
     // На GitHub Pages приложение открывается в подпапке /asosh-timer/
@@ -51,7 +52,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss(), presentationPlugin()],
     define: {
       __CLASS_CODE_HASHES__: JSON.stringify(classCodeHashes),
-      __DEV_PASSWORD_HASH__: JSON.stringify(devPassword ? sha256(devPassword) : ''),
+      __DEV_PASSWORD_HASH__: JSON.stringify(devPasswordHashValue),
     },
     resolve: {
       alias: {

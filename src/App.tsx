@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import {
   ScreenId,
   AppSettings,
@@ -52,32 +52,14 @@ import { MainScreen } from './screens/MainScreen';
 import { TodayScreen } from './screens/TodayScreen';
 import { ScheduleScreen } from './screens/ScheduleScreen';
 import { TomorrowScreen } from './screens/TomorrowScreen';
-import { BackpackScreen } from './screens/BackpackScreen';
-import { QuarterScreen } from './screens/QuarterScreen';
-import { FormulasScreen } from './screens/FormulasScreen';
-import { PomodoroScreen } from './screens/PomodoroScreen';
 import { HomeworkScreen } from './screens/HomeworkScreen';
-import { MapScreen } from './screens/MapScreen';
 import { AddUpdateScreen } from './screens/AddUpdateScreen';
-import { GamesScreen } from './screens/GamesScreen';
-import { SettingsScreen } from './screens/SettingsScreen';
-import { AboutScreen } from './screens/AboutScreen';
-import { AchievementsScreen } from './screens/AchievementsScreen';
-import { GpaCalculatorScreen } from './screens/GpaCalculatorScreen';
-import { PortfolioScreen } from './screens/PortfolioScreen';
-import { FocusAudioScreen } from './screens/FocusAudioScreen';
-import { ChatScreen } from './screens/ChatScreen';
 import { isClassUnlocked } from './data/classCodes';
-import { ProfileScreen } from './screens/ProfileScreen';
-import { RetroFirstScreen } from './screens/RetroFirstScreen';
-import { BellsScreen } from './screens/BellsScreen';
 import { MaintenanceScreen } from './screens/MaintenanceScreen';
 import { Achievement } from './types';
 import { LIGHT_THEME_IDS } from './data/themes';
-import { BoardScreen } from './screens/BoardScreen';
 import { HumanCheckHost } from './components/HumanCheck';
-import { CalendarScreen } from './screens/CalendarScreen';
-import { TeacherScreen } from './screens/TeacherScreen';
+import { lazyScreen, preloadScreens } from './utils/lazyScreen';
 import { TeacherInfo, BoardPost, getLocalTeacher, clearLocalTeacher, verifyTeacher, subscribeBoard, postsFor } from './services/teacher';
 import {
   ClassReplacement,
@@ -92,6 +74,28 @@ import {
   toDateKey,
 } from './services/classShared';
 import { isNativeApp, showSystemNotification, scheduleNativeReminders, cancelNativeReminders } from './services/bellNotifications';
+
+// Редкие и тяжёлые экраны грузятся отдельно: приложение запускается быстрее.
+// Сразу после запуска они докачиваются в фоне (preloadScreens), чтобы работать и без интернета.
+const BackpackScreen = lazyScreen(() => import('./screens/BackpackScreen').then((m) => ({ default: m.BackpackScreen })));
+const QuarterScreen = lazyScreen(() => import('./screens/QuarterScreen').then((m) => ({ default: m.QuarterScreen })));
+const FormulasScreen = lazyScreen(() => import('./screens/FormulasScreen').then((m) => ({ default: m.FormulasScreen })));
+const PomodoroScreen = lazyScreen(() => import('./screens/PomodoroScreen').then((m) => ({ default: m.PomodoroScreen })));
+const MapScreen = lazyScreen(() => import('./screens/MapScreen').then((m) => ({ default: m.MapScreen })));
+const GamesScreen = lazyScreen(() => import('./screens/GamesScreen').then((m) => ({ default: m.GamesScreen })));
+const SettingsScreen = lazyScreen(() => import('./screens/SettingsScreen').then((m) => ({ default: m.SettingsScreen })));
+const AboutScreen = lazyScreen(() => import('./screens/AboutScreen').then((m) => ({ default: m.AboutScreen })));
+const AchievementsScreen = lazyScreen(() => import('./screens/AchievementsScreen').then((m) => ({ default: m.AchievementsScreen })));
+const GpaCalculatorScreen = lazyScreen(() => import('./screens/GpaCalculatorScreen').then((m) => ({ default: m.GpaCalculatorScreen })));
+const PortfolioScreen = lazyScreen(() => import('./screens/PortfolioScreen').then((m) => ({ default: m.PortfolioScreen })));
+const FocusAudioScreen = lazyScreen(() => import('./screens/FocusAudioScreen').then((m) => ({ default: m.FocusAudioScreen })));
+const ChatScreen = lazyScreen(() => import('./screens/ChatScreen').then((m) => ({ default: m.ChatScreen })));
+const ProfileScreen = lazyScreen(() => import('./screens/ProfileScreen').then((m) => ({ default: m.ProfileScreen })));
+const RetroFirstScreen = lazyScreen(() => import('./screens/RetroFirstScreen').then((m) => ({ default: m.RetroFirstScreen })));
+const BellsScreen = lazyScreen(() => import('./screens/BellsScreen').then((m) => ({ default: m.BellsScreen })));
+const BoardScreen = lazyScreen(() => import('./screens/BoardScreen').then((m) => ({ default: m.BoardScreen })));
+const CalendarScreen = lazyScreen(() => import('./screens/CalendarScreen').then((m) => ({ default: m.CalendarScreen })));
+const TeacherScreen = lazyScreen(() => import('./screens/TeacherScreen').then((m) => ({ default: m.TeacherScreen })));
 
 export default function App() {
   // 1. Initial State from unified Account Vault (guarantees account NEVER resets on refresh or update)
@@ -246,6 +250,9 @@ export default function App() {
 
   // Simulated Time Machine for Developer Tools
   const [simulatedTime, setSimulatedTime] = useState<Date | null>(null);
+
+  // Остальные экраны докачиваем в фоне сразу после запуска
+  useEffect(() => preloadScreens(), []);
 
   // FPS Overlay State
   const [fpsOverlayActive, setFpsOverlayActive] = useState(false);
@@ -1396,6 +1403,7 @@ export default function App() {
 
       {/* Main Screen Router */}
       <main className="mt-1">
+        <Suspense fallback={<div className="text-center text-white/50 text-sm py-10">Загрузка…</div>}>
         {currentScreen === 'maintenance' && (
           <MaintenanceScreen
             onBypass={handleBypassMaintenance}
@@ -1638,6 +1646,11 @@ export default function App() {
             <p className="text-sm text-white/70">
               {isGuest ? 'Ты вошёл как гость. ' : ''}Чтобы писать в чат {cls}, введи код класса — его даёт классный руководитель.
             </p>
+            {!isGuest && (
+              <p className="text-xs text-white/50">
+                Мы усилили защиту чатов: теперь код проверяет и сервер. Если ты уже вводил код раньше, введи его ещё раз — это нужно один раз.
+              </p>
+            )}
             <button type="button" className="btn green w-full justify-center" onClick={() => setCurrentScreen('select')}>
               Ввести код класса
             </button>
@@ -1666,6 +1679,8 @@ export default function App() {
             vibro={settings.vibro}
             onShowToast={showToast}
             onNavigateToChat={() => setCurrentScreen('chat')}
+            cls={cls}
+            classVerified={classVerified}
             onUnlockAchievement={handleUnlockAchievement}
           />
         )}
@@ -1780,6 +1795,7 @@ export default function App() {
           />
         )}
 
+        </Suspense>
       </main>
 
       {/* Bottom Navigation Bar */}

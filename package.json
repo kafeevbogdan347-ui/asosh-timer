@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "presentation:md": "node --experimental-strip-types scripts/presentation-md.mjs"
+    "presentation:md": "node --experimental-strip-types scripts/presentation-md.mjs",
+    "test:rules": "npx -y firebase-tools@13.35.1 emulators:exec --only database --project demo-asosh \"node --test tests/rules.test.mjs\"",
+    "class-keys": "node --experimental-strip-types scripts/class-keys.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^8.5.3",
@@ -27,6 +29,7 @@
   "devDependencies": {
     "@capacitor/android": "^8.5.3",
     "@capacitor/cli": "^8.5.3",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@types/node": "^22.14.0",
     "@types/qrcode": "^1.5.5",
     "autoprefixer": "^10.4.21",

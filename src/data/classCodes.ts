@@ -1,5 +1,5 @@
 import { normalizeCode } from '../utils/normalizeCode';
-import { sha256Hex } from '../utils/sha256';
+import { classCheckHash, classMemberKey } from '../utils/kdf';
 
 // Реестр классов МОУ АСОШ №2
 // Сами коды классов задаются в CLASS_CODES (.env или секрет на GitHub) и обновляются каждый год
@@ -58,54 +58,58 @@ export const CLASS_LIST: ClassCodeInfo[] = [
 export { normalizeCode };
 
 export type ClassCodeCheck =
-  | { status: 'ok'; info: ClassCodeInfo }
+  | { status: 'ok'; info: ClassCodeInfo; memberKey: string }
   | { status: 'wrong' }
   | { status: 'locked'; lockedSec: number }
   | { status: 'error' };
 
 // Проверка кода класса. Коды задаются в CLASS_CODES при сборке и попадают в приложение
-// только в виде SHA-256-отпечатков (__CLASS_CODE_HASHES__), открытым текстом их здесь нет
+// только в виде медленных отпечатков PBKDF2 (__CLASS_CODE_HASHES__), открытым текстом их здесь нет.
+// При верном коде считаем ещё ключ участника: с ним база пустит в чат класса (см. classShared.ts)
 export async function checkClassCode(input: string): Promise<ClassCodeCheck> {
   const norm = normalizeCode(input);
   if (!norm) return { status: 'wrong' };
   try {
-    const hash = await sha256Hex(norm);
+    const hash = await classCheckHash(norm);
     const match = __CLASS_CODE_HASHES__.find((item) => item.hash === hash);
     if (!match) return { status: 'wrong' };
     const info = CLASS_LIST.find((item) => normalizeCode(item.className) === normalizeCode(match.className));
-    return info ? { status: 'ok', info } : { status: 'wrong' };
+    return info ? { status: 'ok', info, memberKey: await classMemberKey(norm) } : { status: 'wrong' };
   } catch {
     return { status: 'error' };
   }
 }
 
-// Хранилище разблокированных классов на устройстве
-const STORAGE_KEY_UNLOCKED = 'asosh_unlocked_classes_v13';
+// Классы, открытые кодом на этом устройстве: класс → ключ участника.
+// Старый список (asosh_unlocked_classes_v13) ключей не хранил, поэтому после обновления
+// код класса нужно ввести ещё раз — один раз.
+const STORAGE_KEY_UNLOCKED = 'asosh_class_access_v1';
 
-export function getUnlockedClasses(): string[] {
+function readUnlocked(): Record<string, string> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_UNLOCKED);
-    if (!raw) return [];
-    return JSON.parse(raw);
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY_UNLOCKED) || '{}');
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
   } catch {
-    return [];
+    return {};
   }
 }
 
-export function isClassUnlocked(className: string): boolean {
-  const unlocked = getUnlockedClasses();
-  return unlocked.includes(className);
+export function getUnlockedClasses(): string[] {
+  return Object.keys(readUnlocked());
 }
 
-export function saveClassUnlocked(className: string): void {
+export function isClassUnlocked(className: string): boolean {
+  return !!readUnlocked()[className];
+}
+
+export function getClassMemberKey(className: string): string | null {
+  return readUnlocked()[className] || null;
+}
+
+export function saveClassUnlocked(className: string, memberKey: string): void {
   try {
-    const unlocked = getUnlockedClasses();
-    if (!unlocked.includes(className)) {
-      unlocked.push(className);
-      localStorage.setItem(STORAGE_KEY_UNLOCKED, JSON.stringify(unlocked));
-    }
+    localStorage.setItem(STORAGE_KEY_UNLOCKED, JSON.stringify({ ...readUnlocked(), [className]: memberKey }));
   } catch {
     // ignore
   }
 }
-

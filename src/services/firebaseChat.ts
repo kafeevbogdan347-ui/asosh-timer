@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { censor } from '../utils/moderation';
 import {
   getDatabase,
+  connectDatabaseEmulator,
   ref,
   push,
   onValue,
@@ -11,8 +12,10 @@ import {
   DatabaseReference,
   Unsubscribe,
 } from 'firebase/database';
-import { getAuth, signInAnonymously } from 'firebase/auth';
+import { getAuth, signInAnonymously, connectAuthEmulator } from 'firebase/auth';
 import { ChatMessage } from '../types';
+import { classDbKey } from '../utils/kdf';
+import { ensureClassMember } from './classShared';
 
 // Конфиг Firebase берётся из .env (VITE_FIREBASE_*) при сборке, а не хранится в коде
 const env = import.meta.env;
@@ -32,14 +35,16 @@ export const GLOBAL_CHAT_PATH = 'asosh_timer';
 // Правила базы запрещают удаление, поэтому «самоуничтожение» — это скрытие в приложении
 export const SELF_DESTRUCT_MS = 5 * 60 * 1000;
 
+const isGlobalRoom = (room: string) => !room || room === 'all' || room === 'global' || room === 'school';
+
 export function getChatRoomPath(room: string = 'global') {
-  if (!room || room === 'all' || room === 'global' || room === 'school') {
-    return GLOBAL_CHAT_PATH;
-  }
-  // Sanitize room key for Firebase RTDB: e.g. "8А" -> "room_8a", "11Б" -> "room_11b"
-  const clean = encodeURIComponent(room.replace(/\s+/g, '_').toLowerCase());
-  return `asosh_rooms/${clean}`;
+  if (isGlobalRoom(room)) return GLOBAL_CHAT_PATH;
+  // Чат класса: «8А» → asosh_rooms/8%D0%B0. Читать и писать туда база даёт только участникам класса
+  return `asosh_rooms/${classDbKey(room)}`;
 }
+
+// Чат класса открывается только участникам: перед подпиской и отправкой записываемся в класс
+const joinRoom = (room: string) => (isGlobalRoom(room) ? Promise.resolve(true) : ensureClassMember(room));
 
 export function getActiveFirebaseConfig() {
   try {
@@ -84,6 +89,11 @@ export function initFirebase() {
       }
       firebaseAppInstance = getApps().length > 0 ? getApp() : initializeApp(config);
       firebaseDbInstance = getDatabase(firebaseAppInstance);
+      // Только для разработки: VITE_FIREBASE_EMULATOR=1 подключает локальные эмуляторы (npx firebase emulators:start)
+      if (env.VITE_FIREBASE_EMULATOR === '1') {
+        connectDatabaseEmulator(firebaseDbInstance, '127.0.0.1', 9000);
+        connectAuthEmulator(getAuth(firebaseAppInstance), 'http://127.0.0.1:9099', { disableWarnings: true });
+      }
     }
     return { app: firebaseAppInstance, db: firebaseDbInstance };
   } catch (err) {
@@ -139,6 +149,7 @@ export async function sendFirebaseMessage(
   try {
     const { db } = initFirebase();
     if (db && (await ensureSignedIn())) {
+      await joinRoom(room);
       const path = getChatRoomPath(room);
       const chatRef = ref(db, path);
       const newMsgRef = await push(chatRef, {
@@ -150,7 +161,8 @@ export async function sendFirebaseMessage(
         isIncognito,
         isSelfDestruct,
         created_at: new Date().toISOString(),
-        timestamp: Date.now(),
+        // Время сервера: база проверяет, что сообщение не «из прошлого» и не «из будущего»
+        timestamp: serverTimestamp(),
       });
       firebaseSuccess = true;
       if (!createdId) createdId = newMsgRef.key || '';
@@ -218,7 +230,8 @@ export function subscribeToFirebaseMessages(
   if (!db) {
     emitMerged();
   } else {
-    ensureSignedIn().then((signedIn) => {
+    ensureSignedIn().then(async (signedIn) => {
+      if (signedIn) await joinRoom(room);
       if (cancelled) return;
       if (!signedIn) {
         // Без входа база не пустит: показываем пустую комнату, а не вечное «Подключение…»
@@ -244,7 +257,8 @@ export function subscribeToFirebaseMessages(
                   userId: item.userId || '',
                   avatar: item.avatar || '',
                   content: censor(item.content || ''),
-                  created_at: item.created_at || (item.timestamp ? new Date(item.timestamp).toISOString() : new Date().toISOString()),
+                  // Время сервера надёжнее: created_at пишет само приложение и его можно подделать
+                  created_at: typeof item.timestamp === 'number' ? new Date(item.timestamp).toISOString() : item.created_at || new Date().toISOString(),
                   isIncognito: !!item.isIncognito,
                   isSelfDestruct: !!item.isSelfDestruct,
                 });

@@ -1,11 +1,14 @@
-import { ref, set, get, remove } from 'firebase/database';
+import { ref, set, get, remove, serverTimestamp } from 'firebase/database';
 import { Capacitor } from '@capacitor/core';
 import { initFirebase, ensureSignedIn } from './firebaseChat';
+import { myUid } from './classShared';
 
 // Перенос данных на новый телефон по QR-коду.
 // Все данные приложения из localStorage сжимаются и шифруются AES-GCM прямо на устройстве.
 // В Firebase лежит только шифр; ключ есть лишь в ссылке из QR-кода (после #, на сервер не уходит).
-// Запись живёт 30 минут и удаляется сразу после переноса.
+// Запись живёт 30 минут (это проверяет и база) и удаляется сразу после переноса.
+// У каждого устройства не больше одной записи: она лежит под его анонимным uid,
+// и новый QR-код заменяет старый, поэтому базу нельзя забить мусором с одного устройства.
 
 const TTL_MS = 30 * 60 * 1000;
 const MAX_PAYLOAD = 3_000_000; // как в правилах базы
@@ -25,12 +28,6 @@ const unb64url = (s: string) => unb64(s.replace(/-/g, '+').replace(/_/g, '/') + 
 async function streamBytes(data: Uint8Array, stream: CompressionStream | DecompressionStream): Promise<Uint8Array> {
   const out = new Response(new Blob([data]).stream().pipeThrough(stream));
   return new Uint8Array(await out.arrayBuffer());
-}
-
-function randomId(len = 20) {
-  const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  const bytes = crypto.getRandomValues(new Uint8Array(len));
-  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
 }
 
 // Всё, что приложение хранит на устройстве, кроме служебных ключей Firebase
@@ -61,9 +58,10 @@ export async function createTransfer(): Promise<TransferResult> {
     return { ok: false, error: 'Слишком много данных (фото). Перенеси через файл резервной копии.' };
   }
 
-  const id = randomId();
+  const id = myUid();
+  if (!id) return { ok: false, error: 'Нет подключения к интернету' };
   try {
-    await set(ref(db, `asosh_transfer/${id}`), { payload, created_at: Date.now() });
+    await set(ref(db, `asosh_transfer/${id}`), { payload, created_at: serverTimestamp() });
   } catch {
     return { ok: false, error: 'Не удалось отправить данные. Проверь интернет.' };
   }
@@ -91,8 +89,9 @@ export async function receiveTransferIfNeeded(): Promise<void> {
     return;
   }
   try {
-    const snap = await get(ref(db, `asosh_transfer/${id}`));
-    const record = snap.val() as { payload?: string; created_at?: number } | null;
+    // Просроченную запись база не отдаёт (permission denied) — это то же, что «ссылка устарела»
+    const snap = await get(ref(db, `asosh_transfer/${id}`)).catch(() => null);
+    const record = snap?.val() as { payload?: string; created_at?: number } | null;
     if (!record?.payload || Date.now() - (record.created_at || 0) > TTL_MS) {
       window.alert('Ссылка устарела или уже использована. Сделай новый QR-код на старом телефоне.');
       return;

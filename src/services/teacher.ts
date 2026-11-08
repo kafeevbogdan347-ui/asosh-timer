@@ -7,6 +7,7 @@ import { ref, get, update, push, remove, onValue, query, limitToLast } from 'fir
 import { initFirebase, ensureSignedIn } from './firebaseChat';
 import { myUid } from './classShared';
 import { censorFields } from '../utils/moderation';
+import { pbkdf2Hex } from '../utils/kdf';
 
 const LOCAL_KEY = 'asosh_teacher';
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -41,16 +42,7 @@ export function normalizeTeacherCode(input: string): string {
 }
 
 // Медленный отпечаток кода (PBKDF2, 100 000 повторов): по нему нельзя быстро подобрать сам код
-export async function hashTeacherCode(code: string): Promise<string> {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey('raw', enc.encode(code), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt: enc.encode('asosh-teacher-v1'), iterations: 100000, hash: 'SHA-256' },
-    key,
-    256
-  );
-  return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join('');
-}
+export const hashTeacherCode = (code: string): Promise<string> => pbkdf2Hex(code, 'asosh-teacher-v1');
 
 export async function loginTeacher(rawCode: string, rawName: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const code = normalizeTeacherCode(rawCode);
