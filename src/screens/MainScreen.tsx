@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ScreenId, LanguageType } from '../types';
 import { DICT } from '../data/constants';
 import { BoardPost, AUDIENCE_LABEL } from '../services/teacher';
+import { AsoshikAvatar } from './AssistantScreen';
 
 interface MainScreenProps {
   cls: string;
@@ -206,6 +207,16 @@ export const MainScreen: React.FC<MainScreenProps> = ({
           <div className="text-sm font-black text-white mt-0.5">{weekendText}</div>
         </div>
       </div>
+
+      {/* Асошик */}
+      <button type="button" onClick={() => onNavigate('assistant')} className="asoshik-header w-full text-left cursor-pointer !mb-3">
+        <AsoshikAvatar size={42} />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-black text-white">Спроси Асошика</div>
+          <div className="text-[11px] font-bold text-white/70">Уроки, кабинеты, домашка и помощь с темой</div>
+        </div>
+        <span className="text-lg text-white/70">›</span>
+      </button>
 
       {/* Четверть */}
       <div

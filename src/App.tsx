@@ -60,6 +60,7 @@ import { FormulasScreen } from './screens/FormulasScreen';
 import { PomodoroScreen } from './screens/PomodoroScreen';
 import { HomeworkScreen } from './screens/HomeworkScreen';
 import { MapScreen } from './screens/MapScreen';
+import { AssistantScreen } from './screens/AssistantScreen';
 import { AddUpdateScreen } from './screens/AddUpdateScreen';
 import { GamesScreen } from './screens/GamesScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
@@ -815,6 +816,36 @@ export default function App() {
     }
     return lessonStatus.type === 'lesson' ? { sub: '', replaced: false, room: '', floor: null, time: '' } : null;
   })();
+
+  // Что знает Асошик: класс, время, уроки на сегодня и завтра, домашка. Имя ученика не передаём.
+  const buildAssistantContext = () => {
+    const fmtDay = (day: string, off: boolean) => {
+      if (off) return 'выходной / каникулы — уроков нет';
+      const bells = getDayBells(day);
+      const list = getLessonsForDay(day)
+        .map(([sub, room], i) => (sub === '—' ? '' : `${bells[i]?.[0] || '?'}–${bells[i]?.[1] || '?'} ${sub.replace('🔄 ', '(замена) ')}${room ? `, каб. ${room}` : ''}`))
+        .filter(Boolean);
+      return list.length ? list.join('; ') : 'уроков нет';
+    };
+    const hw = [
+      ...homeworkList.filter((h) => !h.done).map((h) => `${h.sub}: ${h.text}${h.dueDate ? ` (к ${h.dueDate})` : ''}`),
+      ...classHomework.filter((h) => !h.forDate || h.forDate >= todayDateKey).map((h) => `${h.sub}: ${h.text}${h.forDate ? ` (к ${h.forDate})` : ''}`),
+    ]
+      .slice(0, 12)
+      .map((t) => t.slice(0, 200));
+    return [
+      `Класс: ${cls}, ${shift} смена, подгруппа ${subGroup}.`,
+      `Сейчас: ${currentDayName}, ${activeTime.toLocaleDateString('ru-RU')} ${activeTime.toTimeString().slice(0, 5)}.`,
+      isShortDay(currentDayName) ? 'Сегодня сокращённые уроки.' : '',
+      `Сейчас идёт: ${lessonStatus.nowText}. Дальше: ${lessonStatus.nextText}.`,
+      `Уроки сегодня (${currentDayName}): ${fmtDay(currentDayName, todayOff)}.`,
+      `Уроки завтра (${tomorrowDayName}): ${fmtDay(tomorrowDayName, tomorrowOff)}.`,
+      `Домашка: ${hw.length ? hw.join(' | ') : 'не записана'}.`,
+      'Этаж кабинета — первая цифра номера (332 — 3 этаж). Актовый зал — 2 этаж, спортзал и мастерские — 1 этаж.',
+    ]
+      .filter(Boolean)
+      .join('\n');
+  };
 
   // APK: заранее ставим напоминания за 5 минут до каждого урока на 7 дней вперёд
   const nativeReminders = (() => {
@@ -1577,6 +1608,8 @@ export default function App() {
             onShowToast={showToast}
           />
         )}
+
+        {currentScreen === 'assistant' && <AssistantScreen context={buildAssistantContext()} vibro={settings.vibro} />}
 
         {currentScreen === 'map' && (
           <MapScreen

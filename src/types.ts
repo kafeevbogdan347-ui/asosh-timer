@@ -378,4 +378,5 @@ export type ScreenId =
   | 'calendar'
   | 'board'
   | 'teacher'
+  | 'assistant'
 
