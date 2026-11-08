@@ -13,6 +13,8 @@ import {
   B1,
   B2,
   B2F,
+  shortenBells,
+  SHORT_LESSON_MIN,
   SPLASHES_RU,
   SPLASHES_BA,
   SPLASHES_TEACHER,
@@ -597,8 +599,11 @@ export default function App() {
   };
 
   const getDayBells = (dayName: string) => {
-    return shift === '1' ? B1 : dayName === 'Пятница' ? B2F : B2;
+    const base = shift === '1' ? B1 : dayName === 'Пятница' ? B2F : B2;
+    return isShortDay(dayName) ? shortenBells(base, settings.shortLessonMin ?? SHORT_LESSON_MIN) : base;
   };
+  // Сокращённые уроки включаются на конкретную дату (сегодня / завтра) и сами выключаются потом
+  const isShortDay = (dayName: string) => (settings.shortLessonDates || []).includes(dateKeyForDay(dayName));
 
   // Parse room based on subgroup (e.g. "301 / 302")
   const parseRoom = (roomStr: string) => {
@@ -1483,6 +1488,7 @@ export default function App() {
             announcements={visiblePosts}
             isTeacher={isTeacher}
             nextLesson={nextLessonInfo}
+            shortLessonsToday={!todayOff && isShortDay(currentDayName) ? settings.shortLessonMin ?? SHORT_LESSON_MIN : 0}
           />
         )}
 
@@ -1800,6 +1806,8 @@ export default function App() {
             soundProfile={settings.soundProfile}
             vibro={settings.vibro}
             shift={shift}
+            shortLessonMin={settings.shortLessonMin ?? SHORT_LESSON_MIN}
+            shortToday={isShortDay(currentDayName)}
           />
         )}
 

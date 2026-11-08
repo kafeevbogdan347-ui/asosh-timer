@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Bell, Volume2, Clock, Sparkles, Coffee, AlertCircle, Play, ShieldCheck, Sun, Moon, Zap } from 'lucide-react';
 import { LanguageType, SoundProfileType } from '../types';
-import { B1, B2, B2F } from '../data/constants';
+import { B1, B2, B2F, shortenBells, SHORT_LESSON_MIN } from '../data/constants';
 import { playBellSimulatorSound, doVibro, playSound } from '../utils/audio';
 
 interface BellsScreenProps {
@@ -11,27 +11,9 @@ interface BellsScreenProps {
   soundProfile?: SoundProfileType;
   vibro?: boolean;
   shift?: string;
+  shortLessonMin?: number; // длина сокращённого урока из настроек
+  shortToday?: boolean; // сегодня сокращённые уроки — открываем их сразу
 }
-
-// 35-min shortened schedule for holidays/events
-const B_SHORT_1: [string, string][] = [
-  ['08:00', '08:35'],
-  ['08:45', '09:20'],
-  ['09:30', '10:05'],
-  ['10:20', '10:55'],
-  ['11:10', '11:45'],
-  ['11:55', '12:30'],
-  ['12:40', '13:15'],
-];
-
-const B_SHORT_2: [string, string][] = [
-  ['13:30', '14:05'],
-  ['14:15', '14:50'],
-  ['15:00', '15:35'],
-  ['15:45', '16:20'],
-  ['16:30', '17:05'],
-  ['17:15', '17:50'],
-];
 
 export const BellsScreen: React.FC<BellsScreenProps> = ({
   onBack,
@@ -40,9 +22,13 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
   soundProfile = '1' as SoundProfileType,
   vibro = true,
   shift = '1',
+  shortLessonMin = SHORT_LESSON_MIN,
+  shortToday = false,
 }) => {
   // По умолчанию открываем смену своего класса
-  const [selectedShift, setSelectedShift] = useState<'1' | '2' | 'short1' | 'short2'>(shift === '2' ? '2' : '1');
+  const [selectedShift, setSelectedShift] = useState<'1' | '2' | 'short1' | 'short2'>(
+    shift === '2' ? (shortToday ? 'short2' : '2') : shortToday ? 'short1' : '1'
+  );
   const [activePlayingBell, setActivePlayingBell] = useState<string | null>(null);
   const [currentTimeStr, setCurrentTimeStr] = useState<string>('');
   const [activeLessonInfo, setActiveLessonInfo] = useState<{
@@ -66,8 +52,8 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
     switch (selectedShift) {
       case '1': return B1;
       case '2': return isFriday ? B2F : B2; // по пятницам 2-я смена начинается в 13:00
-      case 'short1': return B_SHORT_1;
-      case 'short2': return B_SHORT_2;
+      case 'short1': return shortenBells(B1, shortLessonMin);
+      case 'short2': return shortenBells(isFriday ? B2F : B2, shortLessonMin);
       default: return B1;
     }
   };
@@ -298,7 +284,7 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
             }`}
           >
             <Zap className="w-3.5 h-3.5" />
-            <span>1-я Сокращ. (35м)</span>
+            <span>1-я Сокращ. ({shortLessonMin}м)</span>
           </button>
 
           <button
@@ -311,7 +297,7 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
             }`}
           >
             <Zap className="w-3.5 h-3.5" />
-            <span>2-я Сокращ. (35м)</span>
+            <span>2-я Сокращ. ({shortLessonMin}м)</span>
           </button>
         </div>
       </div>
@@ -418,7 +404,7 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
             Сетка уроков и перемен:
           </span>
           <span className="text-[11px] text-amber-300 font-semibold">
-            {selectedShift.includes('short') ? 'Уроки по 35 минут' : 'Уроки по 40 минут'}
+            {selectedShift.includes('short') ? `Уроки по ${shortLessonMin} минут` : 'Уроки по 40 минут'}
           </span>
         </div>
 
@@ -474,7 +460,7 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
 
                   <div className="text-right">
                     <span className="text-xs font-mono font-bold text-white/80">
-                      {selectedShift.includes('short') ? '35 мин' : '40 мин'}
+                      {selectedShift.includes('short') ? `${shortLessonMin} мин` : '40 мин'}
                     </span>
                   </div>
                 </div>

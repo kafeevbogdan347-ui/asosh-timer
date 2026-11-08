@@ -121,7 +121,8 @@ export interface AppSettings {
   pomodoroBreakMin: number;
   fpsOverlay?: boolean;
   matrixRain?: boolean;
-  shortLessonsMode?: boolean; // 35-min shortened lesson schedule
+  shortLessonDates?: string[]; // дни с сокращёнными уроками, YYYY-MM-DD
+  shortLessonMin?: number; // длина сокращённого урока: 30 | 35 | 40
   dynamicIsland?: boolean; // iOS Dynamic Island simulated widget
   hapticTouch?: boolean; // Enhanced iOS & Android haptic feedback
   pinLockEnabled?: boolean; // App 4-digit PIN guard
@@ -133,8 +134,6 @@ export interface AppSettings {
   aiVoiceSpeed?: number; // 0.8 | 1.0 | 1.2 | 1.5
   aiVoicePitch?: number; // 0.8 | 1.0 | 1.2
   aiAutoSpeak?: boolean; // Auto-speak AI replies
-  showRoomBadges?: boolean; // Show room numbers on lesson cards
-  autoSwitchTomorrow?: boolean; // Auto switch to tomorrow schedule after 15:00
   warnMinutes?: number; // 1 | 2 | 3 | 5 min before bell
   vibrationIntensity?: 'light' | 'medium' | 'heavy';
 }

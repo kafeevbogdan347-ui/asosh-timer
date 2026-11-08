@@ -63,6 +63,23 @@ export const B2F: [string, string][] = [
   ['18:50', '19:30'], // 7-й урок в пятницу: время не сверено со стендом
 ];
 
+// Сокращённые уроки: начало смены и перемены те же, каждый урок короче (по умолчанию 35 минут)
+export const SHORT_LESSON_MIN = 35;
+export const shortenBells = (bells: [string, string][], lessonMin = SHORT_LESSON_MIN): [string, string][] => {
+  const toMin = (t: string) => {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  let start = bells.length ? toMin(bells[0][0]) : 0;
+  return bells.map(([s, e], i) => {
+    const lesson: [string, string] = [fmt(start), fmt(start + lessonMin)];
+    const next = bells[i + 1];
+    start += lessonMin + (next ? toMin(next[0]) - toMin(e) : 0);
+    return lesson;
+  });
+};
+
 // Учебные четверти 2026/2027 (настраиваемые даты)
 export const SCHOOL_QUARTERS = [
   {

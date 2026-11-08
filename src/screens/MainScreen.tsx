@@ -33,6 +33,7 @@ interface MainScreenProps {
   announcements: BoardPost[]; // объявления учителей для этого класса и всей школы
   isTeacher: boolean;
   // Следующий урок: sub пустой — это был последний урок
+  shortLessonsToday: number; // длина сокращённого урока сегодня, 0 — обычный день
   nextLesson: { sub: string; replaced: boolean; room: string; floor: number | null; time: string } | null;
 }
 
@@ -99,6 +100,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
   announcements,
   isTeacher,
   nextLesson,
+  shortLessonsToday,
 }) => {
   const d = DICT[lang] || DICT.ru;
   // Учителю — плитка кабинета в группе «Класс»
@@ -137,6 +139,15 @@ export const MainScreen: React.FC<MainScreenProps> = ({
         </div>
         <div className="text-3xl">{bellInfo.icon}</div>
       </div>
+
+      {shortLessonsToday > 0 && (
+        <div
+          className="mt-2 px-3 py-2 rounded-2xl bg-amber-500/10 border border-amber-400/35 text-xs font-bold text-amber-200 cursor-pointer"
+          onClick={() => onNavigate('bells')}
+        >
+          ⏱ Сегодня сокращённые уроки по {shortLessonsToday} минут
+        </div>
+      )}
 
       {/* Куда идти дальше */}
       {nextLesson && (
