@@ -116,17 +116,17 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
     if (res.status === 'ok') {
       // Код верный — сразу входим в класс, без лишнего шага подтверждения
       setCodeStatus('idle');
-      handleApplyTopCode(res.info);
+      handleApplyTopCode(res.info, res.memberKey);
     } else {
       handleFailedCheck(res);
       setCodeStatus(res.status === 'error' ? 'error' : 'wrong');
     }
   };
 
-  const handleApplyTopCode = (info: ClassCodeInfo) => {
+  const handleApplyTopCode = (info: ClassCodeInfo, memberKey: string) => {
     if (lockoutSec > 0) return;
     resetFailedClassCodeAttempts();
-    saveClassUnlocked(info.className);
+    saveClassUnlocked(info.className, memberKey);
     onSelectShift(info.defaultShift);
     onSelectClass(info.className);
   };
@@ -163,7 +163,7 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
     const res = await checkClassCode(trimmed);
     if (res.status === 'ok' && res.info.className === targetClassToUnlock) {
       resetFailedClassCodeAttempts();
-      saveClassUnlocked(targetClassToUnlock);
+      saveClassUnlocked(targetClassToUnlock, res.memberKey);
       const targetCls = targetClassToUnlock;
       setTargetClassToUnlock(null);
       setModalInputCode('');

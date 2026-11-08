@@ -1,7 +1,7 @@
 // Служба конфиденциальности и безопасности МОУ АСОШ №2
 // Защита персональных данных (152-ФЗ РФ), PIN-код, Анти-Шпион, Защита от перебора кодов
 
-import { sha256Hex } from './sha256';
+import { devPasswordHash } from './kdf';
 
 // Страница политики конфиденциальности на сайте приложения
 export const PRIVACY_POLICY_URL = 'https://kafeevbogdan347-ui.github.io/asosh-timer-site/privacy.html';
@@ -203,12 +203,12 @@ export function resetFailedDevAttempts(): void {
 }
 
 // Пароль разработчика задаётся в DEV_PASSWORD при сборке и хранится в приложении
-// только как SHA-256-отпечаток (__DEV_PASSWORD_HASH__)
+// только как медленный отпечаток PBKDF2 (__DEV_PASSWORD_HASH__)
 export async function verifyDevPassword(input: string): Promise<boolean> {
   const password = input.trim();
   if (!password || !__DEV_PASSWORD_HASH__) return false;
   try {
-    return (await sha256Hex(password)) === __DEV_PASSWORD_HASH__;
+    return (await devPasswordHash(password)) === __DEV_PASSWORD_HASH__;
   } catch {
     return false;
   }

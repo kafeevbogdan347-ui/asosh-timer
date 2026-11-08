@@ -1,10 +1,13 @@
-import { ref, push, remove, onValue, query, limitToLast, Unsubscribe } from 'firebase/database';
+import { ref, push, remove, set, onValue, query, limitToLast, serverTimestamp, Unsubscribe } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
 import { initFirebase, ensureSignedIn } from './firebaseChat';
 import { censorFields } from '../utils/moderation';
+import { classDbKey } from '../utils/kdf';
+import { getClassMemberKey } from '../data/classCodes';
 
 // Общие данные класса в Firebase: замены уроков и домашка.
-// Видны всем, кто вошёл в класс; удалить запись может только её автор (см. database.rules.json).
+// Читать их может любой (замены видны и гостям), а добавлять — только участники класса и учителя.
+// Удалить запись может только её автор (см. database.rules.json).
 
 export interface ClassReplacement {
   id: string;
@@ -31,13 +34,62 @@ export interface ClassHomework {
 type Section = 'replacements' | 'homework';
 
 function classPath(cls: string, section: Section) {
-  const key = encodeURIComponent(cls.replace(/\s+/g, '_').toLowerCase());
-  return `asosh_class/${key}/${section}`;
+  return `asosh_class/${classDbKey(cls)}/${section}`;
 }
 
 export function myUid(): string {
   const { app } = initFirebase();
   return app ? getAuth(app).currentUser?.uid || '' : '';
+}
+
+// ---------- Участие в классе ----------
+// Код класса проверяется не только в приложении, но и в базе: устройство записывает себя
+// в asosh_members/<класс>/<uid> вместе с ключом участника, а база сверяет ключ с asosh_class_keys.
+// Только после этого она пускает в чат класса и даёт добавлять замены и домашку.
+
+const JOINED_KEY = 'asosh_class_joined_v1';
+const joining = new Map<string, Promise<boolean>>();
+
+function readJoined(): string[] {
+  try {
+    const list = JSON.parse(localStorage.getItem(JOINED_KEY) || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+// true — устройство уже участник класса в базе (или стало им сейчас)
+export function ensureClassMember(cls: string): Promise<boolean> {
+  const memberKey = cls ? getClassMemberKey(cls) : null;
+  if (!memberKey) return Promise.resolve(false);
+  const uid = myUid();
+  const mark = `${uid}|${classDbKey(cls)}`;
+  if (uid && readJoined().includes(mark)) return Promise.resolve(true);
+  const pending = joining.get(mark);
+  if (pending) return pending;
+  const attempt = (async () => {
+    const { db } = initFirebase();
+    if (!db || !navigator.onLine || !(await ensureSignedIn())) return false;
+    const id = myUid();
+    try {
+      await set(ref(db, `asosh_members/${classDbKey(cls)}/${id}`), { k: memberKey, t: serverTimestamp() });
+      try {
+        localStorage.setItem(JOINED_KEY, JSON.stringify([...readJoined(), `${id}|${classDbKey(cls)}`].slice(-20)));
+      } catch {
+        // нет места — проверим снова при следующем запуске
+      }
+      return true;
+    } catch (err) {
+      // Ключ не подошёл (коды классов сменились) или нет связи — попробуем в следующий раз
+      console.warn('Class membership write failed:', err);
+      return false;
+    } finally {
+      joining.delete(mark);
+    }
+  })();
+  joining.set(mark, attempt);
+  return attempt;
 }
 
 function subscribe<T extends { id: string }>(
@@ -73,7 +125,8 @@ function subscribe<T extends { id: string }>(
           // нет места — без кэша
         }
         onUpdate(items);
-      }
+      },
+      (err) => console.warn('Class data read error:', err)
     );
   });
   return () => {
@@ -86,8 +139,10 @@ async function add(cls: string, section: Section, data: Record<string, unknown>)
   const { db } = initFirebase();
   // Без сети запись ждала бы интернет бесконечно, и кнопка не отпускалась бы
   if (!db || !navigator.onLine || !(await ensureSignedIn())) return false;
+  // Учителя пишут в любой класс без кода; ученикам нужно быть участником класса
+  await ensureClassMember(cls);
   try {
-    await push(ref(db, classPath(cls, section)), { ...data, uid: myUid(), created_at: Date.now() });
+    await push(ref(db, classPath(cls, section)), { ...data, uid: myUid(), created_at: serverTimestamp() });
     return true;
   } catch (err) {
     console.warn('Class data write error:', err);

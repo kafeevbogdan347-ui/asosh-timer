@@ -6,15 +6,75 @@
       ".read": "auth != null",
       "$msg": {
         ".write": "auth != null && !data.exists()",
-        ".validate": "newData.hasChildren(['content', 'created_at']) && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 400 && (!newData.child('username').exists() || (newData.child('username').isString() && newData.child('username').val().length <= 60))"
+        ".validate": "newData.hasChildren(['content', 'created_at', 'timestamp'])",
+        "content": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 400 && !(' ' + newData.val().toLowerCase()).matches(/.*([^а-яё](ху[йёея]|еб[аулн]|ёб|у[её]б)|пизд|бляд|fuck|pizd|blyat|blyad).*/)"
+        },
+        "username": {
+          ".validate": "newData.isString() && newData.val().length <= 60 && !(' ' + newData.val().toLowerCase()).matches(/.*([^а-яё](ху[йёея]|еб[аулн]|ёб|у[её]б)|пизд|бляд|fuck|pizd|blyat|blyad).*/)"
+        },
+        "created_at": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "timestamp": {
+          ".validate": "newData.val() === now"
+        },
+        "userId": {
+          ".validate": "newData.isString() && newData.val().length <= 64"
+        },
+        "avatar": {
+          ".validate": "newData.isString() && newData.val().length <= 32"
+        },
+        "room": {
+          ".validate": "newData.isString() && newData.val().length <= 20"
+        },
+        "isIncognito": {
+          ".validate": "newData.isBoolean()"
+        },
+        "isSelfDestruct": {
+          ".validate": "newData.isBoolean()"
+        },
+        "$other": {
+          ".validate": false
+        }
       }
     },
     "asosh_rooms": {
       "$room": {
-        ".read": "auth != null",
+        ".read": "auth != null && (root.child('asosh_members').child($room).child(auth.uid).exists() || root.child('asosh_teachers').child(auth.uid).exists())",
         "$msg": {
-          ".write": "auth != null && !data.exists()",
-          ".validate": "newData.hasChildren(['content', 'created_at']) && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 400 && (!newData.child('username').exists() || (newData.child('username').isString() && newData.child('username').val().length <= 60))"
+          ".write": "auth != null && !data.exists() && (root.child('asosh_members').child($room).child(auth.uid).exists() || root.child('asosh_teachers').child(auth.uid).exists())",
+          ".validate": "newData.hasChildren(['content', 'created_at', 'timestamp'])",
+          "content": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 400 && !(' ' + newData.val().toLowerCase()).matches(/.*([^а-яё](ху[йёея]|еб[аулн]|ёб|у[её]б)|пизд|бляд|fuck|pizd|blyat|blyad).*/)"
+          },
+          "username": {
+            ".validate": "newData.isString() && newData.val().length <= 60 && !(' ' + newData.val().toLowerCase()).matches(/.*([^а-яё](ху[йёея]|еб[аулн]|ёб|у[её]б)|пизд|бляд|fuck|pizd|blyat|blyad).*/)"
+          },
+          "created_at": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "timestamp": {
+            ".validate": "newData.val() === now"
+          },
+          "userId": {
+            ".validate": "newData.isString() && newData.val().length <= 64"
+          },
+          "avatar": {
+            ".validate": "newData.isString() && newData.val().length <= 32"
+          },
+          "room": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "isIncognito": {
+            ".validate": "newData.isBoolean()"
+          },
+          "isSelfDestruct": {
+            ".validate": "newData.isBoolean()"
+          },
+          "$other": {
+            ".validate": false
+          }
         }
       }
     },
@@ -23,38 +83,88 @@
         "replacements": {
           ".read": "auth != null",
           "$id": {
-            ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid))",
-            ".validate": "newData.hasChildren(['date', 'num', 'sub', 'uid', 'created_at']) && newData.child('date').isString() && newData.child('date').val().length === 10 && newData.child('num').isNumber() && newData.child('num').val() >= 1 && newData.child('num').val() <= 12 && newData.child('sub').isString() && newData.child('sub').val().length > 0 && newData.child('sub').val().length <= 60 && (!newData.child('room').exists() || (newData.child('room').isString() && newData.child('room').val().length <= 20)) && (!newData.child('author').exists() || (newData.child('author').isString() && newData.child('author').val().length <= 60))"
+            ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid && (root.child('asosh_members').child($cls).child(auth.uid).exists() || root.child('asosh_teachers').child(auth.uid).exists())) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid))",
+            ".validate": "newData.hasChildren(['date', 'num', 'sub', 'uid', 'created_at']) && newData.child('date').isString() && newData.child('date').val().length === 10 && newData.child('num').isNumber() && newData.child('num').val() >= 1 && newData.child('num').val() <= 12 && newData.child('sub').isString() && newData.child('sub').val().length > 0 && newData.child('sub').val().length <= 60 && !(' ' + newData.child('sub').val().toLowerCase()).matches(/.*([^а-яё](ху[йёея]|еб[аулн]|ёб|у[её]б)|пизд|бляд|fuck|pizd|blyat|blyad).*/) && (!newData.child('room').exists() || (newData.child('room').isString() && newData.child('room').val().length <= 20)) && (!newData.child('author').exists() || (newData.child('author').isString() && newData.child('author').val().length <= 60)) && newData.child('created_at').val() === now"
           }
         },
         "homework": {
           ".read": "auth != null",
           "$id": {
-            ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid))",
-            ".validate": "newData.hasChildren(['sub', 'text', 'uid', 'created_at']) && newData.child('sub').isString() && newData.child('sub').val().length > 0 && newData.child('sub').val().length <= 60 && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 1000 && (!newData.child('author').exists() || (newData.child('author').isString() && newData.child('author').val().length <= 60))",
-            "teacher": { ".validate": "newData.isBoolean() && root.child('asosh_teachers').child(auth.uid).exists()" }
+            ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid && (root.child('asosh_members').child($cls).child(auth.uid).exists() || root.child('asosh_teachers').child(auth.uid).exists())) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid))",
+            ".validate": "newData.hasChildren(['sub', 'text', 'uid', 'created_at']) && newData.child('sub').isString() && newData.child('sub').val().length > 0 && newData.child('sub').val().length <= 60 && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 1000 && !(' ' + newData.child('sub').val() + ' ' + newData.child('text').val().toLowerCase()).matches(/.*([^а-яё](ху[йёея]|еб[аулн]|ёб|у[её]б)|пизд|бляд|fuck|pizd|blyat|blyad).*/) && (!newData.child('author').exists() || (newData.child('author').isString() && newData.child('author').val().length <= 60)) && newData.child('created_at').val() === now",
+            "teacher": {
+              ".validate": "newData.isBoolean() && root.child('asosh_teachers').child(auth.uid).exists()"
+            }
           }
         }
       }
     },
+    "asosh_members": {
+      "$cls": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid && newData.exists()",
+          ".validate": "newData.hasChildren(['k', 't']) && newData.child('k').isString() && newData.child('k').val() === root.child('asosh_class_keys').child($cls).val() && newData.child('t').val() === now",
+          "k": {
+            ".validate": true
+          },
+          "t": {
+            ".validate": true
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "asosh_class_keys": {
+      "$cls": {
+        ".read": false,
+        ".write": false
+      }
+    },
     "asosh_stats": {
-      ".read": "auth != null",
+      ".read": "auth != null && root.child('asosh_admins').child(auth.uid).val() === true",
       "$day": {
         "$uid": {
           ".write": "auth != null && auth.uid === $uid",
           ".validate": "$day.length === 10 && newData.hasChildren(['p', 't']) && newData.child('p').isString() && newData.child('p').val().length <= 10 && newData.child('t').isNumber()",
-          "os": { ".validate": "newData.isString() && newData.val().length <= 20" },
-          "br": { ".validate": "newData.isString() && newData.val().length <= 20" },
-          "q": { ".validate": "newData.isString() && newData.val().length <= 10" },
-          "sw": { ".validate": "newData.isNumber()" },
-          "sh": { ".validate": "newData.isNumber()" },
-          "dpr": { ".validate": "newData.isNumber()" },
-          "mem": { ".validate": "newData.isNumber()" },
-          "cpu": { ".validate": "newData.isNumber()" },
-          "pwa": { ".validate": "newData.isBoolean()" },
-          "p": { ".validate": true },
-          "t": { ".validate": true },
-          "$other": { ".validate": false }
+          "os": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "br": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "q": {
+            ".validate": "newData.isString() && newData.val().length <= 10"
+          },
+          "sw": {
+            ".validate": "newData.isNumber()"
+          },
+          "sh": {
+            ".validate": "newData.isNumber()"
+          },
+          "dpr": {
+            ".validate": "newData.isNumber()"
+          },
+          "mem": {
+            ".validate": "newData.isNumber()"
+          },
+          "cpu": {
+            ".validate": "newData.isNumber()"
+          },
+          "pwa": {
+            ".validate": "newData.isBoolean()"
+          },
+          "p": {
+            ".validate": true
+          },
+          "t": {
+            ".validate": true
+          },
+          "$other": {
+            ".validate": false
+          }
         }
       }
     },
@@ -89,10 +199,24 @@
       }
     },
     "asosh_transfer": {
-      "$id": {
-        ".read": "auth != null",
-        ".write": "auth != null && (!data.exists() || !newData.exists())",
-        ".validate": "newData.hasChildren(['payload', 'created_at']) && newData.child('payload').isString() && newData.child('payload').val().length <= 3000000"
+      "$uid": {
+        ".read": "auth != null && data.child('created_at').isNumber() && data.child('created_at').val() > now - 1800000",
+        ".write": "auth != null && (auth.uid === $uid || (data.exists() && !newData.exists()))",
+        ".validate": "newData.hasChildren(['payload', 'created_at']) && newData.child('payload').isString() && newData.child('payload').val().length <= 3000000 && newData.child('created_at').val() === now",
+        "payload": {
+          ".validate": true
+        },
+        "created_at": {
+          ".validate": true
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "asosh_admins": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid"
       }
     }
   }

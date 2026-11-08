@@ -7,3 +7,4 @@ coverage/
 .env*
 !.env.example
 android/
+class-keys.json

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { loadVisits, DeviceVisit } from '../services/stats';
-import { toDateKey } from '../services/classShared';
+import { toDateKey, myUid } from '../services/classShared';
 
 // Сводка анонимной статистики для панели разработчика
 const PLATFORM: Record<string, string> = { apk: '🤖 APK', android: '📱 Android (браузер)', ios: '🍏 iPhone/iPad', desktop: '💻 Компьютер' };
@@ -37,7 +37,7 @@ const Rows: React.FC<{ title: string; rows: [string, number][]; total: number }>
 
 export const StatsPanel: React.FC = () => {
   const [data, setData] = useState<Record<string, Record<string, DeviceVisit>> | null>(null);
-  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error' | 'denied'>('idle');
 
   const load = async () => {
     setStatus('loading');
@@ -46,8 +46,9 @@ export const StatsPanel: React.FC = () => {
       if (!res) throw new Error('no db');
       setData(res);
       setStatus('idle');
-    } catch {
-      setStatus('error');
+    } catch (err) {
+      // Статистику база отдаёт только администраторам из asosh_admins
+      setStatus(/permission.denied/i.test(String((err as { code?: string })?.code || err)) ? 'denied' : 'error');
     }
   };
 
@@ -71,6 +72,15 @@ export const StatsPanel: React.FC = () => {
       </button>
       {status === 'error' && (
         <p className="text-xs text-rose-300">Не удалось загрузить. Нужен интернет и обновлённые правила базы (asosh_stats).</p>
+      )}
+      {status === 'denied' && (
+        <div className="text-xs text-rose-300 space-y-1">
+          <p>
+            Статистику видят только администраторы. Чтобы открыть её на этом устройстве, в консоли Firebase добавьте в
+            Realtime Database запись <code className="font-mono">asosh_admins/&lt;uid&gt; = true</code>. uid этого устройства:
+          </p>
+          <code className="block font-mono text-[10px] text-white/80 break-all select-all">{myUid() || 'нет связи'}</code>
+        </div>
       )}
 
       {data && (
