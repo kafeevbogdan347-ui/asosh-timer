@@ -63,6 +63,7 @@ import { HomeworkScreen } from './screens/HomeworkScreen';
 import { MapScreen } from './screens/MapScreen';
 import { AssistantScreen } from './screens/AssistantScreen';
 import { WhatsNewModal } from './components/WhatsNewModal';
+import { t } from './i18n';
 import { AddUpdateScreen } from './screens/AddUpdateScreen';
 import { GamesScreen } from './screens/GamesScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
@@ -963,7 +964,7 @@ export default function App() {
 
   const numLessonsToday = currentLessons.filter((l) => l[0] !== '—').length;
 
-  let bellTitle = 'Скоро будет новое расписание';
+  let bellTitle = t('bNewSch', lang);
   let bellTimeText = '--:--';
   let bellIcon = '📅';
   let bellUrgent = false;
@@ -980,41 +981,41 @@ export default function App() {
     : 0;
 
   if (vacationToday) {
-    bellTitle = nextStudyStart ? 'Каникулы, до учёбы:' : 'Каникулы';
+    bellTitle = nextStudyStart ? t('bVacTo', lang) : t('bVac', lang);
     bellTimeText = nextStudyStart ? `${vacationDaysLeft} ${dayWord(vacationDaysLeft)}` : '—';
     bellIcon = '🏖️';
   } else if (todayOff) {
-    bellTitle = 'Сегодня праздник, уроков нет';
+    bellTitle = t('bHoliday', lang);
     bellTimeText = '—';
     bellIcon = '🎉';
   } else if (lessonStatus.type === 'lesson') {
-    bellTitle = 'До конца урока осталось:';
+    bellTitle = t('bLessonLeft', lang);
     bellTimeText = formatSec(lessonStatus.remainSec);
     bellIcon = lessonStatus.remainSec <= 120 ? '🚨' : '⏳';
     bellUrgent = lessonStatus.remainSec <= 120;
   } else if (lessonStatus.type === 'break') {
-    bellTitle = 'До звонка на урок:';
+    bellTitle = t('bToBell', lang);
     bellTimeText = formatSec(lessonStatus.remainSec);
     bellIcon = lessonStatus.remainSec <= 120 ? '🚨' : '🔔';
     bellUrgent = lessonStatus.remainSec <= 120;
   } else if (lessonStatus.type === 'before') {
-    bellTitle = 'До начала занятий:';
+    bellTitle = t('bToStart', lang);
     bellTimeText = formatSec(lessonStatus.remainSec);
     bellIcon = '🎒';
   } else if (numLessonsToday > 0 && firstStart !== null && curSec < firstStart) {
-    bellTitle = 'Занятия начнутся в';
+    bellTitle = t('bStartsAt', lang);
     bellTimeText = activeBells[0][0];
     bellIcon = '🌙';
   } else if (numLessonsToday > 0) {
-    bellTitle = 'Уроки на сегодня закончены';
+    bellTitle = t('bDone', lang);
     bellTimeText = '—';
     bellIcon = '🎉';
   } else if (cls && !hasOfficialSchedule(cls)) {
-    bellTitle = 'Расписание класса пока не добавлено';
+    bellTitle = t('bNoClassSch', lang);
     bellTimeText = '—';
     bellIcon = '📝';
   } else {
-    bellTitle = 'Уроков на сегодня нет';
+    bellTitle = t('bNoLessons', lang);
     bellTimeText = '—';
     bellIcon = '🥳';
   }

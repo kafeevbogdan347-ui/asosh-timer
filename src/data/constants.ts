@@ -495,7 +495,7 @@ export const DEFAULT_MANUAL_BACKPACK = [
   'Спортивная форма и кроссовки (если есть физ-ра)',
 ];
 
-export const DICT: Record<string, Record<string, string>> = {
+const DICT_RAW: Record<string, Record<string, string>> = {
   ru: {
     main: 'Главная',
     now: 'Сейчас',
@@ -1038,6 +1038,11 @@ export const DICT: Record<string, Record<string, string>> = {
     tomatoesCount: 'Tamamlanmış pomodorolar',
   },
 };
+// Если у языка нет какой-то фразы — берём русскую, чтобы не было пустых мест
+export const DICT: Record<string, Record<string, string>> = Object.fromEntries(
+  Object.entries(DICT_RAW).map(([code, words]) => [code, { ...DICT_RAW.ru, ...words }])
+);
+
 
 // Государственные праздники, попадающие на учебный год
 export const HOLIDAYS: { md: string; title: string }[] = [
