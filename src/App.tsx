@@ -22,7 +22,7 @@ import {
   isVacationDay,
   isHolidayDay,
 } from './data/constants';
-import { getBaseLessonsForClass, hasOfficialSchedule } from './data/schoolSchedule';
+import { getBaseLessonsForClass, hasOfficialSchedule, roomFloor } from './data/schoolSchedule';
 import { migrateTheme } from './data/themes';
 import { reportVisit } from './services/stats';
 import { playSound, doVibro } from './utils/audio';
@@ -800,6 +800,17 @@ export default function App() {
   }
   if (todayOff) lessonStatus = { ...lessonStatus, nowText: vacationToday ? 'Сейчас каникулы 🏖️' : 'Сегодня праздник 🎉' };
 
+  // «Куда идти дальше»: ближайший урок (пропуская окна), его кабинет, этаж и время начала
+  const nextLessonInfo = (() => {
+    if (!['lesson', 'break', 'before'].includes(lessonStatus.type)) return null;
+    for (let i = lessonStatus.nextIdx; i >= 0 && i < currentLessons.length && i < currentBells.length; i++) {
+      const [sub, room] = currentLessons[i];
+      if (sub === '—') continue;
+      return { sub: sub.replace('🔄 ', ''), replaced: sub.startsWith('🔄'), room, floor: roomFloor(room), time: currentBells[i][0] };
+    }
+    return lessonStatus.type === 'lesson' ? { sub: '', replaced: false, room: '', floor: null, time: '' } : null;
+  })();
+
   // APK: заранее ставим напоминания за 5 минут до каждого урока на 7 дней вперёд
   const nativeReminders = (() => {
     if (!settings.bellNotifications || !cls) return [];
@@ -1471,6 +1482,7 @@ export default function App() {
             }}
             announcements={visiblePosts}
             isTeacher={isTeacher}
+            nextLesson={nextLessonInfo}
           />
         )}
 
@@ -1560,7 +1572,18 @@ export default function App() {
           />
         )}
 
-        {currentScreen === 'map' && <MapScreen />}
+        {currentScreen === 'map' && (
+          <MapScreen
+            cls={cls}
+            currentDayName={currentDayName}
+            weekLessons={DAYS.slice(0, 6).flatMap((day) => {
+              const bells = getDayBells(day);
+              return getLessonsForDay(day)
+                .map(([sub, room], i) => ({ day, time: bells[i]?.[0] || '', sub: sub.replace('🔄 ', ''), room }))
+                .filter((l) => l.sub !== '—');
+            })}
+          />
+        )}
 
         {currentScreen === 'updates' && (
           <AddUpdateScreen

@@ -227,3 +227,15 @@ export const getBaseLessonsForClass = (className: string, dayName: string): [str
 };
 
 export const hasOfficialSchedule = (className: string): boolean => Boolean(OFFICIAL_SCHEDULE_2026[className]);
+
+// Этаж кабинета: первая цифра номера («332» → 3). Для «112/107» берём первый кабинет.
+const FLOOR_BY_NAME: Record<string, number> = { 'акт. зал': 2, 'спортзал': 1, 'мастерские': 1 };
+
+export const roomFloor = (room: string): number | null => {
+  const first = room.split('/').map((r) => r.trim()).find(Boolean);
+  if (!first) return null;
+  const named = FLOOR_BY_NAME[first.toLowerCase()];
+  if (named) return named;
+  const m = first.match(/^(\d)\d\d$/);
+  return m ? Number(m[1]) : null;
+};

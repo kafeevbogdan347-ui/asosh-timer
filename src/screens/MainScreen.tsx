@@ -32,6 +32,8 @@ interface MainScreenProps {
   };
   announcements: BoardPost[]; // объявления учителей для этого класса и всей школы
   isTeacher: boolean;
+  // Следующий урок: sub пустой — это был последний урок
+  nextLesson: { sub: string; replaced: boolean; room: string; floor: number | null; time: string } | null;
 }
 
 // Разделы, которых нет в нижнем меню (Уроки, ДЗ, Игры и Опции открываются оттуда)
@@ -96,6 +98,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
   quarterProgress,
   announcements,
   isTeacher,
+  nextLesson,
 }) => {
   const d = DICT[lang] || DICT.ru;
   // Учителю — плитка кабинета в группе «Класс»
@@ -134,6 +137,32 @@ export const MainScreen: React.FC<MainScreenProps> = ({
         </div>
         <div className="text-3xl">{bellInfo.icon}</div>
       </div>
+
+      {/* Куда идти дальше */}
+      {nextLesson && (
+        <div
+          className="mt-2 p-3 rounded-2xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors"
+          onClick={() => onNavigate('schedule')}
+        >
+          {nextLesson.sub ? (
+            <>
+              <div className="text-[11px] text-white/60 font-bold">
+                👉 Дальше{nextLesson.time && ` · ${nextLesson.time}`}
+                {nextLesson.replaced && ' · замена'}
+              </div>
+              <div className="flex items-baseline justify-between gap-2 mt-0.5">
+                <span className="text-sm font-black text-white truncate">{nextLesson.sub}</span>
+                <span className="text-sm font-black text-cyan-300 whitespace-nowrap">
+                  {nextLesson.room ? (/^\d/.test(nextLesson.room) ? `каб. ${nextLesson.room}` : nextLesson.room) : 'кабинет не указан'}
+                  {nextLesson.floor && <span className="text-white/60 font-bold"> · {nextLesson.floor} этаж</span>}
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="text-sm font-black text-white">🎉 Это последний урок на сегодня</div>
+          )}
+        </div>
+      )}
 
       {/* Мотиватор */}
       <div className="motivator">{motivator}</div>
