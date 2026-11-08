@@ -9,6 +9,7 @@ import {
 } from './types';
 import {
   DAYS,
+  APP_VERSION,
   DAYS_BA,
   B1,
   B2,
@@ -61,6 +62,7 @@ import { PomodoroScreen } from './screens/PomodoroScreen';
 import { HomeworkScreen } from './screens/HomeworkScreen';
 import { MapScreen } from './screens/MapScreen';
 import { AssistantScreen } from './screens/AssistantScreen';
+import { WhatsNewModal } from './components/WhatsNewModal';
 import { AddUpdateScreen } from './screens/AddUpdateScreen';
 import { GamesScreen } from './screens/GamesScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
@@ -489,6 +491,29 @@ export default function App() {
       document.removeEventListener('backbutton', onBackButton);
     };
   }, [currentScreen, isCalcOpen, isDevOpen, isPinSetupOpen, isPinLocked]);
+
+  // «Что нового»: после обновления показываем один раз. Новому пользователю — не показываем.
+  const WHATS_NEW_KEY = 'asosh_seen_version';
+  const [whatsNewOpen, setWhatsNewOpen] = useState<boolean>(() => {
+    try {
+      const seen = localStorage.getItem(WHATS_NEW_KEY);
+      if (!accountVault.registered) {
+        localStorage.setItem(WHATS_NEW_KEY, APP_VERSION);
+        return false;
+      }
+      return seen !== APP_VERSION;
+    } catch {
+      return false;
+    }
+  });
+  const closeWhatsNew = () => {
+    setWhatsNewOpen(false);
+    try {
+      localStorage.setItem(WHATS_NEW_KEY, APP_VERSION);
+    } catch {
+      // нет места — окно покажется ещё раз, не страшно
+    }
+  };
 
   // Splashes and Motivators
   const [currentSplash, setCurrentSplash] = useState('');
@@ -1373,6 +1398,7 @@ export default function App() {
       />
 
       {/* School Calculator Modal */}
+      {whatsNewOpen && registered && !isPinLocked && <WhatsNewModal onClose={closeWhatsNew} />}
       <CalcModal
         isOpen={isCalcOpen}
         onClose={() => setIsCalcOpen(false)}
@@ -1521,6 +1547,7 @@ export default function App() {
             motivator={currentMotivator}
             onNavigate={(s) => setCurrentScreen(s)}
             onOpenCalc={() => setIsCalcOpen(true)}
+            onOpenWhatsNew={() => setWhatsNewOpen(true)}
             onLogoTap={handleLogoTap}
             lang={lang}
             showBackpackHint={activeTime.getHours() >= 15 && tomorrowLessons.length > 0}

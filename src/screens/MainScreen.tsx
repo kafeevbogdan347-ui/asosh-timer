@@ -20,6 +20,7 @@ interface MainScreenProps {
   motivator: string;
   onNavigate: (screen: ScreenId) => void;
   onOpenCalc: () => void;
+  onOpenWhatsNew: () => void;
   onLogoTap: () => void;
   lang: LanguageType;
   showBackpackHint: boolean;
@@ -39,7 +40,7 @@ interface MainScreenProps {
 }
 
 // Разделы, которых нет в нижнем меню (Уроки, ДЗ, Игры и Опции открываются оттуда)
-const QUICK_GROUPS: { title: string; items: { icon: string; label: string; screen: ScreenId | 'calc' }[] }[] = [
+const QUICK_GROUPS: { title: string; items: { icon: string; label: string; screen: ScreenId | 'calc' | 'whatsnew' }[] }[] = [
   {
     title: 'Учёба',
     items: [
@@ -69,6 +70,7 @@ const QUICK_GROUPS: { title: string; items: { icon: string; label: string; scree
       { icon: '🗺', label: 'Кабинеты', screen: 'map' },
       { icon: '✏️', label: 'Замены', screen: 'updates' },
       { icon: '📺', label: 'Экран для ТВ', screen: 'board' },
+      { icon: '🎁', label: 'Что нового', screen: 'whatsnew' },
     ],
   },
 ];
@@ -94,6 +96,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
   motivator,
   onNavigate,
   onOpenCalc,
+  onOpenWhatsNew,
   onLogoTap,
   lang,
   showBackpackHint,
@@ -302,7 +305,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
               <button
                 key={item.label}
                 type="button"
-                onClick={() => (item.screen === 'calc' ? onOpenCalc() : onNavigate(item.screen))}
+                onClick={() => (item.screen === 'calc' ? onOpenCalc() : item.screen === 'whatsnew' ? onOpenWhatsNew() : onNavigate(item.screen))}
                 className="flex flex-col items-center justify-center gap-1 p-3 min-h-[72px] rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-400/40 active:scale-95 transition-all cursor-pointer"
               >
                 <span className="text-xl">{item.icon}</span>
