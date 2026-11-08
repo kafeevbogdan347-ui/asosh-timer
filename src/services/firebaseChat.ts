@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { censor } from '../utils/moderation';
 import {
   getDatabase,
+  connectDatabaseEmulator,
   ref,
   push,
   onValue,
@@ -11,7 +12,7 @@ import {
   DatabaseReference,
   Unsubscribe,
 } from 'firebase/database';
-import { getAuth, signInAnonymously } from 'firebase/auth';
+import { getAuth, signInAnonymously, connectAuthEmulator } from 'firebase/auth';
 import { ChatMessage } from '../types';
 import { classDbKey } from '../utils/kdf';
 import { ensureClassMember } from './classShared';
@@ -88,6 +89,11 @@ export function initFirebase() {
       }
       firebaseAppInstance = getApps().length > 0 ? getApp() : initializeApp(config);
       firebaseDbInstance = getDatabase(firebaseAppInstance);
+      // Только для разработки: VITE_FIREBASE_EMULATOR=1 подключает локальные эмуляторы (npx firebase emulators:start)
+      if (env.VITE_FIREBASE_EMULATOR === '1') {
+        connectDatabaseEmulator(firebaseDbInstance, '127.0.0.1', 9000);
+        connectAuthEmulator(getAuth(firebaseAppInstance), 'http://127.0.0.1:9099', { disableWarnings: true });
+      }
     }
     return { app: firebaseAppInstance, db: firebaseDbInstance };
   } catch (err) {

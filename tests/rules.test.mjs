@@ -135,3 +135,90 @@ test('учителя и объявления работают как раньш�
   await assertFails(get(ref(db('stu'), 'asosh_board/teach')));
   await assertFails(update(ref(db('stu')), { 'asosh_teachers/stu': { h: 'nope', name: 'Хакер', t: 1 } }));
 });
+
+// ---------- Профили учеников и оценки ----------
+
+const S = `asosh_students/${CLS}`;
+const SECRET = 's'.repeat(48);
+async function createProfile(uid, pid = 'p1', name = 'Иван П.') {
+  await join(uid);
+  return update(ref(db(uid)), {
+    [`${S}/${pid}`]: { name, owner: uid, t: serverTimestamp() },
+    [`asosh_student_secrets/${CLS}/${pid}`]: SECRET,
+  });
+}
+const grade = (extra = {}) => ({ sub: 'Алгебра', v: 5, date: '2026-11-09', teacher: 'Мария Ивановна', tuid: 'teacher', t: serverTimestamp(), ...extra });
+
+test('профиль ученика: только участник класса и только похожее на настоящее имя', async () => {
+  await assertFails(update(ref(db('stu')), { [`${S}/p1`]: { name: 'Иван П.', owner: 'stu', t: serverTimestamp() } }));
+  await join('stu');
+  for (const bad of ['Ктулху228 П.', 'иван п.', 'Иван Петров', 'Ivan P.', 'Иван', 'Пиздюк П.', 'Иван П. ']) {
+    await assertFails(set(ref(db('stu'), `${S}/x`), { name: bad, owner: 'stu', t: serverTimestamp() }));
+  }
+  await assertFails(set(ref(db('stu'), `${S}/x`), { name: 'Иван П.', owner: 'stu', t: serverTimestamp(), ok: true }));
+  await assertFails(set(ref(db('stu'), `${S}/x`), { name: 'Иван П.', owner: 'other', t: serverTimestamp() }));
+  await assertSucceeds(createProfile('stu'));
+  await assertSucceeds(set(ref(db('stu'), `${S}/p2`), { name: 'Анна-Мария С.', owner: 'stu', t: serverTimestamp() }));
+  // Читает свой профиль, но не чужие и не список класса
+  await assertSucceeds(get(ref(db('stu'), `${S}/p1`)));
+  await assertFails(get(ref(db('stu'), S)));
+  await assertFails(get(ref(db('stranger'), `${S}/p1`)));
+  await assertFails(get(ref(db('stu'), `asosh_student_secrets/${CLS}/p1`)));
+  await assertFails(set(ref(db('stu'), `asosh_student_secrets/${CLS}/p1`), 'x'.repeat(48)));
+});
+
+test('учитель подтверждает ученика, ученик себя подтвердить не может', async () => {
+  await createProfile('stu');
+  await assertFails(set(ref(db('stu'), `${S}/p1/ok`), true));
+  await assertFails(update(ref(db('stu'), `${S}/p1`), { ok: true }));
+  await assertSucceeds(get(ref(db('teacher'), S)));
+  await assertSucceeds(update(ref(db('teacher'), `${S}/p1`), { ok: true, okBy: 'teacher' }));
+  await assertFails(update(ref(db('teacher'), `${S}/p1`), { name: 'Пётр С.' }));
+  // Смена имени сбрасывает подтверждение
+  await assertFails(set(ref(db('stu'), `${S}/p1`), { name: 'Пётр П.', owner: 'stu', t: serverTimestamp(), ok: true, okBy: 'teacher' }));
+  await assertSucceeds(set(ref(db('stu'), `${S}/p1`), { name: 'Пётр П.', owner: 'stu', t: serverTimestamp() }));
+  const snap = await get(ref(db('stu'), `${S}/p1/ok`));
+  if (snap.exists()) throw new Error('подтверждение не сбросилось');
+  await assertSucceeds(remove(ref(db('teacher'), `${S}/p1`)));
+});
+
+test('оценки: ставит учитель подтверждённому ученику, видят ученик и учителя', async () => {
+  await createProfile('stu');
+  const G = `asosh_grades/${CLS}/p1`;
+  await assertFails(push(ref(db('teacher'), G), grade())); // ещё не подтверждён
+  await update(ref(db('teacher'), `${S}/p1`), { ok: true, okBy: 'teacher' });
+  await assertFails(push(ref(db('stu'), G), grade({ tuid: 'stu' })));
+  await assertFails(push(ref(db('teacher'), G), grade({ v: 6 })));
+  await assertFails(push(ref(db('teacher'), G), grade({ v: 1 })));
+  await assertFails(push(ref(db('teacher'), G), grade({ tuid: 'other' })));
+  await assertFails(push(ref(db('teacher'), G), grade({ t: 1 })));
+  await assertFails(push(ref(db('teacher'), G), grade({ extra: 1 })));
+  await assertFails(push(ref(db('teacher'), G), grade({ note: 'пиздец' })));
+  const g = await push(ref(db('teacher'), G), grade({ note: 'Молодец' }));
+  await assertSucceeds(Promise.resolve(g));
+  await assertSucceeds(get(ref(db('stu'), G)));
+  await assertFails(get(ref(db('stranger'), G)));
+  await assertFails(get(ref(db('stu'), `asosh_grades/${CLS}`)));
+  await assertSucceeds(get(ref(db('teacher'), `asosh_grades/${CLS}`)));
+  await assertFails(set(ref(db('teacher'), `${G}/${g.key}/v`), 2)); // исправлять нельзя, только удалить
+  await assertFails(remove(ref(db('stu'), `${G}/${g.key}`)));
+  await assertSucceeds(remove(ref(db('teacher'), `${G}/${g.key}`)));
+});
+
+test('перенос на новый телефон: профиль забирается только по секрету', async () => {
+  await createProfile('stu');
+  await update(ref(db('teacher'), `${S}/p1`), { ok: true, okBy: 'teacher' });
+  await push(ref(db('teacher'), `asosh_grades/${CLS}/p1`), grade());
+  // Чужой без секрета не заберёт
+  await assertFails(update(ref(db('thief')), { [`${S}/p1/owner`]: 'thief', 'asosh_student_rebind/thief': 'x'.repeat(48) }));
+  await assertFails(update(ref(db('thief')), { [`${S}/p1/owner`]: 'stu2', 'asosh_student_rebind/thief': SECRET }));
+  // Новый телефон с секретом — забирает, подтверждение и оценки остаются
+  await assertSucceeds(update(ref(db('stu2')), { [`${S}/p1/owner`]: 'stu2', 'asosh_student_rebind/stu2': SECRET }));
+  const ok = await get(ref(db('stu2'), `${S}/p1/ok`));
+  if (ok.val() !== true) throw new Error('подтверждение потерялось');
+  await assertSucceeds(get(ref(db('stu2'), `asosh_grades/${CLS}/p1`)));
+  await assertFails(get(ref(db('stu'), `asosh_grades/${CLS}/p1`)));
+  // Удалённый профиль не воскресить перепривязкой
+  await remove(ref(db('teacher'), `${S}/p1`));
+  await assertFails(update(ref(db('stu2')), { [`${S}/p1/owner`]: 'stu2', 'asosh_student_rebind/stu2': SECRET }));
+});

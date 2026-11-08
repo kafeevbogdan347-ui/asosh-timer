@@ -123,6 +123,87 @@
         ".write": false
       }
     },
+    "asosh_students": {
+      "$cls": {
+        ".read": "auth != null && root.child('asosh_teachers').child(auth.uid).exists()",
+        "$pid": {
+          ".read": "auth != null && data.child('owner').val() === auth.uid",
+          ".write": "auth != null && ((!data.exists() && newData.child('owner').val() === auth.uid && root.child('asosh_members').child($cls).child(auth.uid).exists() && !newData.child('ok').exists()) || (data.exists() && data.child('owner').val() === auth.uid && newData.exists() && newData.child('owner').val() === auth.uid && !newData.child('ok').exists() && !newData.child('okBy').exists()) || (data.exists() && !newData.exists() && (data.child('owner').val() === auth.uid || root.child('asosh_teachers').child(auth.uid).exists())))",
+          ".validate": "newData.hasChildren(['name', 'owner', 't']) && newData.child('t').isNumber()",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length <= 24 && newData.val().matches(/^[А-ЯЁ][а-яё]+(-[А-ЯЁ][а-яё]+)? [А-ЯЁ]\\.$/) && !(' ' + newData.val().toLowerCase()).matches(/.*([^а-яё](ху[йёея]|еб[аулн]|ёб|у[её]б)|пизд|бляд|fuck|pizd|blyat|blyad).*/)"
+          },
+          "owner": {
+            ".write": "auth != null && data.exists() && newData.val() === auth.uid && newData.parent().parent().parent().parent().child('asosh_student_rebind').child(auth.uid).val() === root.child('asosh_student_secrets').child($cls).child($pid).val()",
+            ".validate": "newData.isString()"
+          },
+          "t": {
+            ".validate": "newData.isNumber()"
+          },
+          "ok": {
+            ".write": "auth != null && root.child('asosh_teachers').child(auth.uid).exists() && newData.exists()",
+            ".validate": "newData.isBoolean()"
+          },
+          "okBy": {
+            ".write": "auth != null && root.child('asosh_teachers').child(auth.uid).exists() && newData.exists()",
+            ".validate": "newData.val() === auth.uid"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "asosh_student_secrets": {
+      "$cls": {
+        "$pid": {
+          ".write": "auth != null && !data.exists() && newData.parent().parent().parent().child('asosh_students').child($cls).child($pid).child('owner').val() === auth.uid",
+          ".validate": "newData.isString() && newData.val().length >= 32 && newData.val().length <= 128"
+        }
+      }
+    },
+    "asosh_student_rebind": {
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.isString() && newData.val().length <= 128"
+      }
+    },
+    "asosh_grades": {
+      "$cls": {
+        ".read": "auth != null && root.child('asosh_teachers').child(auth.uid).exists()",
+        "$pid": {
+          ".read": "auth != null && root.child('asosh_students').child($cls).child($pid).child('owner').val() === auth.uid",
+          "$gid": {
+            ".write": "auth != null && root.child('asosh_teachers').child(auth.uid).exists() && ((!data.exists() && newData.child('tuid').val() === auth.uid && root.child('asosh_students').child($cls).child($pid).child('ok').val() === true) || (data.exists() && !newData.exists() && data.child('tuid').val() === auth.uid))",
+            ".validate": "newData.hasChildren(['sub', 'v', 'date', 'teacher', 'tuid', 't'])",
+            "sub": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40 && !(' ' + newData.val().toLowerCase()).matches(/.*([^а-яё](ху[йёея]|еб[аулн]|ёб|у[её]б)|пизд|бляд|fuck|pizd|blyat|blyad).*/)"
+            },
+            "v": {
+              ".validate": "newData.val() === 2 || newData.val() === 3 || newData.val() === 4 || newData.val() === 5"
+            },
+            "date": {
+              ".validate": "newData.isString() && newData.val().length === 10"
+            },
+            "note": {
+              ".validate": "newData.isString() && newData.val().length <= 200 && !(' ' + newData.val().toLowerCase()).matches(/.*([^а-яё](ху[йёея]|еб[аулн]|ёб|у[её]б)|пизд|бляд|fuck|pizd|blyat|blyad).*/)"
+            },
+            "teacher": {
+              ".validate": "newData.isString() && newData.val().length <= 60"
+            },
+            "tuid": {
+              ".validate": "newData.val() === auth.uid"
+            },
+            "t": {
+              ".validate": "newData.val() === now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
+      }
+    },
     "asosh_stats": {
       ".read": "auth != null && root.child('asosh_admins').child(auth.uid).val() === true",
       "$day": {

@@ -11,6 +11,7 @@ import {
 import { playSound, doVibro } from '../utils/audio';
 import { compressImage } from '../utils/image';
 import { isHideGradesInProfile } from '../utils/privacy';
+import { ClassProfileCard } from '../components/ClassProfileCard';
 import {
   User,
   Search,
@@ -75,6 +76,8 @@ interface ProfileScreenProps {
   onShowToast: (msg: string) => void;
   onNavigateToChat?: () => void;
   onUnlockAchievement?: (id: string) => void;
+  cls?: string;
+  classVerified?: boolean;
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
@@ -84,6 +87,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onShowToast,
   onNavigateToChat,
   onUnlockAchievement,
+  cls = '',
+  classVerified = false,
 }) => {
   const [myProfile, setMyProfile] = useState<UserProfile>(() => getMyProfile());
 
@@ -345,9 +350,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </div>
           </div>
 
+          {/* Профиль в классе и оценки от учителей */}
+          {cls && <ClassProfileCard cls={cls} classVerified={classVerified} defaultFirstName={myProfile.fullName} onShowToast={onShowToast} />}
+
           {/* Где хранятся данные */}
           <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-[11px] text-white/70 leading-relaxed">
-            🛡️ Профиль, оценки и ДЗ хранятся только на этом устройстве. Чтобы не потерять их при смене телефона,
+            🛡️ Профиль, свои оценки и ДЗ хранятся только на этом устройстве. На сервере — только имя для класса
+            («Иван П.») и оценки от учителей. Чтобы не потерять всё при смене телефона, перенеси данные по QR-коду или
             сделай резервную копию: <b className="text-white">Опции → Память и резервная копия</b>.
           </div>
 

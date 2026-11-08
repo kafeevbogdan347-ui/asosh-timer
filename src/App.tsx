@@ -1679,6 +1679,8 @@ export default function App() {
             vibro={settings.vibro}
             onShowToast={showToast}
             onNavigateToChat={() => setCurrentScreen('chat')}
+            cls={cls}
+            classVerified={classVerified}
             onUnlockAchievement={handleUnlockAchievement}
           />
         )}

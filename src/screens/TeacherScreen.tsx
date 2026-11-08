@@ -3,6 +3,7 @@ import { Trash2 } from 'lucide-react';
 import { CLASS_LIST } from '../data/classCodes';
 import { toDateKey } from '../services/classShared';
 import { checkBeforePublish } from '../components/HumanCheck';
+import { TeacherGradebook } from '../components/TeacherGradebook';
 import {
   BoardAudience,
   BoardPost,
@@ -210,6 +211,14 @@ export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, 
         </button>
         <p className="text-[11px] text-white/50">Домашку задавайте в разделе «ДЗ» — там будет галочка «Задать классу». Личные события — в «Календаре».</p>
       </form>
+
+      {cls ? (
+        <TeacherGradebook cls={cls} teacherName={teacherName} myUid={myUid} onShowToast={onShowToast} />
+      ) : (
+        <button type="button" className="btn darkBtn w-full justify-center text-xs" onClick={onPickClass}>
+          📒 Выберите класс, чтобы подтверждать учеников и ставить оценки
+        </button>
+      )}
 
       {mine.length > 0 && (
         <div className="space-y-2">
