@@ -24,7 +24,7 @@ import {
   isVacationDay,
   isHolidayDay,
 } from './data/constants';
-import { getBaseLessonsForClass, hasOfficialSchedule, roomFloor } from './data/schoolSchedule';
+import { getBaseLessonsForClass, hasOfficialSchedule, roomFloor, SECOND_SHIFT_CLASSES } from './data/schoolSchedule';
 import { migrateTheme } from './data/themes';
 import { reportVisit } from './services/stats';
 import { playSound, doVibro } from './utils/audio';
@@ -1092,10 +1092,19 @@ export default function App() {
     else setCurrentScreen('main');
   };
 
+  // Смена по официальному расписанию: 6–8 классы — вторая, остальные — первая
+  const shiftForClass = (c: string) => (hasOfficialSchedule(c) ? (SECOND_SHIFT_CLASSES.includes(c) ? '2' : '1') : null);
+
   const handleSelectClass = (selected: string) => {
     setCls(selected);
     setClassVerified(isClassUnlocked(selected));
-    const updated = saveAccountVault({ cls: selected });
+    const autoShift = shiftForClass(selected);
+    if (autoShift) {
+      setShift(autoShift);
+      localStorage.setItem('asosh_shift_v105', autoShift);
+      localStorage.setItem('shift', autoShift);
+    }
+    const updated = saveAccountVault({ cls: selected, ...(autoShift ? { shift: autoShift } : {}) });
     setAccountVault(updated);
     localStorage.setItem('asosh_class_v105', selected);
     localStorage.setItem('class', selected);
@@ -1103,6 +1112,16 @@ export default function App() {
     doVibro(settings.vibro, 20);
     setCurrentScreen('main');
   };
+
+  useEffect(() => {
+    const autoShift = shiftForClass(cls);
+    if (!autoShift || autoShift === shift) return;
+    setShift(autoShift);
+    setAccountVault(saveAccountVault({ shift: autoShift }));
+    localStorage.setItem('asosh_shift_v105', autoShift);
+    localStorage.setItem('shift', autoShift);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cls]);
 
   const handleSelectShift = (s: string) => {
     setShift(s);

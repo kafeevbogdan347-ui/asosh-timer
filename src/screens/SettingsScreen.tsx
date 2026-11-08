@@ -749,13 +749,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </div>
 
           <p className="text-xs text-white/70 leading-relaxed">
-            Расписание звонков синхронизировано со школьными стандартами села Аргаяш. Выберите смену и настройте отображение уроков:
+            Расписание звонков синхронизировано со школьными стандартами села Аргаяш. Смена ставится сама по классу:
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className="p-3 bg-white/5 rounded-2xl border border-white/10 space-y-1">
               <b className="text-xs text-white block">1-я Смена (Утренняя):</b>
-              <p className="text-[11px] text-white/60">08:00 – 14:40 • 5, 7, 8, 9, 10, 11 классы</p>
+              <p className="text-[11px] text-white/60">08:00 – 14:40 • 5, 9, 10, 11 классы</p>
               <span className="badge bg-emerald-500/20 text-emerald-300 border-emerald-400/30 text-[10px] font-bold">
                 Штатное расписание
               </span>
@@ -763,7 +763,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
             <div className="p-3 bg-white/5 rounded-2xl border border-white/10 space-y-1">
               <b className="text-xs text-white block">2-я Смена (Дневная):</b>
-              <p className="text-[11px] text-white/60">13:45 – 19:15 • 6 классы</p>
+              <p className="text-[11px] text-white/60">13:00 – 19:15 • 6, 7, 8 классы (с нулевым уроком)</p>
               <span className="badge bg-amber-500/20 text-amber-300 border-amber-400/30 text-[10px] font-bold">
                 Вторая смена
               </span>
