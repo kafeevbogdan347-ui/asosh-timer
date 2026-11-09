@@ -10,6 +10,7 @@ import {
   loadHistory,
   saveHistory,
   usedToday,
+  AgentHandlers,
 } from '../services/assistant';
 import { useOnline } from '../utils/useOnline';
 
@@ -19,6 +20,8 @@ interface AssistantScreenProps {
   // Вопрос из другого раздела (кнопка «🫧 Асошик»): отправляется сразу при открытии
   autoPrompt?: { text: string; photo?: string } | null;
   onAutoPromptUsed?: () => void;
+  // Действия в приложении. confirm показывает в чате карточку «Опубликовать / Отмена»
+  agent?: (confirm: (text: string) => Promise<boolean>) => AgentHandlers;
 }
 
 // Маскот Асошика: градиентная капля с лицом и искоркой. Середина градиента — цвет темы (--accent)
@@ -93,7 +96,13 @@ const renderText = (text: string) =>
     );
   });
 
-export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro, autoPrompt, onAutoPromptUsed }) => {
+export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro, autoPrompt, onAutoPromptUsed, agent }) => {
+  const [pending, setPending] = useState<{ text: string; resolve: (ok: boolean) => void } | null>(null);
+  const confirm = (text: string) => new Promise<boolean>((resolve) => setPending({ text, resolve }));
+  const answerPending = (ok: boolean) => {
+    pending?.resolve(ok);
+    setPending(null);
+  };
   const [messages, setMessages] = useState<AssistantMessage[]>(loadHistory);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -135,8 +144,8 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
     saveHistory(next);
     setBusy(true);
     try {
-      const answer = await askAssistant(next, context, sentPhoto?.full);
-      const withAnswer = [...next, { role: 'model' as const, text: answer, at: Date.now() }];
+      const answer = await askAssistant(next, context, sentPhoto?.full, agent ? agent(confirm) : undefined);
+      const withAnswer = [...next, { role: 'model' as const, text: answer.text, at: Date.now(), ...(answer.actions.length ? { actions: answer.actions } : {}) }];
       setMessages(withAnswer);
       saveHistory(withAnswer);
       if (vibro && navigator.vibrate) navigator.vibrate(15);
@@ -215,12 +224,35 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
           ) : (
             <div key={i} className="flex items-end gap-1.5">
               <AsoshikAvatar size={26} />
-              <div className="asoshik-bubble bot">{renderText(m.text)}</div>
+              <div className="asoshik-bubble bot">
+                {renderText(m.text)}
+                {m.actions && (
+                  <div className="asoshik-actions">
+                    {m.actions.map((a, k) => (
+                      <div key={k}>{a}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )
         )}
 
-        {busy && (
+        {pending && (
+          <div className="asoshik-confirm">
+            <div className="text-sm font-bold">{pending.text}</div>
+            <div className="flex gap-2 mt-2">
+              <button type="button" className="btn green flex-1 justify-center !py-2 text-sm" onClick={() => answerPending(true)}>
+                Опубликовать
+              </button>
+              <button type="button" className="btn darkBtn flex-1 justify-center !py-2 text-sm" onClick={() => answerPending(false)}>
+                Отмена
+              </button>
+            </div>
+          </div>
+        )}
+
+        {busy && !pending && (
           <div className="flex items-end gap-1.5">
             <AsoshikAvatar size={26} thinking />
             <div className="asoshik-bubble bot asoshik-typing">

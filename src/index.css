@@ -1246,3 +1246,7 @@ body.theme-light .asoshik-bubble.bot { background: rgba(15, 23, 42, 0.06); borde
 body.ui-light .journal th, body.ui-light .journal td.name, body.ui-light .journal th.name { background: rgba(255, 255, 255, 0.97); }
 .mark-btn { height: 52px; border-radius: 14px; font-size: 22px; font-weight: 900; color: #0b1020; cursor: pointer; }
 .mark-btn:active { transform: scale(0.94); }
+
+/* Асошик: сделанные действия и подтверждение публикации */
+.asoshik-actions { margin-top: 8px; padding-top: 6px; border-top: 1px dashed rgba(255, 255, 255, 0.18); font-size: 12px; font-weight: 700; display: grid; gap: 3px; opacity: 0.9; }
+.asoshik-confirm { padding: 12px; border-radius: 18px; background: rgba(var(--accent-rgb), 0.12); border: 1px solid rgba(var(--accent-rgb), 0.45); }

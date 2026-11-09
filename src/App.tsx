@@ -88,7 +88,9 @@ import { BoardScreen } from './screens/BoardScreen';
 import { HumanCheckHost } from './components/HumanCheck';
 import { CalendarScreen } from './screens/CalendarScreen';
 import { TeacherScreen } from './screens/TeacherScreen';
-import { TeacherInfo, BoardPost, getLocalTeacher, clearLocalTeacher, verifyTeacher, subscribeBoard, postsFor } from './services/teacher';
+import { TeacherInfo, BoardPost, getLocalTeacher, clearLocalTeacher, verifyTeacher, subscribeBoard, postsFor, addBoardPost } from './services/teacher';
+import type { AgentHandlers, AgentResult } from './services/assistant';
+import { THEMES } from './data/themes';
 import {
   ClassReplacement,
   ClassHomework,
@@ -857,6 +859,121 @@ export default function App() {
   })();
 
   // Что знает Асошик: класс, время, уроки на сегодня и завтра, домашка. Имя ученика не передаём.
+  // Действия Асошика в приложении. Права те же, что и без Асошика:
+  // классу — только с кодом класса или учителю, объявления — только учителю, и всегда после подтверждения
+  const makeAgentHandlers = (confirm: (text: string) => Promise<boolean>): AgentHandlers => {
+    const str = (v: unknown, max = 200) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+    const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
+    const canShareClass = classVerified || isTeacher;
+    const author = (teacher?.name || studentName || 'Ученик').slice(0, 60);
+    const say = (ok: boolean, summary: string): AgentResult => ({ ok, summary });
+    const SCREENS: ScreenId[] = ['main', 'schedule', 'homework', 'diary', 'gpa', 'calendar', 'bells', 'map', 'updates', 'backpack', 'pomodoro', 'formulas', 'quarter', 'games', 'settings'];
+    const dayFrom = (raw: string) => {
+      const d = raw.toLowerCase();
+      if (d.startsWith('сегодня')) return currentDayName;
+      if (d.startsWith('завтра')) return tomorrowDayName;
+      return DAYS.find((x) => x.toLowerCase().startsWith(d.slice(0, 3))) || '';
+    };
+    return {
+      add_homework: async (a) => {
+        const sub = str(a.subject, 60);
+        const text = str(a.text, 1000);
+        const due = str(a.due_date, 10);
+        if (!sub || !text) return say(false, 'Не понял предмет или задание');
+        if (a.scope === 'class') {
+          if (!cls) return say(false, 'Сначала выбери класс');
+          if (!canShareClass) return say(false, 'Публиковать ДЗ классу можно только с кодом класса');
+          if (!(await confirm(`📘 Опубликовать ДЗ для ${cls}?\n${sub}: ${text}${isDate(due) ? ` (к ${due})` : ''}`))) return say(false, 'Публикацию отменили');
+          const ok = await addClassHomework(cls, { sub, text, forDate: isDate(due) ? due : '', author, ...(isTeacher ? { teacher: true } : {}) });
+          return say(ok, ok ? `ДЗ по предмету «${sub}» опубликовано для ${cls}` : 'Не получилось опубликовать — нет интернета?');
+        }
+        handleAddHomework({ cls, sub, text, done: false, pinned: false, ...(isDate(due) ? { dueDate: due } : {}) });
+        return say(true, `ДЗ по предмету «${sub}» записано в твой дневник`);
+      },
+      finish_homework: async (a) => {
+        const sub = str(a.subject, 60).toLowerCase();
+        const part = str(a.text_contains, 100).toLowerCase();
+        const item = homeworkList.find((h) => h.cls === cls && h.sub.toLowerCase().includes(sub) && (!part || h.text.toLowerCase().includes(part)) && (a.action === 'delete' || !h.done));
+        if (!item) return say(false, 'Такого ДЗ в твоём дневнике нет');
+        if (a.action === 'delete') {
+          handleDeleteHomework(item.id);
+          return say(true, `Удалено ДЗ: ${item.sub}`);
+        }
+        handleToggleHomework(item.id);
+        return say(true, `Отмечено выполненным: ${item.sub}`);
+      },
+      add_calendar_event: async (a) => {
+        const date = str(a.date, 10);
+        const title = str(a.title, 80);
+        if (!isDate(date) || !title) return say(false, 'Нужны дата и название');
+        const kind = a.kind === 'test' || a.kind === 'short' ? a.kind : 'other';
+        try {
+          const list = JSON.parse(localStorage.getItem('asosh_calendar_events') || '[]');
+          localStorage.setItem('asosh_calendar_events', JSON.stringify([...list, { id: `ev-${Date.now()}`, date, title, kind }]));
+        } catch {
+          return say(false, 'Не получилось сохранить в календарь');
+        }
+        return say(true, `В календарь на ${date}: «${title}»`);
+      },
+      add_my_grades: async (a) => {
+        const name = str(a.subject, 40);
+        const grades = (Array.isArray(a.grades) ? a.grades : []).map(Number).filter((g) => [2, 3, 4, 5].includes(g));
+        if (!name || !grades.length) return say(false, 'Нужны предмет и оценки от 2 до 5');
+        try {
+          const list = JSON.parse(localStorage.getItem('asosh_gpa_subjects') || '[]') as { id: string; name: string; grades: number[]; target: number }[];
+          const found = list.find((x) => x.name.toLowerCase() === name.toLowerCase());
+          if (found) found.grades = [...found.grades, ...grades];
+          else list.push({ id: String(Date.now()), name, grades, target: 5 });
+          localStorage.setItem('asosh_gpa_subjects', JSON.stringify(list));
+        } catch {
+          return say(false, 'Не получилось сохранить оценки');
+        }
+        return say(true, `В калькулятор оценок: ${name} — ${grades.join(', ')}`);
+      },
+      add_replacement: async (a) => {
+        const day = dayFrom(str(a.day, 20));
+        const num = Math.round(Number(a.lesson_number));
+        const sub = str(a.subject, 60);
+        const room = str(a.room, 20);
+        if (!day || !(num >= 1 && num <= 8) || !sub) return say(false, 'Не понял день, номер урока или предмет');
+        if (!cls) return say(false, 'Сначала выбери класс');
+        if (a.scope === 'class') {
+          if (!canShareClass) return say(false, 'Замены для класса — только с кодом класса');
+          const date = dateKeyForDay(day);
+          if (!(await confirm(`🔄 Замена для всего ${cls} на ${date}: ${num}-й урок — ${sub}${room ? `, каб. ${room}` : ''}?`))) return say(false, 'Замену отменили');
+          const ok = await addClassReplacement(cls, { date, num, sub, room, author });
+          return say(ok, ok ? `Замена для ${cls}: ${num}-й урок — ${sub}` : 'Не получилось отправить замену');
+        }
+        handleAddUpdate({ id: `${cls}-${day}-${num}-${Date.now()}`, cls, day, num, sub, room });
+        return say(true, `Замена себе: ${day}, ${num}-й урок — ${sub}`);
+      },
+      publish_announcement: async (a) => {
+        if (!isTeacher || !teacher) return say(false, 'Объявления публикуют только учителя');
+        const kind = a.kind === 'event' ? 'event' : 'ann';
+        const title = str(a.title, 120);
+        const text = str(a.text, 1000);
+        const date = str(a.date, 10);
+        const target = str(a.target_class, 4);
+        if (!title || (kind === 'event' && !isDate(date))) return say(false, 'Нужен заголовок, а для события — дата');
+        if (!(await confirm(`${kind === 'ann' ? '📢 Объявление' : '🗓 Событие'} для ${target || 'всей школы'}:\n«${title}»${text ? `\n${text}` : ''}${kind === 'event' ? `\n${date}` : ''}`))) return say(false, 'Публикацию отменили');
+        const ok = await addBoardPost({ kind, title, text: kind === 'ann' ? text : undefined, date: kind === 'event' ? date : undefined, aud: 'all', cls: target, author: teacher.name.slice(0, 60) });
+        return say(ok, ok ? `Опубликовано: «${title}»` : 'Не получилось опубликовать');
+      },
+      open_screen: async (a) => {
+        const scr = str(a.screen, 20) as ScreenId;
+        if (!SCREENS.includes(scr)) return say(false, 'Такого раздела нет');
+        setTimeout(() => setCurrentScreen(scr), 1200);
+        return say(true, `Открываю раздел`);
+      },
+      set_theme: async (a) => {
+        const th = THEMES.find((x) => x.id === str(a.theme, 40) || x.name.toLowerCase() === str(a.theme, 40).toLowerCase());
+        if (!th) return say(false, 'Такой темы нет');
+        handleUpdateSettings({ theme: th.id });
+        return say(true, `Тема «${th.name}» включена`);
+      },
+    };
+  };
+
   const buildAssistantContext = () => {
     const fmtDay = (day: string, off: boolean) => {
       if (off) return 'выходной / каникулы — уроков нет';
@@ -873,7 +990,8 @@ export default function App() {
       .slice(0, 12)
       .map((t) => t.slice(0, 200));
     return [
-      `Класс: ${cls}, ${shift} смена, подгруппа ${subGroup}.`,
+      `Роль: ${isTeacher ? `учитель (${teacher?.name})` : account?.role === 'parent' ? 'родитель' : 'ученик'}. Класс: ${cls || 'не выбран'}, ${shift} смена, подгруппа ${subGroup}. Может публиковать для класса: ${classVerified || isTeacher ? 'да' : 'нет'}.`,
+      `Сегодня: ${todayDateKey}. Темы оформления: ${THEMES.map((t) => `${t.id} («${t.name}»)`).join(', ')}.`,
       `Сейчас: ${currentDayName}, ${activeTime.toLocaleDateString('ru-RU')} ${activeTime.toTimeString().slice(0, 5)}.`,
       isShortDay(currentDayName) ? 'Сегодня сокращённые уроки.' : '',
       `Сейчас идёт: ${lessonStatus.nowText}. Дальше: ${lessonStatus.nextText}.`,
@@ -1749,6 +1867,7 @@ export default function App() {
             vibro={settings.vibro}
             autoPrompt={assistantPrompt}
             onAutoPromptUsed={() => setAssistantPrompt(null)}
+            agent={account?.role === 'parent' ? undefined : makeAgentHandlers}
           />
         )}
 
