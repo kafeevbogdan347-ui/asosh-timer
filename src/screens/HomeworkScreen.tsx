@@ -1,3 +1,4 @@
+import { AskAsoshikButton } from '../components/AskAsoshikButton';
 import React, { useState, useRef } from 'react';
 import { HomeworkItem, LanguageType, SoundProfileType } from '../types';
 import { DICT } from '../data/constants';
@@ -26,6 +27,7 @@ interface HomeworkScreenProps {
   // Гость без кода класса не может делиться ДЗ с классом
   canShare: boolean;
   isTeacher?: boolean; // учитель задаёт ДЗ всему классу
+  onAskAsoshik?: (text: string, photo?: string) => void;
 }
 
 export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
@@ -39,6 +41,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   soundProfile,
   vibro,
   onOpenAi,
+  onAskAsoshik,
   classHomework,
   myUid,
   onShareHomework,
@@ -294,6 +297,9 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                 <div className="min-w-0">
                   <b className="text-sm text-cyan-200">{h.sub}</b>
                   <div className="text-xs text-white/85 whitespace-pre-line break-words">{h.text}</div>
+                  {onAskAsoshik && (
+                    <AskAsoshikButton className="mt-1.5" label="Помочь с ДЗ" onClick={() => onAskAsoshik(`Помоги сделать домашку по предмету «${h.sub}»: ${h.text}`)} />
+                  )}
                   <div className="text-[10px] text-white/50 mt-0.5">
                     {h.teacher && <span className="text-amber-300 font-bold">👩‍🏫 Учитель · </span>}
                     {h.author || 'ученик'} · {new Date(h.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
@@ -392,6 +398,13 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                     <div className={`text-xs text-white/80 mt-0.5 whitespace-pre-line ${item.done ? 'line-through' : ''}`}>
                       {item.text}
                     </div>
+                    {onAskAsoshik && !item.done && (
+                      <AskAsoshikButton
+                        className="mt-1.5"
+                        label="Помочь с ДЗ"
+                        onClick={() => onAskAsoshik(`Помоги сделать домашку по предмету «${item.sub}»: ${item.text}`, item.photoUrl)}
+                      />
+                    )}
 
                     {item.photoUrl && (
                       <div className="mt-2 flex items-center gap-2">

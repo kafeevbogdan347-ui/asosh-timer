@@ -77,7 +77,13 @@ export type ThemeType =
   | 'midnight_gold'
   | 'blossom'
   | 'kraft'
-  | 'fresh_mint';
+  | 'fresh_mint'
+  | 'steel'
+  | 'terminal'
+  | 'berry'
+  | 'lavender'
+  | 'desert'
+  | 'ocean_morning';
 
 // Качество графики: экономия заряда, обычное или максимальное
 export type QualityType = 'eco' | 'normal' | 'ultra';
