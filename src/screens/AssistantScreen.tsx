@@ -45,13 +45,28 @@ const SUGGESTIONS = [
   'Какой у меня следующий урок?',
   'Что задано на завтра?',
   'Что положить в портфель на завтра?',
+  'Реши: 3/4 + 2/5',
   'Объясни дроби простыми словами',
   'Как подготовиться к контрольной?',
 ];
 
+// Если модель всё же прислала LaTeX — превращаем в обычный текст: \frac{3}{20} → 3/20, \cdot → ·
+const cleanMath = (text: string) =>
+  text
+    .replace(/(\d+)\s*\\frac\{([^}]*)\}\{([^}]*)\}/g, '$1 целых $2/$3')
+    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '$1/$2')
+    .replace(/\\(cdot|times)/g, '·')
+    .replace(/\\div/g, ':')
+    .replace(/\\sqrt\{([^}]*)\}/g, '√$1')
+    .replace(/\^\{?2\}?/g, '²')
+    .replace(/\^\{?3\}?/g, '³')
+    .replace(/\\[,;! ]/g, ' ')
+    .replace(/\{,\}/g, ',')
+    .replace(/\$+/g, '');
+
 // Лёгкая разметка ответа: **жирный** и строки-списки «- »
 const renderText = (text: string) =>
-  text.split('\n').map((line, i) => {
+  cleanMath(text).split('\n').map((line, i) => {
     const isItem = /^\s*[-*•]\s+/.test(line);
     const body = line.replace(/^\s*[-*•]\s+/, '');
     const parts = body.split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/g).map((p, j) =>
@@ -144,7 +159,7 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
               Привет! Я {ASSISTANT_NAME} 👋
               <br />
               <span className="text-white/60 font-normal text-xs">
-                Знаю твоё расписание, кабинеты и домашку. Помогу разобраться с темой — но делать за тебя не буду 😉
+                Знаю твоё расписание, кабинеты и домашку. Решу задание и объясню по шагам, как оно делается 📝
               </span>
             </div>
             <div className="flex flex-wrap justify-center gap-1.5">
