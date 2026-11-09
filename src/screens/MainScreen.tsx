@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { ScreenId, LanguageType } from '../types';
 import { DICT } from '../data/constants';
 import { BoardPost, AUDIENCE_LABEL } from '../services/teacher';
+import { AsoshikAvatar } from './AssistantScreen';
+import { t, UIKey } from '../i18n';
 
 interface MainScreenProps {
   cls: string;
@@ -19,6 +21,7 @@ interface MainScreenProps {
   motivator: string;
   onNavigate: (screen: ScreenId) => void;
   onOpenCalc: () => void;
+  onOpenWhatsNew: () => void;
   onLogoTap: () => void;
   lang: LanguageType;
   showBackpackHint: boolean;
@@ -32,39 +35,43 @@ interface MainScreenProps {
   };
   announcements: BoardPost[]; // объявления учителей для этого класса и всей школы
   isTeacher: boolean;
+  // Следующий урок: sub пустой — это был последний урок
+  shortLessonsToday: number; // длина сокращённого урока сегодня, 0 — обычный день
+  nextLesson: { sub: string; replaced: boolean; room: string; floor: number | null; time: string } | null;
 }
 
 // Разделы, которых нет в нижнем меню (Уроки, ДЗ, Игры и Опции открываются оттуда)
-const QUICK_GROUPS: { title: string; items: { icon: string; label: string; screen: ScreenId | 'calc' }[] }[] = [
+const QUICK_GROUPS: { title: UIKey; items: { icon: string; label: UIKey; screen: ScreenId | 'calc' | 'whatsnew' }[] }[] = [
   {
-    title: 'Учёба',
+    title: 'gStudy',
     items: [
-      { icon: '🔔', label: 'Звонки', screen: 'bells' },
-      { icon: '🔮', label: 'Завтра', screen: 'tomorrow' },
-      { icon: '📊', label: 'Четверть', screen: 'quarter' },
-      { icon: '🗓️', label: 'Календарь', screen: 'calendar' },
-      { icon: '📐', label: 'Формулы', screen: 'formulas' },
-      { icon: '🧮', label: 'Калькулятор', screen: 'calc' },
+      { icon: '🔔', label: 'bells', screen: 'bells' },
+      { icon: '🔮', label: 'tomorrowT', screen: 'tomorrow' },
+      { icon: '📊', label: 'quarterT', screen: 'quarter' },
+      { icon: '🗓️', label: 'calendar', screen: 'calendar' },
+      { icon: '📐', label: 'formulasT', screen: 'formulas' },
+      { icon: '🧮', label: 'calcT', screen: 'calc' },
     ],
   },
   {
-    title: 'Класс',
+    title: 'gClass',
     items: [
-      { icon: '💬', label: 'Чат класса', screen: 'chat' },
-      { icon: '👤', label: 'Профиль', screen: 'profile' },
-      { icon: '🏅', label: 'Портфолио', screen: 'portfolio' },
-      { icon: '🏆', label: 'Достижения', screen: 'achievements' },
+      { icon: '💬', label: 'chat', screen: 'chat' },
+      { icon: '👤', label: 'profile', screen: 'profile' },
+      { icon: '🏅', label: 'portfolio', screen: 'portfolio' },
+      { icon: '🏆', label: 'achievements', screen: 'achievements' },
     ],
   },
   {
-    title: 'Инструменты',
+    title: 'gTools',
     items: [
-      { icon: '🎒', label: 'Портфель', screen: 'backpack' },
-      { icon: '🍅', label: 'Помодоро', screen: 'pomodoro' },
-      { icon: '🎧', label: 'Фокус-звуки', screen: 'focus' },
-      { icon: '🗺', label: 'Кабинеты', screen: 'map' },
-      { icon: '✏️', label: 'Замены', screen: 'updates' },
-      { icon: '📺', label: 'Экран для ТВ', screen: 'board' },
+      { icon: '🎒', label: 'backpackT', screen: 'backpack' },
+      { icon: '🍅', label: 'pomodoroT', screen: 'pomodoro' },
+      { icon: '🎧', label: 'focus', screen: 'focus' },
+      { icon: '🗺', label: 'rooms', screen: 'map' },
+      { icon: '✏️', label: 'replacements', screen: 'updates' },
+      { icon: '📺', label: 'tv', screen: 'board' },
+      { icon: '🎁', label: 'whatsnew', screen: 'whatsnew' },
     ],
   },
 ];
@@ -90,17 +97,20 @@ export const MainScreen: React.FC<MainScreenProps> = ({
   motivator,
   onNavigate,
   onOpenCalc,
+  onOpenWhatsNew,
   onLogoTap,
   lang,
   showBackpackHint,
   quarterProgress,
   announcements,
   isTeacher,
+  nextLesson,
+  shortLessonsToday,
 }) => {
   const d = DICT[lang] || DICT.ru;
   // Учителю — плитка кабинета в группе «Класс»
   const groups = isTeacher
-    ? QUICK_GROUPS.map((g) => (g.title === 'Класс' ? { ...g, items: [{ icon: '👩‍🏫', label: 'Кабинет учителя', screen: 'teacher' as ScreenId }, ...g.items] } : g))
+    ? QUICK_GROUPS.map((g) => (g.title === 'gClass' ? { ...g, items: [{ icon: '👩‍🏫', label: 'teacherCab' as UIKey, screen: 'teacher' as ScreenId }, ...g.items] } : g))
     : QUICK_GROUPS;
   const [hiddenAnn, setHiddenAnn] = useState<string[]>(loadHiddenAnn);
   const hideAnn = (id: string) => {
@@ -135,6 +145,41 @@ export const MainScreen: React.FC<MainScreenProps> = ({
         <div className="text-3xl">{bellInfo.icon}</div>
       </div>
 
+      {shortLessonsToday > 0 && (
+        <div
+          className="mt-2 px-3 py-2 rounded-2xl bg-amber-500/10 border border-amber-400/35 text-xs font-bold text-amber-200 cursor-pointer"
+          onClick={() => onNavigate('bells')}
+        >
+          ⏱ {t('shortToday', lang, { n: shortLessonsToday })}
+        </div>
+      )}
+
+      {/* Куда идти дальше */}
+      {nextLesson && (
+        <div
+          className="mt-2 p-3 rounded-2xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors"
+          onClick={() => onNavigate('schedule')}
+        >
+          {nextLesson.sub ? (
+            <>
+              <div className="text-[11px] text-white/60 font-bold">
+                👉 {t('next', lang)}{nextLesson.time && ` · ${nextLesson.time}`}
+                {nextLesson.replaced && ` · ${t('replaced', lang)}`}
+              </div>
+              <div className="flex items-baseline justify-between gap-2 mt-0.5">
+                <span className="text-sm font-black text-white truncate">{nextLesson.sub}</span>
+                <span className="text-sm font-black text-cyan-300 whitespace-nowrap">
+                  {nextLesson.room ? (/^\d/.test(nextLesson.room) ? `${t('roomShort', lang)} ${nextLesson.room}` : nextLesson.room) : t('noRoom', lang)}
+                  {nextLesson.floor && <span className="text-white/60 font-bold"> · {nextLesson.floor} {t('floor', lang)}</span>}
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="text-sm font-black text-white">🎉 {t('lastLesson', lang)}</div>
+          )}
+        </div>
+      )}
+
       {/* Мотиватор */}
       <div className="motivator">{motivator}</div>
 
@@ -147,7 +192,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
           {cls}
         </h1>
         <span className="text-xs text-white/60 font-bold">
-          {shift} смена · подгруппа {subGroup}
+          {shift} {t('shiftW', lang)} · {t('subgroupW', lang)} {subGroup}
         </span>
       </div>
 
@@ -158,7 +203,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
           onClick={() => onNavigate('schedule')}
           className="text-left p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
         >
-          <div className="text-[11px] text-white/60 font-bold">📅 Сегодня</div>
+          <div className="text-[11px] text-white/60 font-bold">📅 {t('today', lang)}</div>
           <div className="text-sm font-black text-white mt-0.5">{smartText}</div>
         </button>
         <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
@@ -166,6 +211,16 @@ export const MainScreen: React.FC<MainScreenProps> = ({
           <div className="text-sm font-black text-white mt-0.5">{weekendText}</div>
         </div>
       </div>
+
+      {/* Асошик */}
+      <button type="button" onClick={() => onNavigate('assistant')} className="asoshik-header w-full text-left cursor-pointer !mb-3">
+        <AsoshikAvatar size={42} />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-black text-white">{t('askA', lang)}</div>
+          <div className="text-[11px] font-bold text-white/70">{t('askASub', lang)}</div>
+        </div>
+        <span className="text-lg text-white/70">›</span>
+      </button>
 
       {/* Четверть */}
       <div
@@ -177,7 +232,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
             📊 {quarterProgress.name}
             {!quarterProgress.isBreak && ` (${quarterProgress.percent}%)`}
           </span>
-          {quarterProgress.daysLeft > 0 && <span className="text-white/80 whitespace-nowrap">{quarterProgress.breakName}: через {quarterProgress.daysLeft} дн.</span>}
+          {quarterProgress.daysLeft > 0 && <span className="text-white/80 whitespace-nowrap">{quarterProgress.breakName}: {t('inDays', lang, { n: quarterProgress.daysLeft })}</span>}
         </div>
         <div className="w-full bg-white/10 h-2.5 rounded-full overflow-hidden border border-white/15">
           <div
@@ -187,8 +242,8 @@ export const MainScreen: React.FC<MainScreenProps> = ({
         </div>
         <div className="text-[11px] text-white/60 font-bold mt-1.5">
           {quarterProgress.daysToSummer > 0
-            ? `☀️ До конца учебного года: ${quarterProgress.daysToSummer} дн.`
-            : '☀️ Учебный год закончился — лето!'}
+            ? `☀️ ${t('toYearEnd', lang, { n: quarterProgress.daysToSummer })}`
+            : `☀️ ${t('yearOver', lang)}`}
         </div>
       </div>
 
@@ -216,7 +271,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
               </div>
               {a.text && <div className="text-xs text-white/85 whitespace-pre-line break-words mt-0.5">{a.text}</div>}
               <div className="text-[10px] text-white/55 mt-1">
-                👩‍🏫 {a.author} · {a.cls || 'вся школа'}
+                👩‍🏫 {a.author} · {a.cls || t('wholeSchool', lang)}
                 {isTeacher && ` · ${AUDIENCE_LABEL[a.aud]}`}
               </div>
             </div>
@@ -234,8 +289,8 @@ export const MainScreen: React.FC<MainScreenProps> = ({
           <span className="flex items-center gap-2.5 text-left">
             <span className="text-xl">🎒</span>
             <span>
-              <span className="block font-bold text-emerald-200">Собери портфель на завтра</span>
-              <span className="block text-[11px] text-white/70">Учебники и форма по завтрашнему расписанию</span>
+              <span className="block font-bold text-emerald-200">{t('backpackHint', lang)}</span>
+              <span className="block text-[11px] text-white/70">{t('backpackHintSub', lang)}</span>
             </span>
           </span>
           <span className="text-emerald-300 font-bold shrink-0">→</span>
@@ -245,17 +300,17 @@ export const MainScreen: React.FC<MainScreenProps> = ({
       {/* Все разделы: одинаковые плитки, сгруппированные по смыслу */}
       {groups.map((group) => (
         <div key={group.title} className="mt-4">
-          <h2 className="text-xs font-black text-white/60 uppercase tracking-wide mb-2">{group.title}</h2>
+          <h2 className="text-xs font-black text-white/60 uppercase tracking-wide mb-2">{t(group.title, lang)}</h2>
           <div className="grid grid-cols-3 gap-2">
             {group.items.map((item) => (
               <button
                 key={item.label}
                 type="button"
-                onClick={() => (item.screen === 'calc' ? onOpenCalc() : onNavigate(item.screen))}
+                onClick={() => (item.screen === 'calc' ? onOpenCalc() : item.screen === 'whatsnew' ? onOpenWhatsNew() : onNavigate(item.screen))}
                 className="flex flex-col items-center justify-center gap-1 p-3 min-h-[72px] rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-400/40 active:scale-95 transition-all cursor-pointer"
               >
                 <span className="text-xl">{item.icon}</span>
-                <span className="text-[11px] font-bold text-white/90 text-center leading-tight">{item.label}</span>
+                <span className="text-[11px] font-bold text-white/90 text-center leading-tight">{t(item.label, lang)}</span>
               </button>
             ))}
           </div>

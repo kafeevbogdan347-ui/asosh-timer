@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LanguageType, DeviceType } from '../types';
 import { APP_VERSION } from '../data/constants';
+import { LANGS, t } from '../i18n';
 
 interface OnboardingScreenProps {
   onComplete: (data: {
@@ -24,7 +25,9 @@ function detectDevice(): DeviceType {
   return window.innerWidth >= 900 ? 'pc' : 'android';
 }
 
-export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, lang }) => {
+export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, lang, onLangChange }) => {
+  // Шаг 1 — язык, шаг 2 — имя. Язык выбирают первым, чтобы дальше всё было на нём
+  const [step, setStep] = useState<'lang' | 'name'>('lang');
   const [studentName, setStudentName] = useState('');
   const [error, setError] = useState('');
 
@@ -32,7 +35,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, 
     e.preventDefault();
     const name = studentName.trim();
     if (name.length < 2) {
-      setError('Напиши своё имя');
+      setError(t('nameErr', lang));
       return;
     }
     onComplete({
@@ -56,26 +59,55 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, 
     });
   };
 
+  if (step === 'lang') {
+    return (
+      <div className="card screen-enter max-w-lg mx-auto text-center space-y-5 py-8">
+        <div className="space-y-2">
+          <div className="text-5xl">🌍</div>
+          <h1 className="text-2xl font-black text-cyan-300">{t('chooseLang', lang)}</h1>
+          <p className="text-xs text-white/60">Выбери язык · Телде һайла · Тілді таңда · Dili seç</p>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {LANGS.map((l) => (
+            <button
+              key={l.id}
+              type="button"
+              className={`choice !py-3 flex flex-col items-center gap-0.5 ${lang === l.id ? 'active' : ''}`}
+              onClick={() => {
+                onLangChange(l.id);
+                setStep('name');
+              }}
+            >
+              <span className="text-base font-black">{l.native}</span>
+              {l.id !== 'ru' && <span className="text-[10px] opacity-70 font-bold">{l.ru}</span>}
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-white/50">{t('langLater', lang)}</p>
+      </div>
+    );
+  }
+
   return (
     <form className="card screen-enter max-w-lg mx-auto text-center space-y-5 py-8" onSubmit={handleSubmit}>
       <div className="space-y-2">
         <div className="text-5xl">🔔</div>
         <h1 className="text-3xl font-black text-cyan-300">АСОШ Таймер</h1>
         <p className="text-sm text-white/70">
-          Расписание, звонки, домашка и чат класса МОУ АСОШ №2
+          {t('tagline', lang)}
         </p>
       </div>
 
       <ul className="text-left text-sm text-white/80 space-y-1.5 bg-white/5 border border-white/10 rounded-2xl p-4">
-        <li>⏱ Сколько осталось до звонка</li>
-        <li>📅 Уроки на сегодня и завтра</li>
-        <li>📘 Домашние задания и оценки</li>
-        <li>💬 Закрытый чат своего класса</li>
+        <li>⏱ {t('f1', lang)}</li>
+        <li>📅 {t('f2', lang)}</li>
+        <li>📘 {t('f3', lang)}</li>
+        <li>💬 {t('f4', lang)}</li>
       </ul>
 
       <div className="text-left space-y-1.5">
         <label htmlFor="onboarding-name" className="text-xs font-bold text-white/70">
-          Как тебя зовут?
+          {t('askName', lang)}
         </label>
         <input
           id="onboarding-name"
@@ -86,10 +118,10 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, 
             setStudentName(e.target.value);
             setError('');
           }}
-          placeholder="Например: Иван Петров"
+          placeholder={t('namePh', lang)}
           className="w-full"
         />
-        <p className="text-[11px] text-white/50">Имя хранится только на этом устройстве.</p>
+        <p className="text-[11px] text-white/50">{t('nameLocal', lang)}</p>
       </div>
 
       {error && (
@@ -97,16 +129,19 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, 
       )}
 
       <button type="submit" className="btn green w-full justify-center text-base font-black py-3">
-        Начать
+        {t('begin', lang)}
       </button>
 
       <div className="space-y-1">
         <button type="button" className="btn darkBtn w-full justify-center text-sm py-2.5" onClick={handleGuest}>
-          👀 Войти как гость
+          {t('guest', lang)}
         </button>
-        <p className="text-[11px] text-white/50">Без кода класса: всё, кроме чата класса</p>
+        <p className="text-[11px] text-white/50">{t('guestSub', lang)}</p>
       </div>
 
+      <button type="button" className="text-[11px] font-bold text-white/60 hover:text-white/90 cursor-pointer" onClick={() => setStep('lang')}>
+        🌍 {t('changeLang', lang)} · {LANGS.find((l) => l.id === lang)?.native}
+      </button>
       <p className="text-[10px] text-white/40">{APP_VERSION}</p>
     </form>
   );

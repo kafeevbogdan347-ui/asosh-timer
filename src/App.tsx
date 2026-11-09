@@ -9,10 +9,13 @@ import {
 } from './types';
 import {
   DAYS,
+  APP_VERSION,
   DAYS_BA,
   B1,
   B2,
   B2F,
+  shortenBells,
+  SHORT_LESSON_MIN,
   SPLASHES_RU,
   SPLASHES_BA,
   SPLASHES_TEACHER,
@@ -22,7 +25,7 @@ import {
   isVacationDay,
   isHolidayDay,
 } from './data/constants';
-import { getBaseLessonsForClass, hasOfficialSchedule } from './data/schoolSchedule';
+import { getBaseLessonsForClass, hasOfficialSchedule, roomFloor, SECOND_SHIFT_CLASSES } from './data/schoolSchedule';
 import { migrateTheme } from './data/themes';
 import { reportVisit } from './services/stats';
 import { playSound, doVibro } from './utils/audio';
@@ -58,6 +61,9 @@ import { FormulasScreen } from './screens/FormulasScreen';
 import { PomodoroScreen } from './screens/PomodoroScreen';
 import { HomeworkScreen } from './screens/HomeworkScreen';
 import { MapScreen } from './screens/MapScreen';
+import { AssistantScreen } from './screens/AssistantScreen';
+import { WhatsNewModal } from './components/WhatsNewModal';
+import { t } from './i18n';
 import { AddUpdateScreen } from './screens/AddUpdateScreen';
 import { GamesScreen } from './screens/GamesScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
@@ -487,6 +493,29 @@ export default function App() {
     };
   }, [currentScreen, isCalcOpen, isDevOpen, isPinSetupOpen, isPinLocked]);
 
+  // «Что нового»: после обновления показываем один раз. Новому пользователю — не показываем.
+  const WHATS_NEW_KEY = 'asosh_seen_version';
+  const [whatsNewOpen, setWhatsNewOpen] = useState<boolean>(() => {
+    try {
+      const seen = localStorage.getItem(WHATS_NEW_KEY);
+      if (!accountVault.registered) {
+        localStorage.setItem(WHATS_NEW_KEY, APP_VERSION);
+        return false;
+      }
+      return seen !== APP_VERSION;
+    } catch {
+      return false;
+    }
+  });
+  const closeWhatsNew = () => {
+    setWhatsNewOpen(false);
+    try {
+      localStorage.setItem(WHATS_NEW_KEY, APP_VERSION);
+    } catch {
+      // нет места — окно покажется ещё раз, не страшно
+    }
+  };
+
   // Splashes and Motivators
   const [currentSplash, setCurrentSplash] = useState('');
   const [currentMotivator, setCurrentMotivator] = useState('');
@@ -597,8 +626,11 @@ export default function App() {
   };
 
   const getDayBells = (dayName: string) => {
-    return shift === '1' ? B1 : dayName === 'Пятница' ? B2F : B2;
+    const base = shift === '1' ? B1 : dayName === 'Пятница' ? B2F : B2;
+    return isShortDay(dayName) ? shortenBells(base, settings.shortLessonMin ?? SHORT_LESSON_MIN) : base;
   };
+  // Сокращённые уроки включаются на конкретную дату (сегодня / завтра) и сами выключаются потом
+  const isShortDay = (dayName: string) => (settings.shortLessonDates || []).includes(dateKeyForDay(dayName));
 
   // Parse room based on subgroup (e.g. "301 / 302")
   const parseRoom = (roomStr: string) => {
@@ -800,6 +832,47 @@ export default function App() {
   }
   if (todayOff) lessonStatus = { ...lessonStatus, nowText: vacationToday ? 'Сейчас каникулы 🏖️' : 'Сегодня праздник 🎉' };
 
+  // «Куда идти дальше»: ближайший урок (пропуская окна), его кабинет, этаж и время начала
+  const nextLessonInfo = (() => {
+    if (!['lesson', 'break', 'before'].includes(lessonStatus.type)) return null;
+    for (let i = lessonStatus.nextIdx; i >= 0 && i < currentLessons.length && i < currentBells.length; i++) {
+      const [sub, room] = currentLessons[i];
+      if (sub === '—') continue;
+      return { sub: sub.replace('🔄 ', ''), replaced: sub.startsWith('🔄'), room, floor: roomFloor(room), time: currentBells[i][0] };
+    }
+    return lessonStatus.type === 'lesson' ? { sub: '', replaced: false, room: '', floor: null, time: '' } : null;
+  })();
+
+  // Что знает Асошик: класс, время, уроки на сегодня и завтра, домашка. Имя ученика не передаём.
+  const buildAssistantContext = () => {
+    const fmtDay = (day: string, off: boolean) => {
+      if (off) return 'выходной / каникулы — уроков нет';
+      const bells = getDayBells(day);
+      const list = getLessonsForDay(day)
+        .map(([sub, room], i) => (sub === '—' ? '' : `${bells[i]?.[0] || '?'}–${bells[i]?.[1] || '?'} ${sub.replace('🔄 ', '(замена) ')}${room ? `, каб. ${room}` : ''}`))
+        .filter(Boolean);
+      return list.length ? list.join('; ') : 'уроков нет';
+    };
+    const hw = [
+      ...homeworkList.filter((h) => !h.done).map((h) => `${h.sub}: ${h.text}${h.dueDate ? ` (к ${h.dueDate})` : ''}`),
+      ...classHomework.filter((h) => !h.forDate || h.forDate >= todayDateKey).map((h) => `${h.sub}: ${h.text}${h.forDate ? ` (к ${h.forDate})` : ''}`),
+    ]
+      .slice(0, 12)
+      .map((t) => t.slice(0, 200));
+    return [
+      `Класс: ${cls}, ${shift} смена, подгруппа ${subGroup}.`,
+      `Сейчас: ${currentDayName}, ${activeTime.toLocaleDateString('ru-RU')} ${activeTime.toTimeString().slice(0, 5)}.`,
+      isShortDay(currentDayName) ? 'Сегодня сокращённые уроки.' : '',
+      `Сейчас идёт: ${lessonStatus.nowText}. Дальше: ${lessonStatus.nextText}.`,
+      `Уроки сегодня (${currentDayName}): ${fmtDay(currentDayName, todayOff)}.`,
+      `Уроки завтра (${tomorrowDayName}): ${fmtDay(tomorrowDayName, tomorrowOff)}.`,
+      `Домашка: ${hw.length ? hw.join(' | ') : 'не записана'}.`,
+      'Этаж кабинета — первая цифра номера (332 — 3 этаж). Актовый зал — 2 этаж, спортзал и мастерские — 1 этаж.',
+    ]
+      .filter(Boolean)
+      .join('\n');
+  };
+
   // APK: заранее ставим напоминания за 5 минут до каждого урока на 7 дней вперёд
   const nativeReminders = (() => {
     if (!settings.bellNotifications || !cls) return [];
@@ -891,7 +964,7 @@ export default function App() {
 
   const numLessonsToday = currentLessons.filter((l) => l[0] !== '—').length;
 
-  let bellTitle = 'Скоро будет новое расписание';
+  let bellTitle = t('bNewSch', lang);
   let bellTimeText = '--:--';
   let bellIcon = '📅';
   let bellUrgent = false;
@@ -908,41 +981,41 @@ export default function App() {
     : 0;
 
   if (vacationToday) {
-    bellTitle = nextStudyStart ? 'Каникулы, до учёбы:' : 'Каникулы';
+    bellTitle = nextStudyStart ? t('bVacTo', lang) : t('bVac', lang);
     bellTimeText = nextStudyStart ? `${vacationDaysLeft} ${dayWord(vacationDaysLeft)}` : '—';
     bellIcon = '🏖️';
   } else if (todayOff) {
-    bellTitle = 'Сегодня праздник, уроков нет';
+    bellTitle = t('bHoliday', lang);
     bellTimeText = '—';
     bellIcon = '🎉';
   } else if (lessonStatus.type === 'lesson') {
-    bellTitle = 'До конца урока осталось:';
+    bellTitle = t('bLessonLeft', lang);
     bellTimeText = formatSec(lessonStatus.remainSec);
     bellIcon = lessonStatus.remainSec <= 120 ? '🚨' : '⏳';
     bellUrgent = lessonStatus.remainSec <= 120;
   } else if (lessonStatus.type === 'break') {
-    bellTitle = 'До звонка на урок:';
+    bellTitle = t('bToBell', lang);
     bellTimeText = formatSec(lessonStatus.remainSec);
     bellIcon = lessonStatus.remainSec <= 120 ? '🚨' : '🔔';
     bellUrgent = lessonStatus.remainSec <= 120;
   } else if (lessonStatus.type === 'before') {
-    bellTitle = 'До начала занятий:';
+    bellTitle = t('bToStart', lang);
     bellTimeText = formatSec(lessonStatus.remainSec);
     bellIcon = '🎒';
   } else if (numLessonsToday > 0 && firstStart !== null && curSec < firstStart) {
-    bellTitle = 'Занятия начнутся в';
+    bellTitle = t('bStartsAt', lang);
     bellTimeText = activeBells[0][0];
     bellIcon = '🌙';
   } else if (numLessonsToday > 0) {
-    bellTitle = 'Уроки на сегодня закончены';
+    bellTitle = t('bDone', lang);
     bellTimeText = '—';
     bellIcon = '🎉';
   } else if (cls && !hasOfficialSchedule(cls)) {
-    bellTitle = 'Расписание класса пока не добавлено';
+    bellTitle = t('bNoClassSch', lang);
     bellTimeText = '—';
     bellIcon = '📝';
   } else {
-    bellTitle = 'Уроков на сегодня нет';
+    bellTitle = t('bNoLessons', lang);
     bellTimeText = '—';
     bellIcon = '🥳';
   }
@@ -1045,10 +1118,19 @@ export default function App() {
     else setCurrentScreen('main');
   };
 
+  // Смена по официальному расписанию: 6–8 классы — вторая, остальные — первая
+  const shiftForClass = (c: string) => (hasOfficialSchedule(c) ? (SECOND_SHIFT_CLASSES.includes(c) ? '2' : '1') : null);
+
   const handleSelectClass = (selected: string) => {
     setCls(selected);
     setClassVerified(isClassUnlocked(selected));
-    const updated = saveAccountVault({ cls: selected });
+    const autoShift = shiftForClass(selected);
+    if (autoShift) {
+      setShift(autoShift);
+      localStorage.setItem('asosh_shift_v105', autoShift);
+      localStorage.setItem('shift', autoShift);
+    }
+    const updated = saveAccountVault({ cls: selected, ...(autoShift ? { shift: autoShift } : {}) });
     setAccountVault(updated);
     localStorage.setItem('asosh_class_v105', selected);
     localStorage.setItem('class', selected);
@@ -1056,6 +1138,16 @@ export default function App() {
     doVibro(settings.vibro, 20);
     setCurrentScreen('main');
   };
+
+  useEffect(() => {
+    const autoShift = shiftForClass(cls);
+    if (!autoShift || autoShift === shift) return;
+    setShift(autoShift);
+    setAccountVault(saveAccountVault({ shift: autoShift }));
+    localStorage.setItem('asosh_shift_v105', autoShift);
+    localStorage.setItem('shift', autoShift);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cls]);
 
   const handleSelectShift = (s: string) => {
     setShift(s);
@@ -1307,6 +1399,7 @@ export default function App() {
       />
 
       {/* School Calculator Modal */}
+      {whatsNewOpen && registered && !isPinLocked && <WhatsNewModal onClose={closeWhatsNew} />}
       <CalcModal
         isOpen={isCalcOpen}
         onClose={() => setIsCalcOpen(false)}
@@ -1455,6 +1548,7 @@ export default function App() {
             motivator={currentMotivator}
             onNavigate={(s) => setCurrentScreen(s)}
             onOpenCalc={() => setIsCalcOpen(true)}
+            onOpenWhatsNew={() => setWhatsNewOpen(true)}
             onLogoTap={handleLogoTap}
             lang={lang}
             showBackpackHint={activeTime.getHours() >= 15 && tomorrowLessons.length > 0}
@@ -1471,6 +1565,8 @@ export default function App() {
             }}
             announcements={visiblePosts}
             isTeacher={isTeacher}
+            nextLesson={nextLessonInfo}
+            shortLessonsToday={!todayOff && isShortDay(currentDayName) ? settings.shortLessonMin ?? SHORT_LESSON_MIN : 0}
           />
         )}
 
@@ -1560,7 +1656,20 @@ export default function App() {
           />
         )}
 
-        {currentScreen === 'map' && <MapScreen />}
+        {currentScreen === 'assistant' && <AssistantScreen context={buildAssistantContext()} vibro={settings.vibro} />}
+
+        {currentScreen === 'map' && (
+          <MapScreen
+            cls={cls}
+            currentDayName={currentDayName}
+            weekLessons={DAYS.slice(0, 6).flatMap((day) => {
+              const bells = getDayBells(day);
+              return getLessonsForDay(day)
+                .map(([sub, room], i) => ({ day, time: bells[i]?.[0] || '', sub: sub.replace('🔄 ', ''), room }))
+                .filter((l) => l.sub !== '—');
+            })}
+          />
+        )}
 
         {currentScreen === 'updates' && (
           <AddUpdateScreen
@@ -1777,6 +1886,8 @@ export default function App() {
             soundProfile={settings.soundProfile}
             vibro={settings.vibro}
             shift={shift}
+            shortLessonMin={settings.shortLessonMin ?? SHORT_LESSON_MIN}
+            shortToday={isShortDay(currentDayName)}
           />
         )}
 

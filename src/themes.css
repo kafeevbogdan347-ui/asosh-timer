@@ -510,7 +510,7 @@ body.theme-minimal .lesson.current { background: #f0f0ec; border-color: #111; }
 body.theme-minimal .bellWidget { background: #111; border-color: #111; }
 body.theme-minimal .bellWidget, body.theme-minimal .bellWidget * { color: #fff !important; }
 body.theme-minimal .motivator { color: #6b6b66; font-family: Georgia, serif !important; }
-body.theme-minimal .mc-splash { display: none; }
+body.theme-minimal .mc-splash { color: #b45309; text-shadow: none; }
 body.theme-minimal .nav-bar { background: #fff; border: 1px solid #e2e2de; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06); }
 body.theme-minimal .nav-bar button.active { background: #111; color: #fff; }
 
@@ -533,7 +533,6 @@ body.theme-amoled .bellWidget { background: #000; border-color: #fff; }
 body.theme-amoled .lesson, body.theme-amoled .cleanNext { background: #0a0a0a; }
 body.theme-amoled .nav-bar { background: #000; border-color: #262626; backdrop-filter: none; }
 body.theme-amoled .nav-bar button.active { background: #fff; color: #000; }
-body.theme-amoled .mc-splash { display: none; }
 
 /* AMOLED: тёмные градиентные панели делаем чисто чёрными */
 body.theme-amoled [class*="from-slate-9"],
@@ -833,7 +832,8 @@ body.q-eco *, body.q-eco *::before, body.q-eco *::after {
   transition-duration: 0.08s !important;
 }
 body.q-eco { background-attachment: scroll !important; }
-body.q-eco .mc-splash { display: none !important; }
+/* Сплеш в экономии остаётся, только без анимации */
+body.q-eco .mc-splash { animation: none !important; transform: rotate(-15deg); }
 
 /* Максимум: мягкое свечение, толстое стекло и плавные переходы */
 body.q-ultra {

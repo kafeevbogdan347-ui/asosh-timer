@@ -8,7 +8,8 @@ import {
   LanguageType,
   ScreenId,
 } from '../types';
-import { DICT } from '../data/constants';
+import { DICT, SHORT_LESSON_MIN } from '../data/constants';
+import { toDateKey } from '../services/classShared';
 import { playSound, doVibro } from '../utils/audio';
 import {
   Palette,
@@ -138,6 +139,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   // AI Voice test state
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  // Дни с сокращёнными уроками (YYYY-MM-DD)
+  const shortDates = settings.shortLessonDates || [];
+  const nowForShort = new Date();
+  const shortTodayKey = toDateKey(nowForShort);
+  const shortTomorrowKey = toDateKey(new Date(nowForShort.getFullYear(), nowForShort.getMonth(), nowForShort.getDate() + 1));
   const [aiVoiceSpeed, setAiVoiceSpeed] = useState<number>(settings.aiVoiceSpeed || 1.0);
   const [aiVoicePitch, setAiVoicePitch] = useState<number>(settings.aiVoicePitch || 1.0);
 
@@ -743,13 +749,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </div>
 
           <p className="text-xs text-white/70 leading-relaxed">
-            Расписание звонков синхронизировано со школьными стандартами села Аргаяш. Выберите смену и настройте отображение уроков:
+            Расписание звонков синхронизировано со школьными стандартами села Аргаяш. Смена ставится сама по классу:
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className="p-3 bg-white/5 rounded-2xl border border-white/10 space-y-1">
               <b className="text-xs text-white block">1-я Смена (Утренняя):</b>
-              <p className="text-[11px] text-white/60">08:00 – 14:40 • 5, 7, 8, 9, 10, 11 классы</p>
+              <p className="text-[11px] text-white/60">08:00 – 14:40 • 5, 9, 10, 11 классы</p>
               <span className="badge bg-emerald-500/20 text-emerald-300 border-emerald-400/30 text-[10px] font-bold">
                 Штатное расписание
               </span>
@@ -757,7 +763,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
             <div className="p-3 bg-white/5 rounded-2xl border border-white/10 space-y-1">
               <b className="text-xs text-white block">2-я Смена (Дневная):</b>
-              <p className="text-[11px] text-white/60">13:45 – 19:15 • 6 классы</p>
+              <p className="text-[11px] text-white/60">13:00 – 19:15 • 6, 7, 8 классы (с нулевым уроком)</p>
               <span className="badge bg-amber-500/20 text-amber-300 border-amber-400/30 text-[10px] font-bold">
                 Вторая смена
               </span>
@@ -780,50 +786,52 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </div>
 
           <div className="space-y-2 pt-1">
-            <label className="flex items-center justify-between text-xs font-bold text-white cursor-pointer select-none p-2.5 rounded-xl bg-white/5 border border-white/10">
+            <div className="text-xs font-bold text-white p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-2">
               <div>
-                <div>Режим сокращённых уроков (по 35 минут) ❄️</div>
+                <div>Сокращённые уроки ⏱</div>
                 <div className="text-[11px] text-white/60 font-normal">
-                  Для праздничных дней, педагогических советов или холодных дней
+                  Таймер, расписание и напоминания пойдут по коротким звонкам. Начало смены и перемены те же. На следующий день выключится само.
                 </div>
               </div>
-              <input
-                type="checkbox"
-                checked={settings.shortLessonsMode ?? false}
-                onChange={(e) => onUpdateSettings({ shortLessonsMode: e.target.checked })}
-                className="w-5 h-5 accent-cyan-400 cursor-pointer shrink-0"
-              />
-            </label>
-
-            <label className="flex items-center justify-between text-xs font-bold text-white cursor-pointer select-none p-2.5 rounded-xl bg-white/5 border border-white/10">
-              <div>
-                <div>Показывать номера кабинетов на карточках уроков</div>
-                <div className="text-[11px] text-white/60 font-normal">
-                  Отображает номер кабинета и этаж прямо в списке уроков дня
+              <div className="flex gap-1.5">
+                {[
+                  { key: shortTodayKey, label: 'Сегодня' },
+                  { key: shortTomorrowKey, label: 'Завтра' },
+                ].map(({ key, label }) => {
+                  const on = shortDates.includes(key);
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`choice flex-1 !py-2 !text-xs ${on ? 'active' : ''}`}
+                      onClick={() =>
+                        onUpdateSettings({
+                          shortLessonDates: on ? shortDates.filter((k) => k !== key) : [...shortDates.filter((k) => k >= shortTodayKey), key],
+                        })
+                      }
+                    >
+                      {on ? '✓ ' : ''}
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] text-white/60 font-normal">Длина урока</span>
+                <div className="flex gap-1">
+                  {[30, 35, 40].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      className={`choice !py-1 !px-2.5 !text-xs ${(settings.shortLessonMin ?? SHORT_LESSON_MIN) === m ? 'active' : ''}`}
+                      onClick={() => onUpdateSettings({ shortLessonMin: m })}
+                    >
+                      {m} мин
+                    </button>
+                  ))}
                 </div>
               </div>
-              <input
-                type="checkbox"
-                checked={settings.showRoomBadges ?? true}
-                onChange={(e) => onUpdateSettings({ showRoomBadges: e.target.checked })}
-                className="w-5 h-5 accent-cyan-400 cursor-pointer shrink-0"
-              />
-            </label>
-
-            <label className="flex items-center justify-between text-xs font-bold text-white cursor-pointer select-none p-2.5 rounded-xl bg-white/5 border border-white/10">
-              <div>
-                <div>Авто-переключение на расписание завтра после 15:00</div>
-                <div className="text-[11px] text-white/60 font-normal">
-                  После окончания основных уроков автоматически открывает завтрашний день
-                </div>
-              </div>
-              <input
-                type="checkbox"
-                checked={settings.autoSwitchTomorrow ?? true}
-                onChange={(e) => onUpdateSettings({ autoSwitchTomorrow: e.target.checked })}
-                className="w-5 h-5 accent-cyan-400 cursor-pointer shrink-0"
-              />
-            </label>
+            </div>
           </div>
         </div>
       )}
@@ -847,7 +855,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </div>
 
           <p className="text-xs text-white/80 leading-relaxed">
-            Оценки, имя и заметки хранятся только на этом устройстве. В интернет уходят лишь сообщения чата, то, чем ты делишься с классом (ДЗ и замены), и анонимная статистика устройства — без имени и класса.{' '}
+            Оценки, имя и заметки хранятся только на этом устройстве. В интернет уходят лишь сообщения чата, то, чем ты делишься с классом (ДЗ и замены), вопросы Асошику (в Google Gemini вместе с классом, расписанием и домашкой — без имени) и анонимная статистика устройства — без имени и класса.{' '}
             <a
               href={PRIVACY_POLICY_URL}
               target="_blank"
