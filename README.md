@@ -55,3 +55,18 @@ npm run dev            # http://localhost:3000
 2. Запустите сборку заново: **Actions → Deploy to GitHub Pages → Run workflow**.
 
 Старые коды перестанут работать сразу после публикации. Ученики, которые уже вошли в свой класс, останутся в нём.
+
+
+## Аккаунты, журнал и родители (v16)
+
+Логин и пароль — через Firebase Authentication (служебная почта `логин@asosh-timer.app`, настоящая почта не нужна).
+Роли: ученик (код класса), учитель (одноразовый код учителя), родитель (код ребёнка из «Дневника»).
+
+Включить один раз:
+1. Firebase Console → **Authentication → Sign-in method → Email/Password → Enable**.
+2. Опубликовать `database.rules.json` в **Realtime Database → Rules**.
+
+Где что лежит в базе — в начале `src/services/accounts.ts` и `src/services/journal.ts`.
+Проверка правил: `npm i -D firebase-tools @firebase/rules-unit-testing` (один раз), затем
+`npx firebase emulators:exec --only database --project demo-asosh "node tests/accounts.rules.test.mjs"` (нужна Java).
+Приложение против локальных эмуляторов: `VITE_FIREBASE_EMULATOR=1`.

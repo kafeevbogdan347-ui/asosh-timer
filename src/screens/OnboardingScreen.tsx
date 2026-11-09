@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { LanguageType, DeviceType } from '../types';
 import { APP_VERSION } from '../data/constants';
 import { LANGS, t } from '../i18n';
+import { AccountForms, AccountDone } from '../components/AccountForms';
 
 interface OnboardingScreenProps {
   onComplete: (data: {
@@ -11,6 +12,7 @@ interface OnboardingScreenProps {
     lang: LanguageType;
     isDeveloperMode?: boolean;
     guest?: boolean;
+    account?: AccountDone;
   }) => void;
   lang: LanguageType;
   onLangChange: (lang: LanguageType) => void;
@@ -27,7 +29,7 @@ function detectDevice(): DeviceType {
 
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, lang, onLangChange }) => {
   // Шаг 1 — язык, шаг 2 — имя. Язык выбирают первым, чтобы дальше всё было на нём
-  const [step, setStep] = useState<'lang' | 'name'>('lang');
+  const [step, setStep] = useState<'lang' | 'role' | 'name'>('lang');
   const [studentName, setStudentName] = useState('');
   const [error, setError] = useState('');
 
@@ -75,7 +77,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, 
               className={`choice !py-3 flex flex-col items-center gap-0.5 ${lang === l.id ? 'active' : ''}`}
               onClick={() => {
                 onLangChange(l.id);
-                setStep('name');
+                setStep('role');
               }}
             >
               <span className="text-base font-black">{l.native}</span>
@@ -84,6 +86,34 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, 
           ))}
         </div>
         <p className="text-[11px] text-white/50">{t('langLater', lang)}</p>
+      </div>
+    );
+  }
+
+  if (step === 'role') {
+    return (
+      <div className="card screen-enter max-w-lg mx-auto space-y-4 py-6">
+        <div className="text-center space-y-1">
+          <div className="text-4xl">🔔</div>
+          <h1 className="text-2xl font-black text-cyan-300">АСОШ Таймер</h1>
+          <p className="text-xs text-white/60">Аккаунт работает на любом телефоне: войди по логину и паролю</p>
+        </div>
+        <AccountForms
+          onSkip={() => setStep('name')}
+          onDone={(res) =>
+            onComplete({
+              studentName: res.fullName || res.account.name,
+              parentName: '',
+              device: detectDevice(),
+              lang,
+              isDeveloperMode: false,
+              account: res,
+            })
+          }
+        />
+        <button type="button" className="w-full text-[11px] font-bold text-white/50 hover:text-white/80 cursor-pointer" onClick={() => setStep('lang')}>
+          🌍 {t('changeLang', lang)} · {LANGS.find((l) => l.id === lang)?.native}
+        </button>
       </div>
     );
   }
@@ -139,8 +169,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, 
         <p className="text-[11px] text-white/50">{t('guestSub', lang)}</p>
       </div>
 
-      <button type="button" className="text-[11px] font-bold text-white/60 hover:text-white/90 cursor-pointer" onClick={() => setStep('lang')}>
-        🌍 {t('changeLang', lang)} · {LANGS.find((l) => l.id === lang)?.native}
+      <button type="button" className="text-[11px] font-bold text-white/60 hover:text-white/90 cursor-pointer" onClick={() => setStep('role')}>
+        ← Регистрация по логину и паролю
       </button>
       <p className="text-[10px] text-white/40">{APP_VERSION}</p>
     </form>

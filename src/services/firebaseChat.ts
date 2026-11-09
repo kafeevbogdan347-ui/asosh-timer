@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { censor } from '../utils/moderation';
 import {
   getDatabase,
+  connectDatabaseEmulator,
   ref,
   push,
   onValue,
@@ -11,7 +12,7 @@ import {
   DatabaseReference,
   Unsubscribe,
 } from 'firebase/database';
-import { getAuth, signInAnonymously } from 'firebase/auth';
+import { getAuth, signInAnonymously, connectAuthEmulator } from 'firebase/auth';
 import { ChatMessage } from '../types';
 
 // Конфиг Firebase берётся из .env (VITE_FIREBASE_*) при сборке, а не хранится в коде
@@ -84,6 +85,11 @@ export function initFirebase() {
       }
       firebaseAppInstance = getApps().length > 0 ? getApp() : initializeApp(config);
       firebaseDbInstance = getDatabase(firebaseAppInstance);
+      // Для разработки и тестов: VITE_FIREBASE_EMULATOR=1 — локальные эмуляторы вместо настоящей базы
+      if (env.VITE_FIREBASE_EMULATOR === '1') {
+        connectDatabaseEmulator(firebaseDbInstance, '127.0.0.1', 9000);
+        connectAuthEmulator(getAuth(firebaseAppInstance), 'http://127.0.0.1:9099', { disableWarnings: true });
+      }
     }
     return { app: firebaseAppInstance, db: firebaseDbInstance };
   } catch (err) {
@@ -94,16 +100,26 @@ export function initFirebase() {
 
 // Анонимный вход: правила базы пускают в чат только вошедших пользователей,
 // поэтому перед чтением и записью тихо входим без логина и пароля
-export function ensureSignedIn(): Promise<boolean> {
+export async function ensureSignedIn(): Promise<boolean> {
+  const { app } = initFirebase();
+  if (!app) return false;
+  const auth = getAuth(app);
+  // Сначала ждём восстановления сессии: вошедший по логину не должен превращаться в анонима
+  try {
+    await auth.authStateReady();
+  } catch {
+    // старый браузер — просто пробуем дальше
+  }
+  if (auth.currentUser) return true;
   if (!signInPromise) {
-    const { app } = initFirebase();
-    if (!app) return Promise.resolve(false);
-    signInPromise = signInAnonymously(getAuth(app))
+    signInPromise = signInAnonymously(auth)
       .then(() => true)
       .catch((err) => {
         console.warn('Firebase anonymous sign-in error:', err?.code || err);
-        signInPromise = null; // попробуем снова при следующем обращении
         return false;
+      })
+      .finally(() => {
+        signInPromise = null;
       });
   }
   return signInPromise;

@@ -30,9 +30,13 @@ export interface ClassHomework {
 
 type Section = 'replacements' | 'homework';
 
+// Ключ класса в базе: тот же для замен, ДЗ, состава класса и журнала
+export function classKey(cls: string): string {
+  return encodeURIComponent(cls.replace(/\s+/g, '_').toLowerCase());
+}
+
 function classPath(cls: string, section: Section) {
-  const key = encodeURIComponent(cls.replace(/\s+/g, '_').toLowerCase());
-  return `asosh_class/${key}/${section}`;
+  return `asosh_class/${classKey(cls)}/${section}`;
 }
 
 export function myUid(): string {

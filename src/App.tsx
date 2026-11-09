@@ -73,7 +73,11 @@ import { GpaCalculatorScreen } from './screens/GpaCalculatorScreen';
 import { PortfolioScreen } from './screens/PortfolioScreen';
 import { FocusAudioScreen } from './screens/FocusAudioScreen';
 import { ChatScreen } from './screens/ChatScreen';
-import { isClassUnlocked } from './data/classCodes';
+import { isClassUnlocked, saveClassUnlocked } from './data/classCodes';
+import { Account, getLocalAccount, logoutAccount, moveStudentToClass } from './services/accounts';
+import type { AccountDone } from './components/AccountForms';
+import { AccountForms } from './components/AccountForms';
+import { DiaryScreen } from './screens/DiaryScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { RetroFirstScreen } from './screens/RetroFirstScreen';
 import { BellsScreen } from './screens/BellsScreen';
@@ -109,6 +113,8 @@ export default function App() {
   const [classVerified, setClassVerified] = useState<boolean>(() => !!accountVault.cls && isClassUnlocked(accountVault.cls));
   // Режим учителя: имя хранится на телефоне, а права на публикации проверяет база
   const [teacher, setTeacher] = useState<TeacherInfo | null>(getLocalTeacher);
+  // Аккаунт по логину и паролю (ученик, учитель или родитель); без него приложение работает как раньше
+  const [account, setAccount] = useState<Account | null>(getLocalAccount);
   const isTeacher = !!teacher;
   const [shift, setShift] = useState<string>(() => accountVault.shift);
   const [subGroup, setSubGroup] = useState<number>(() => accountVault.subGroup);
@@ -1083,6 +1089,7 @@ export default function App() {
     authProvider?: 'guest' | 'local' | 'google' | 'apple';
     authEmail?: string;
     guest?: boolean;
+    account?: AccountDone;
   }) => {
     setIsGuest(!!data.guest);
     if (data.guest) localStorage.setItem('asosh_guest', '1');
@@ -1121,14 +1128,61 @@ export default function App() {
 
     handleUpdateSettings({ devicePC: data.device === 'pc' });
 
+    if (data.account) {
+      applyAccount(data.account);
+      return;
+    }
     if (!cls) setCurrentScreen('select');
     else setCurrentScreen('main');
+  };
+
+  // Вошли или зарегистрировались по логину: класс, режим учителя и стартовый экран по роли
+  const applyAccount = (res: AccountDone) => {
+    const acc = res.account;
+    setAccount(acc);
+    setIsGuest(false);
+    localStorage.removeItem('asosh_guest');
+    const accCls = res.child?.cls || acc.cls || '';
+    if (acc.role === 'teacher') {
+      setTeacher({ name: acc.name });
+      showToast(`Здравствуйте, ${acc.name}! 👩‍🏫`);
+      setCurrentScreen('teacher');
+      return;
+    }
+    if (accCls) {
+      setCls(accCls);
+      setAccountVault(saveAccountVault({ cls: accCls, studentName: res.fullName || acc.name, registered: true }));
+      localStorage.setItem('asosh_class_v105', accCls);
+      localStorage.setItem('class', accCls);
+      if (acc.role === 'student') {
+        saveClassUnlocked(accCls);
+        setClassVerified(true);
+      }
+    }
+    if (acc.role === 'parent') {
+      showToast(`Здравствуйте, ${acc.name}!`);
+      setCurrentScreen('diary');
+    } else {
+      showToast(`Привет, ${acc.name}! 👋`);
+      setCurrentScreen(accCls ? 'main' : 'select');
+    }
+  };
+
+  const handleLogoutAccount = async () => {
+    const wasTeacher = account?.role === 'teacher';
+    await logoutAccount();
+    setAccount(null);
+    if (wasTeacher) setTeacher(null);
+    showToast('Вы вышли из аккаунта');
   };
 
   // Смена по официальному расписанию: 6–8 классы — вторая, остальные — первая
   const shiftForClass = (c: string) => (hasOfficialSchedule(c) ? (SECOND_SHIFT_CLASSES.includes(c) ? '2' : '1') : null);
 
   const handleSelectClass = (selected: string) => {
+    if (account?.role === 'student' && account.cls !== selected) {
+      moveStudentToClass(account, selected).then((ok) => ok && setAccount({ ...account, cls: selected }));
+    }
     setCls(selected);
     setClassVerified(isClassUnlocked(selected));
     const autoShift = shiftForClass(selected);
@@ -1666,6 +1720,29 @@ export default function App() {
           />
         )}
 
+        {currentScreen === 'diary' && account && (
+          <DiaryScreen
+            account={account}
+            posts={boardPosts}
+            today={activeTime}
+            onShowToast={showToast}
+            onChildClass={(c) => {
+              if (c && c !== cls) {
+                setCls(c);
+                setAccountVault(saveAccountVault({ cls: c }));
+              }
+            }}
+          />
+        )}
+
+        {(currentScreen === 'account' || (currentScreen === 'diary' && !account)) && (
+          <div className="card screen-enter max-w-lg mx-auto space-y-3">
+            <h2 className="text-xl font-black text-cyan-300">🔑 Аккаунт</h2>
+            <p className="text-xs text-white/65">С логином и паролем дневник, оценки и режим учителя работают на любом телефоне.</p>
+            <AccountForms onDone={applyAccount} />
+          </div>
+        )}
+
         {currentScreen === 'assistant' && (
           <AssistantScreen
             context={buildAssistantContext()}
@@ -1831,6 +1908,8 @@ export default function App() {
             onPickClass={() => setCurrentScreen('select')}
             onBack={() => setCurrentScreen(cls ? 'main' : 'select')}
             onShowToast={showToast}
+            account={account}
+            onOpenAccount={() => setCurrentScreen('account')}
           />
         )}
 
@@ -1874,6 +1953,9 @@ export default function App() {
               setCurrentScreen('select');
               showToast('Выбери свой класс');
             }}
+            account={account}
+            onOpenAccount={() => setCurrentScreen('account')}
+            onLogoutAccount={handleLogoutAccount}
             onExportData={handleExportData}
             onImportData={handleImportData}
             onResetAll={handleResetAll}
