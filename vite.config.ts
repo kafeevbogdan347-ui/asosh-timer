@@ -52,6 +52,8 @@ export default defineConfig(({ mode }) => {
     define: {
       __CLASS_CODE_HASHES__: JSON.stringify(classCodeHashes),
       __DEV_PASSWORD_HASH__: JSON.stringify(devPassword ? sha256(devPassword) : ''),
+      // Ключ Асошика: VITE_GEMINI_API_KEY (сборка на GitHub) или GEMINI_API_KEY (Google AI Studio)
+      'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || env.GEMINI_API_KEY || ''),
     },
     resolve: {
       alias: {

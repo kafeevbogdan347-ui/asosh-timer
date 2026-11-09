@@ -9,6 +9,7 @@ import {
   ScreenId,
 } from '../types';
 import { DICT, SHORT_LESSON_MIN } from '../data/constants';
+import { Account } from '../services/accounts';
 import { toDateKey } from '../services/classShared';
 import { playSound, doVibro } from '../utils/audio';
 import {
@@ -91,6 +92,9 @@ interface SettingsScreenProps {
   maintenanceMode?: boolean;
   onToggleMaintenanceMode?: (active: boolean) => void;
   onOpenMaintenanceScreen?: () => void;
+  account?: Account | null;
+  onOpenAccount?: () => void;
+  onLogoutAccount?: () => void;
 }
 
 type SettingsSectionId =
@@ -104,6 +108,9 @@ type SettingsSectionId =
   | 'server';
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
+  account,
+  onOpenAccount,
+  onLogoutAccount,
   settings,
   onUpdateSettings,
   lang,
@@ -770,6 +777,27 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             </div>
           </div>
 
+          {/* Аккаунт по логину и паролю */}
+          <div className="p-3 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <b className="text-xs text-white block">🔑 Аккаунт</b>
+              <span className="text-[11px] text-white/60 block">
+                {account
+                  ? `@${account.login} · ${({ student: 'ученик', teacher: 'учитель', parent: 'родитель' })[account.role]} · ${account.name}`
+                  : 'Логин и пароль — дневник и оценки на любом телефоне'}
+              </span>
+            </div>
+            {account ? (
+              <button type="button" onClick={onLogoutAccount} className="btn darkBtn text-xs py-1.5 px-3 font-bold shrink-0 cursor-pointer">
+                Выйти
+              </button>
+            ) : (
+              <button type="button" onClick={onOpenAccount} className="btn darkBtn text-xs py-1.5 px-3 font-bold border-cyan-400/30 text-cyan-300 shrink-0 cursor-pointer">
+                Войти / создать
+              </button>
+            )}
+          </div>
+
           {/* Быстрая смена класса */}
           <div className="p-3 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-between gap-3">
             <div>
@@ -855,7 +883,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </div>
 
           <p className="text-xs text-white/80 leading-relaxed">
-            Оценки, имя и заметки хранятся только на этом устройстве. В интернет уходят лишь сообщения чата, то, чем ты делишься с классом (ДЗ и замены), вопросы и фото Асошику (в Google Gemini вместе с классом, расписанием и домашкой — без имени) и анонимная статистика устройства — без имени и класса.{' '}
+            Заметки, личные ДЗ и оценки из калькулятора хранятся только на этом устройстве. В интернет уходят сообщения чата, то, чем ты делишься с классом (ДЗ и замены), вопросы и фото Асошику (в Google Gemini вместе с классом, расписанием и домашкой — без имени), анонимная статистика устройства, а если заведёшь аккаунт — логин, «Имя Ф.», класс и оценки от учителей (их видишь ты, учителя и подключённые тобой родители).{' '}
             <a
               href={PRIVACY_POLICY_URL}
               target="_blank"

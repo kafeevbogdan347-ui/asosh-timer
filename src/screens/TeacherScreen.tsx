@@ -11,6 +11,8 @@ import {
   deleteBoardPost,
   loginTeacher,
 } from '../services/teacher';
+import { Account } from '../services/accounts';
+import { TeacherJournal } from '../components/TeacherJournal';
 
 // Кабинет учителя: вход по одноразовому коду, объявления и события для классов
 interface TeacherScreenProps {
@@ -23,6 +25,8 @@ interface TeacherScreenProps {
   onPickClass: () => void;
   onBack: () => void;
   onShowToast: (msg: string) => void;
+  account?: Account | null;
+  onOpenAccount?: () => void;
 }
 
 const fmtDate = (key: string) => new Date(key + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
@@ -53,7 +57,8 @@ const PostRow: React.FC<{ p: BoardPost; canDelete: boolean; onShowToast: (msg: s
   </div>
 );
 
-export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, posts, myUid, onLoggedIn, onLogout, onPickClass, onBack, onShowToast }) => {
+export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, posts, myUid, onLoggedIn, onLogout, onPickClass, onBack, onShowToast, account, onOpenAccount }) => {
+  const [section, setSection] = useState<'journal' | 'board'>('journal');
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -159,8 +164,37 @@ export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, 
     <div className="card screen-enter space-y-4">
       <div>
         <h2 className="text-xl font-black text-amber-300">👩‍🏫 Кабинет учителя</h2>
-        <p className="text-xs text-white/70">Здравствуйте, {teacherName}! Объявления появятся на главном экране учеников, события — в их календаре.</p>
+        <p className="text-xs text-white/70">Здравствуйте, {teacherName}!</p>
       </div>
+
+      <div className="flex gap-1 p-1 rounded-2xl bg-white/5 border border-white/10">
+        <button type="button" className={`diary-tab ${section === 'journal' ? 'active' : ''}`} onClick={() => setSection('journal')}>
+          📒 Журнал
+        </button>
+        <button type="button" className={`diary-tab ${section === 'board' ? 'active' : ''}`} onClick={() => setSection('board')}>
+          📢 Объявления
+        </button>
+      </div>
+
+      {section === 'journal' &&
+        (account?.role === 'teacher' ? (
+          <TeacherJournal account={account} defaultCls={cls} onShowToast={onShowToast} />
+        ) : (
+          <div className="p-4 rounded-2xl bg-white/5 border border-white/15 space-y-2 text-center">
+            <b className="block">Журнал работает с логином и паролем</b>
+            <p className="text-xs text-white/65">
+              Придумайте логин и пароль — тогда журнал и режим учителя будут работать на любом телефоне и компьютере. Код учителя вводить заново не нужно.
+            </p>
+            {onOpenAccount && (
+              <button type="button" className="btn green w-full justify-center" onClick={onOpenAccount}>
+                Создать логин и пароль
+              </button>
+            )}
+          </div>
+        ))}
+
+      {section === 'board' && (<>
+      <p className="text-xs text-white/60">Объявления появятся на главном экране учеников, события — в их календаре.</p>
 
       <form onSubmit={handlePublish} className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-2.5">
         <div className="grid grid-cols-2 gap-2">
@@ -229,6 +263,8 @@ export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, 
         </div>
       )}
 
+      </>)}
+
       <div className="grid grid-cols-2 gap-2">
         <button type="button" className="btn darkBtn justify-center text-xs" onClick={onPickClass}>
           🏫 {cls ? `Класс: ${cls}` : 'Выбрать класс'}
@@ -238,7 +274,9 @@ export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, 
         </button>
       </div>
       <p className="text-[11px] text-white/50">
-        После выхода на этом телефоне можно снова войти тем же кодом. На другом телефоне код уже не сработает — нужен новый.
+        {account?.role === 'teacher'
+          ? `Вы вошли как @${account.login}. На другом телефоне входите по логину и паролю.`
+          : 'После выхода на этом телефоне можно снова войти тем же кодом. На другом телефоне код уже не сработает — создайте логин и пароль.'}
       </p>
     </div>
   );

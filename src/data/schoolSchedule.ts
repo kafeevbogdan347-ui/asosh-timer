@@ -239,3 +239,12 @@ export const roomFloor = (room: string): number | null => {
   const m = first.match(/^(\d)\d\d$/);
   return m ? Number(m[1]) : null;
 };
+
+// Все предметы из расписания — для выбора предметов учителем и в журнале
+export const ALL_SUBJECTS: string[] = [
+  ...new Set(
+    Object.values(OFFICIAL_SCHEDULE_2026).flatMap((days) =>
+      Object.values(days).flatMap((lessons) => lessons.map(([sub]) => sub).filter((s) => s && s !== 'Разговор о важном'))
+    )
+  ),
+].sort((a, b) => a.localeCompare(b, 'ru'));

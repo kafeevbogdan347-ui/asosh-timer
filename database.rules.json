@@ -32,7 +32,9 @@
           "$id": {
             ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid))",
             ".validate": "newData.hasChildren(['sub', 'text', 'uid', 'created_at']) && newData.child('sub').isString() && newData.child('sub').val().length > 0 && newData.child('sub').val().length <= 60 && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 1000 && (!newData.child('author').exists() || (newData.child('author').isString() && newData.child('author').val().length <= 60))",
-            "teacher": { ".validate": "newData.isBoolean() && root.child('asosh_teachers').child(auth.uid).exists()" }
+            "teacher": {
+              ".validate": "newData.isBoolean() && root.child('asosh_teachers').child(auth.uid).exists()"
+            }
           }
         }
       }
@@ -43,18 +45,42 @@
         "$uid": {
           ".write": "auth != null && auth.uid === $uid",
           ".validate": "$day.length === 10 && newData.hasChildren(['p', 't']) && newData.child('p').isString() && newData.child('p').val().length <= 10 && newData.child('t').isNumber()",
-          "os": { ".validate": "newData.isString() && newData.val().length <= 20" },
-          "br": { ".validate": "newData.isString() && newData.val().length <= 20" },
-          "q": { ".validate": "newData.isString() && newData.val().length <= 10" },
-          "sw": { ".validate": "newData.isNumber()" },
-          "sh": { ".validate": "newData.isNumber()" },
-          "dpr": { ".validate": "newData.isNumber()" },
-          "mem": { ".validate": "newData.isNumber()" },
-          "cpu": { ".validate": "newData.isNumber()" },
-          "pwa": { ".validate": "newData.isBoolean()" },
-          "p": { ".validate": true },
-          "t": { ".validate": true },
-          "$other": { ".validate": false }
+          "os": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "br": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "q": {
+            ".validate": "newData.isString() && newData.val().length <= 10"
+          },
+          "sw": {
+            ".validate": "newData.isNumber()"
+          },
+          "sh": {
+            ".validate": "newData.isNumber()"
+          },
+          "dpr": {
+            ".validate": "newData.isNumber()"
+          },
+          "mem": {
+            ".validate": "newData.isNumber()"
+          },
+          "cpu": {
+            ".validate": "newData.isNumber()"
+          },
+          "pwa": {
+            ".validate": "newData.isBoolean()"
+          },
+          "p": {
+            ".validate": true
+          },
+          "t": {
+            ".validate": true
+          },
+          "$other": {
+            ".validate": false
+          }
         }
       }
     },
@@ -93,6 +119,168 @@
         ".read": "auth != null",
         ".write": "auth != null && (!data.exists() || !newData.exists())",
         ".validate": "newData.hasChildren(['payload', 'created_at']) && newData.child('payload').isString() && newData.child('payload').val().length <= 3000000"
+      }
+    },
+    "asosh_users": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('asosh_teachers').child(auth.uid).exists() || root.child('asosh_family').child($uid).child(auth.uid).exists())",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['role', 'name', 'login', 't']) && (newData.child('role').val() !== 'teacher' || newData.parent().parent().child('asosh_teachers').child($uid).exists())",
+        "role": {
+          ".validate": "newData.val() === 'student' || newData.val() === 'teacher' || newData.val() === 'parent'"
+        },
+        "name": {
+          ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 60"
+        },
+        "login": {
+          ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_.]{3,20}$/)"
+        },
+        "cls": {
+          ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 4"
+        },
+        "subjects": {
+          ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 300"
+        },
+        "t": {
+          ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "asosh_private": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "pcode": {
+          ".validate": "newData.isString() && newData.val().length >= 8 && newData.val().length <= 12"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "asosh_roster": {
+      "$cls": {
+        ".read": "auth != null && root.child('asosh_teachers').child(auth.uid).exists()",
+        "$sid": {
+          ".read": "auth != null && (auth.uid === $sid || root.child('asosh_family').child($sid).child(auth.uid).exists())",
+          ".write": "auth != null && ((auth.uid === $sid && (!newData.exists() || !newData.child('ok').exists())) || (root.child('asosh_teachers').child(auth.uid).exists() && !newData.exists()))",
+          ".validate": "newData.hasChildren(['name', 't'])",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 40"
+          },
+          "t": {
+            ".validate": "newData.isNumber()"
+          },
+          "ok": {
+            ".write": "auth != null && root.child('asosh_teachers').child(auth.uid).exists()",
+            ".validate": "newData.isBoolean()"
+          },
+          "okBy": {
+            ".write": "auth != null && root.child('asosh_teachers').child(auth.uid).exists()",
+            ".validate": "newData.val() === auth.uid"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "asosh_journal": {
+      "$cls": {
+        ".read": "auth != null && root.child('asosh_teachers').child(auth.uid).exists()",
+        "$sid": {
+          ".read": "auth != null && (auth.uid === $sid || root.child('asosh_family').child($sid).child(auth.uid).exists())",
+          "$gid": {
+            ".write": "auth != null && root.child('asosh_teachers').child(auth.uid).exists() && ((!data.exists() && newData.child('tuid').val() === auth.uid) || (data.exists() && data.child('tuid').val() === auth.uid && (!newData.exists() || newData.child('tuid').val() === auth.uid)))",
+            ".validate": "newData.hasChildren(['sub', 'v', 'date', 'tuid', 'teacher', 't']) && root.child('asosh_roster').child($cls).child($sid).child('ok').val() === true",
+            "sub": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60"
+            },
+            "v": {
+              ".validate": "(newData.isNumber() && newData.val() >= 2 && newData.val() <= 5) || newData.val() === 'Н'"
+            },
+            "date": {
+              ".validate": "newData.isString() && newData.val().length === 10"
+            },
+            "note": {
+              ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 200"
+            },
+            "teacher": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60"
+            },
+            "tuid": {
+              ".validate": "newData.val() === auth.uid"
+            },
+            "t": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
+      }
+    },
+    "asosh_parent_codes": {
+      "$h": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.child('student').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('student').val() === auth.uid))",
+        ".validate": "newData.hasChildren(['student', 't']) && $h.length === 64",
+        "student": {
+          ".validate": "newData.isString()"
+        },
+        "t": {
+          ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "asosh_family": {
+      "$sid": {
+        ".read": "auth != null && auth.uid === $sid",
+        "$puid": {
+          ".read": "auth != null && auth.uid === $puid",
+          ".write": "auth != null && ((auth.uid === $puid && !data.exists() && newData.exists() && root.child('asosh_parent_codes').child(newData.child('h').val()).child('student').val() === $sid) || (!newData.exists() && (auth.uid === $sid || auth.uid === $puid)))",
+          ".validate": "newData.hasChildren(['h', 'name', 't'])",
+          "h": {
+            ".validate": "newData.isString() && newData.val().length === 64"
+          },
+          "name": {
+            ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 60"
+          },
+          "t": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "asosh_parent_links": {
+      "$puid": {
+        ".read": "auth != null && auth.uid === $puid",
+        ".write": "auth != null && auth.uid === $puid",
+        "$sid": {
+          ".validate": "newData.hasChildren(['name', 'cls', 't'])",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 60"
+          },
+          "cls": {
+            ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 4"
+          },
+          "t": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
       }
     }
   }
