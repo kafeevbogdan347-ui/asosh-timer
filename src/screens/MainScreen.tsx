@@ -4,6 +4,7 @@ import { DICT } from '../data/constants';
 import { BoardPost, AUDIENCE_LABEL } from '../services/teacher';
 import { AsoshikAvatar } from './AssistantScreen';
 import { t, UIKey } from '../i18n';
+import { AskAsoshikButton } from '../components/AskAsoshikButton';
 
 interface MainScreenProps {
   cls: string;
@@ -22,6 +23,7 @@ interface MainScreenProps {
   onNavigate: (screen: ScreenId) => void;
   onOpenCalc: () => void;
   onOpenWhatsNew: () => void;
+  onAskAsoshik: (text: string) => void;
   onLogoTap: () => void;
   lang: LanguageType;
   showBackpackHint: boolean;
@@ -98,6 +100,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
   onNavigate,
   onOpenCalc,
   onOpenWhatsNew,
+  onAskAsoshik,
   onLogoTap,
   lang,
   showBackpackHint,
@@ -165,6 +168,11 @@ export const MainScreen: React.FC<MainScreenProps> = ({
               <div className="text-[11px] text-white/60 font-bold">
                 👉 {t('next', lang)}{nextLesson.time && ` · ${nextLesson.time}`}
                 {nextLesson.replaced && ` · ${t('replaced', lang)}`}
+                <AskAsoshikButton
+                  className="ml-2 !py-0.5"
+                  label={t('askPrep', lang)}
+                  onClick={() => onAskAsoshik(`Скоро урок «${nextLesson.sub}» в ${nextLesson.time}. Подскажи коротко: что повторить перед уроком и что взять с собой.`)}
+                />
               </div>
               <div className="flex items-baseline justify-between gap-2 mt-0.5">
                 <span className="text-sm font-black text-white truncate">{nextLesson.sub}</span>

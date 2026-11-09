@@ -1,3 +1,4 @@
+import { AskAsoshikButton } from '../components/AskAsoshikButton';
 import React from 'react';
 import { LanguageType, SmartDayData } from '../types';
 import { DAYS, GET_DAYS_FOR_LANG, DICT } from '../data/constants';
@@ -13,11 +14,13 @@ interface ScheduleScreenProps {
   lang: LanguageType;
   onGoAddUpdates: () => void;
   smartDayAdvice?: SmartDayData | null;
+  onAskAsoshik?: (text: string) => void;
 }
 
 const SHORT_DAYS_RU = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
+  onAskAsoshik,
   selectedDay,
   currentDayName,
   onSelectDay,
@@ -105,6 +108,14 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <b className="text-base text-white truncate">{lesson[0]}</b>
+                    {onAskAsoshik && lesson[0] !== '—' && !isCur && (
+                      <AskAsoshikButton
+                        label="Готовлюсь"
+                        onClick={() =>
+                          onAskAsoshik(`Скоро урок «${lesson[0].replace('🔄 ', '')}»${bell ? ` в ${bell[0]}` : ''}. Подскажи коротко: что повторить перед уроком и что взять с собой.`)
+                        }
+                      />
+                    )}
                     {isCur && (
                       <span className="px-2 py-0.5 rounded bg-emerald-500/30 border border-emerald-400 text-emerald-200 text-[10px] font-bold font-mono shrink-0 animate-pulse">
                         Идёт урок 🔔

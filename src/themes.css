@@ -872,17 +872,17 @@ body.q-ultra.no-anim #root::before { animation: none; }
    ЦВЕТНЫЕ ТЁМНЫЕ ТЕМЫ: тёмно-синие панели из Tailwind (slate/indigo-950 и т.п.)
    делаем нейтрально-тёмными, чтобы сквозь них просвечивал цвет темы
    ============================================================ */
-body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint, .theme-mocha, .theme-sunset_city, .theme-midnight_gold)
+body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint, .theme-mocha, .theme-sunset_city, .theme-midnight_gold, .theme-steel, .theme-terminal, .theme-berry)
   :is([class*="from-slate-9"], [class*="from-cyan-9"], [class*="from-blue-9"], [class*="from-indigo-9"], [class*="from-purple-9"], [class*="from-violet-9"], [class*="from-sky-9"]) {
   background: rgba(0, 0, 0, 0.28) !important;
   background-image: none !important;
 }
-body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint, .theme-mocha, .theme-sunset_city, .theme-midnight_gold)
+body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint, .theme-mocha, .theme-sunset_city, .theme-midnight_gold, .theme-steel, .theme-terminal, .theme-berry)
   :is([class*="bg-slate-9"], [class*="bg-indigo-9"], [class*="bg-blue-9"]) {
   background-color: rgba(0, 0, 0, 0.32) !important;
 }
 /* Активные кнопки и вкладки (bg-cyan-400/500) — в акцентный цвет темы; акценты у этих тем светлые, поэтому текст тёмный */
-body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint, .theme-mocha, .theme-sunset_city, .theme-midnight_gold)
+body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint, .theme-mocha, .theme-sunset_city, .theme-midnight_gold, .theme-steel, .theme-terminal, .theme-berry)
   :is([class~="bg-cyan-400"], [class~="bg-cyan-500"]) {
   background-color: var(--accent) !important;
   color: #0b1020 !important;
@@ -1088,3 +1088,141 @@ body.theme-fresh_mint .btn.darkBtn { background: #f0fdf4; color: #064e3b; }
 body.theme-fresh_mint .num { border-radius: 12px; background: #d1fae5; color: #047857; }
 body.theme-fresh_mint .bellWidget { background: #ffffff; border-color: #6ee7b7; }
 body.theme-fresh_mint .nav-bar { background: rgba(255, 255, 255, 0.95); border-color: #a7f3d0; }
+
+
+/* ============================================================
+   НОВЫЕ ТЕМЫ (v15.2)
+   ============================================================ */
+
+/* МАСТЕРСКАЯ: металл, заклёпки, оранжевые полосы */
+body.theme-steel {
+  --b1: #17191c; --b2: #22252a; --b3: #2a2d31;
+  --card: rgba(255, 255, 255, 0.05); --card-hover: rgba(255, 255, 255, 0.08);
+  --line: rgba(168, 162, 158, 0.3); --muted: #a8a29e; --ink: #f5f5f4; --txt: #f5f5f4;
+  --accent: #f97316; --accent-rgb: 249, 115, 22;
+  --sh: 0 12px 28px rgba(0, 0, 0, 0.55);
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.015) 0 2px, transparent 2px 6px),
+    linear-gradient(160deg, #2a2d31, #17191c) !important;
+}
+body.theme-steel .card {
+  border-radius: 6px; border: 1px solid #57534e;
+  background-image:
+    radial-gradient(circle at 10px 10px, #78716c 0 2.5px, transparent 3px),
+    radial-gradient(circle at calc(100% - 10px) 10px, #78716c 0 2.5px, transparent 3px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+}
+body.theme-steel .btn { border-radius: 6px; background: linear-gradient(180deg, #fb923c, #ea580c); color: #1c1917; }
+body.theme-steel .btn.darkBtn { background: #292524; color: var(--txt); }
+body.theme-steel .num { border-radius: 4px; background: #f97316; color: #1c1917; }
+body.theme-steel .bellWidget {
+  border-radius: 6px; border: 2px solid #f97316;
+  background: repeating-linear-gradient(135deg, rgba(249, 115, 22, 0.9) 0 10px, #1c1917 10px 20px) 0 100% / 100% 8px no-repeat, #1f1d1b;
+}
+body.theme-steel .nav-bar { border-radius: 8px; background: rgba(23, 25, 28, 0.95); border-color: #57534e; }
+
+/* ТЕРМИНАЛ: чёрный экран, зелёный моноширинный текст, строки развёртки */
+body.theme-terminal {
+  --b1: #030805; --b2: #04100a; --b3: #020503;
+  --card: rgba(74, 222, 128, 0.04); --card-hover: rgba(74, 222, 128, 0.08);
+  --line: rgba(74, 222, 128, 0.3); --muted: #22c55e; --ink: #86efac; --txt: #4ade80;
+  --accent: #4ade80; --accent-rgb: 74, 222, 128;
+  --sh: 0 0 24px rgba(74, 222, 128, 0.08);
+  background: #030805 !important;
+}
+body.theme-terminal, body.theme-terminal * { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace !important; }
+body.theme-terminal::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(74, 222, 128, 0.05) 0 1px, transparent 1px 3px);
+}
+body.theme-terminal h1::after, body.theme-terminal h2::after { content: "_"; margin-left: 2px; animation: themeCursor 1s steps(1) infinite; }
+@keyframes themeCursor { 50% { opacity: 0; } }
+body.theme-terminal .card { border-radius: 2px; border: 1px solid #166534; text-shadow: 0 0 6px rgba(74, 222, 128, 0.35); }
+body.theme-terminal .btn { border-radius: 2px; background: #4ade80; color: #03140a; box-shadow: none; }
+body.theme-terminal .btn.darkBtn { background: transparent; color: #4ade80; border: 1px solid #166534; }
+body.theme-terminal .num { border-radius: 2px; background: transparent; color: #4ade80; border: 1px solid #22c55e; }
+body.theme-terminal .bellWidget { border-radius: 2px; border-color: #22c55e; background: rgba(3, 20, 10, 0.9); }
+body.theme-terminal .nav-bar { border-radius: 2px; background: #020503; border-color: #166534; }
+body.theme-terminal .mc-splash { color: #facc15; }
+
+/* ЯГОДНЫЙ СМУЗИ: малина и черника, всё круглое */
+body.theme-berry {
+  --b1: #1a0b1e; --b2: #24102b; --b3: #140818;
+  --card: rgba(255, 255, 255, 0.07); --card-hover: rgba(255, 255, 255, 0.1);
+  --line: rgba(244, 114, 182, 0.3); --muted: #f9a8d4; --ink: #fdf2f8; --txt: #fdf2f8;
+  --accent: #f472b6; --accent-rgb: 244, 114, 182;
+  --sh: 0 16px 36px rgba(26, 0, 30, 0.6);
+  background:
+    radial-gradient(circle at 15% 5%, rgba(244, 63, 94, 0.35), transparent 45%),
+    radial-gradient(circle at 95% 95%, rgba(99, 102, 241, 0.4), transparent 50%),
+    radial-gradient(circle at 60% 50%, rgba(168, 85, 247, 0.15), transparent 55%),
+    #1a0b1e !important;
+}
+body.theme-berry .card { border-radius: 26px; border: 1px solid rgba(244, 114, 182, 0.28); backdrop-filter: blur(10px); }
+body.theme-berry .btn { border-radius: 999px; background: linear-gradient(135deg, #e11d48, #a855f7); color: #fff; }
+body.theme-berry .btn.darkBtn { background: rgba(255, 255, 255, 0.08); color: var(--txt); }
+body.theme-berry .num { border-radius: 50%; background: linear-gradient(135deg, #f472b6, #818cf8); color: #1a0b1e; }
+body.theme-berry .bellWidget { border-radius: 28px; border-color: rgba(244, 114, 182, 0.55); background: linear-gradient(135deg, rgba(225, 29, 72, 0.25), rgba(99, 102, 241, 0.25)); }
+body.theme-berry .nav-bar { border-radius: 999px; background: rgba(26, 11, 30, 0.92); border-color: rgba(244, 114, 182, 0.3); }
+
+/* ЛАВАНДА: светлая сиреневая */
+body.theme-lavender {
+  --b1: #f7f3ff; --b2: #ece4ff; --b3: #e0d4ff;
+  --card: #ffffff; --card-hover: #ffffff;
+  --line: rgba(124, 58, 237, 0.2); --muted: #6b5a99; --ink: #3b2470; --txt: #2a1858;
+  --accent: #7c3aed; --accent-rgb: 124, 58, 237;
+  --sh: 0 10px 26px rgba(124, 58, 237, 0.1);
+  background: linear-gradient(180deg, #f7f3ff, #ece4ff) !important;
+}
+body.theme-lavender .card { border-radius: 18px; border: 1px solid #ddd0fb; }
+body.theme-lavender .btn { border-radius: 14px; background: linear-gradient(135deg, #7c3aed, #a78bfa); color: #fff; }
+body.theme-lavender .btn.darkBtn { background: #f5f0ff; color: #3b2470; }
+body.theme-lavender .num { border-radius: 12px; background: #ede4ff; color: #6d28d9; }
+body.theme-lavender .bellWidget { background: #ffffff; border-color: #c4b5fd; }
+body.theme-lavender .nav-bar { background: rgba(255, 255, 255, 0.95); border-color: #ddd0fb; }
+
+/* ПУСТЫНЯ: песок, дюны и солнце */
+body.theme-desert {
+  --b1: #fef3c7; --b2: #fde68a; --b3: #fcd34d;
+  --card: rgba(255, 251, 235, 0.92); --card-hover: #fffbeb;
+  --line: rgba(180, 83, 9, 0.22); --muted: #8a5a1c; --ink: #5b3a12; --txt: #3f280b;
+  --accent: #d97706; --accent-rgb: 217, 119, 6;
+  --sh: 0 10px 24px rgba(146, 64, 14, 0.12);
+  background:
+    radial-gradient(circle at 82% 12%, rgba(251, 191, 36, 0.9) 0 46px, rgba(251, 191, 36, 0.25) 47px, transparent 140px),
+    radial-gradient(ellipse 70% 18% at 20% 100%, #f59e0b, transparent 70%),
+    radial-gradient(ellipse 60% 14% at 85% 102%, #fbbf24, transparent 70%),
+    linear-gradient(180deg, #fef3c7 0%, #fde68a 75%) !important;
+  background-attachment: fixed !important;
+}
+body.theme-desert h1, body.theme-desert h2, body.theme-desert h3 { font-family: Georgia, "Times New Roman", serif !important; }
+body.theme-desert .card { border-radius: 14px; border: 1px solid #f2c879; }
+body.theme-desert .btn { border-radius: 12px; background: linear-gradient(135deg, #b45309, #f59e0b); color: #fff; }
+body.theme-desert .btn.darkBtn { background: #fffbeb; color: #5b3a12; }
+body.theme-desert .num { border-radius: 50%; background: #fde68a; color: #92400e; }
+body.theme-desert .bellWidget { background: rgba(255, 251, 235, 0.95); border-color: #f59e0b; }
+body.theme-desert .nav-bar { background: rgba(255, 251, 235, 0.96); border-color: #f2c879; }
+
+/* УТРО У МОРЯ: светлая голубая с волнами */
+body.theme-ocean_morning {
+  --b1: #f0f9ff; --b2: #e0f2fe; --b3: #bae6fd;
+  --card: #ffffff; --card-hover: #ffffff;
+  --line: rgba(2, 132, 199, 0.2); --muted: #3b6b8a; --ink: #0c4a6e; --txt: #082f49;
+  --accent: #0284c7; --accent-rgb: 2, 132, 199;
+  --sh: 0 10px 26px rgba(2, 132, 199, 0.1);
+  background: linear-gradient(180deg, #f0f9ff, #e0f2fe) !important;
+}
+body.theme-ocean_morning::before {
+  content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: 140px; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 60px 22px at 30px 22px, transparent 96%, rgba(125, 211, 252, 0.45) 100%) 0 0 / 120px 44px repeat-x,
+    linear-gradient(180deg, transparent 22px, rgba(125, 211, 252, 0.45) 22px);
+  animation: themeWaves 9s ease-in-out infinite alternate;
+}
+@keyframes themeWaves { to { background-position: 120px 0, 0 0; } }
+body.theme-ocean_morning .card { border-radius: 20px; border: 1px solid #bae6fd; }
+body.theme-ocean_morning .btn { border-radius: 999px; background: linear-gradient(135deg, #0284c7, #38bdf8); color: #fff; }
+body.theme-ocean_morning .btn.darkBtn { background: #f0f9ff; color: #0c4a6e; }
+body.theme-ocean_morning .num { border-radius: 50%; background: #e0f2fe; color: #0369a1; }
+body.theme-ocean_morning .bellWidget { background: #ffffff; border-color: #7dd3fc; }
+body.theme-ocean_morning .nav-bar { border-radius: 999px; background: rgba(255, 255, 255, 0.95); border-color: #bae6fd; }

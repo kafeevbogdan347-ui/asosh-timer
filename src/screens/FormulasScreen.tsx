@@ -1,3 +1,4 @@
+import { AskAsoshikButton } from '../components/AskAsoshikButton';
 import React, { useState } from 'react';
 import { FORMULA_CARDS, CHEMICAL_ELEMENTS } from '../data/constants';
 import { FormulaCard, ChemicalElement, LanguageType } from '../types';
@@ -5,9 +6,10 @@ import { Search, Sparkles, BookOpen, Layers, Atom } from 'lucide-react';
 
 interface FormulasScreenProps {
   lang: LanguageType;
+  onAskAsoshik?: (text: string) => void;
 }
 
-export const FormulasScreen: React.FC<FormulasScreenProps> = ({ lang }) => {
+export const FormulasScreen: React.FC<FormulasScreenProps> = ({ lang, onAskAsoshik }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'math' | 'geometry' | 'physics' | 'chemistry' | 'russian' | 'english'>('all');
   const [search, setSearch] = useState('');
   const [selectedElement, setSelectedElement] = useState<ChemicalElement | null>(null);
@@ -157,6 +159,9 @@ export const FormulasScreen: React.FC<FormulasScreenProps> = ({ lang }) => {
             </div>
 
             <p className="text-xs text-white/80 leading-relaxed">{f.description}</p>
+            {onAskAsoshik && (
+              <AskAsoshikButton label="Объясни" onClick={() => onAskAsoshik(`Объясни формулу «${f.title}»: ${f.formula}. Простыми словами и с одним примером.`)} />
+            )}
 
             {f.note && (
               <div className="text-[11px] text-amber-300/90 font-medium bg-amber-400/10 p-2 rounded-lg border border-amber-400/20">

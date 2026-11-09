@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { Send, Trash2 } from 'lucide-react';
+import { Send, Trash2, Camera, X } from 'lucide-react';
+import { compressImage } from '../utils/image';
 import {
   AssistantMessage,
   ASSISTANT_NAME,
@@ -15,6 +16,9 @@ import { useOnline } from '../utils/useOnline';
 interface AssistantScreenProps {
   context: string; // класс, расписание и домашка — собирает App
   vibro: boolean;
+  // Вопрос из другого раздела (кнопка «🫧 Асошик»): отправляется сразу при открытии
+  autoPrompt?: { text: string; photo?: string } | null;
+  onAutoPromptUsed?: () => void;
 }
 
 // Маскот Асошика: градиентная капля с лицом и искоркой. Середина градиента — цвет темы (--accent)
@@ -89,7 +93,7 @@ const renderText = (text: string) =>
     );
   });
 
-export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro }) => {
+export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro, autoPrompt, onAutoPromptUsed }) => {
   const [messages, setMessages] = useState<AssistantMessage[]>(loadHistory);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -104,17 +108,34 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
     listEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, busy]);
 
-  const send = async (text: string) => {
-    const q = text.trim().slice(0, 600);
+  // Фото к вопросу: для отправки — крупное (читается текст), для истории — маленькое
+  const [photo, setPhoto] = useState<{ full: string; thumb: string } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const pickPhoto = async (file?: File) => {
+    if (!file) return;
+    try {
+      const [full, thumb] = await Promise.all([compressImage(file, 1400, 0.82), compressImage(file, 360, 0.6)]);
+      setPhoto({ full, thumb });
+      setError('');
+    } catch {
+      setError('Не получилось открыть фото. Попробуй другое.');
+    }
+  };
+
+  const send = async (text: string, photoOverride?: { full: string; thumb: string }) => {
+    const usePhoto = photoOverride || photo;
+    const q = (text.trim() || (usePhoto ? 'Реши задание на фото' : '')).slice(0, 600);
     if (!q || busy) return;
     setError('');
     setInput('');
-    const next = [...messages, { role: 'user' as const, text: q, at: Date.now() }];
+    const sentPhoto = usePhoto;
+    setPhoto(null);
+    const next = [...messages, { role: 'user' as const, text: q, at: Date.now(), ...(sentPhoto ? { image: sentPhoto.thumb } : {}) }];
     setMessages(next);
     saveHistory(next);
     setBusy(true);
     try {
-      const answer = await askAssistant(next, context);
+      const answer = await askAssistant(next, context, sentPhoto?.full);
       const withAnswer = [...next, { role: 'model' as const, text: answer, at: Date.now() }];
       setMessages(withAnswer);
       saveHistory(withAnswer);
@@ -126,6 +147,17 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
       setUsed(usedToday());
     }
   };
+
+  // Вопрос, пришедший из другого раздела, отправляем один раз
+  const autoSent = useRef(false);
+  useEffect(() => {
+    if (!autoPrompt || autoSent.current) return;
+    autoSent.current = true;
+    onAutoPromptUsed?.();
+    if (!available) return;
+    send(autoPrompt.text, autoPrompt.photo ? { full: autoPrompt.photo, thumb: autoPrompt.photo } : undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPrompt]);
 
   const clear = () => {
     setMessages([]);
@@ -175,7 +207,10 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
         {messages.map((m, i) =>
           m.role === 'user' ? (
             <div key={i} className="flex justify-end">
-              <div className="asoshik-bubble user">{m.text}</div>
+              <div className="asoshik-bubble user">
+                {m.image && <img src={m.image} alt="Фото задания" className="asoshik-photo" />}
+                {m.text}
+              </div>
             </div>
           ) : (
             <div key={i} className="flex items-end gap-1.5">
@@ -201,6 +236,15 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
       </div>
 
       {/* Ввод */}
+      {photo && (
+        <div className="asoshik-attach">
+          <img src={photo.thumb} alt="Фото к вопросу" />
+          <span>Фото прикреплено. Напиши вопрос или просто отправь — Асошик решит задание с фото.</span>
+          <button type="button" onClick={() => setPhoto(null)} aria-label="Убрать фото">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       <form
         className="asoshik-input"
         onSubmit={(e) => {
@@ -208,21 +252,25 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
           send(input);
         }}
       >
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { pickPhoto(e.target.files?.[0]); e.target.value = ''; }} />
+        <button type="button" className="asoshik-cam" onClick={() => fileRef.current?.click()} disabled={!available || busy || left === 0} aria-label="Прикрепить фото задания" title="Фото задания">
+          <Camera className="w-4 h-4" />
+        </button>
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={available ? `Спроси ${ASSISTANT_NAME}а…` : `${ASSISTANT_NAME} пока не подключён`}
+          placeholder={available ? (photo ? 'Что сделать с фото? (можно пусто)' : `Спроси ${ASSISTANT_NAME}а…`) : `${ASSISTANT_NAME} пока не подключён`}
           disabled={!available || left === 0}
           maxLength={600}
           className="text-sm"
         />
-        <button type="submit" disabled={!available || busy || !input.trim() || left === 0} className="asoshik-send" aria-label="Отправить">
+        <button type="submit" disabled={!available || busy || (!input.trim() && !photo) || left === 0} className="asoshik-send" aria-label="Отправить">
           <Send className="w-4 h-4" />
         </button>
       </form>
       <div className="text-[10px] text-white/50 text-center mt-1.5">
-        Осталось вопросов сегодня: {left} из {DAILY_LIMIT} · Ответы даёт ИИ Google Gemini и могут быть с ошибками. Имя не передаётся.
+        Осталось вопросов сегодня: {left} из {DAILY_LIMIT} · Ответы даёт ИИ Google Gemini и могут быть с ошибками. Имя не передаётся. Не фотографируй лица и личные данные.
       </div>
     </div>
   );

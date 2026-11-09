@@ -6,6 +6,7 @@ export interface AssistantMessage {
   role: 'user' | 'model';
   text: string;
   at: number;
+  image?: string; // уменьшенная копия фото для истории (data:image/jpeg)
 }
 
 const API_KEY = (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) || '';
@@ -26,6 +27,7 @@ const SYSTEM_PROMPT = `Ты — ${ASSISTANT_NAME}, дружелюбный пом
 - Домашку решай полностью, если просят: задачи, примеры, упражнения по русскому, ответы на вопросы, сочинения. Решение пиши по шагам и коротко объясняй каждый шаг, чтобы ученик понял, как его получить, и смог повторить у доски.
 - В конце решения дай короткую проверку или подсказку «как запомнить», если это уместно.
 - Если условие задачи неполное или непонятное — переспроси, а не выдумывай.
+- Если прислали фото (тетрадь, доска, учебник) — сначала коротко перепиши, какое задание там видно, потом реши. Если на фото ничего не разобрать — попроси переснять ближе и при хорошем свете.
 - Будь доброжелательным, без грубости. На вопросы не для школьника (насилие, 18+, опасные действия) вежливо откажи.
 - Не спрашивай и не запоминай личные данные (ФИО, адрес, телефон).
 - Форматирование: можно **жирный** и списки с «- ». Без таблиц и заголовков.
@@ -66,13 +68,17 @@ export function loadHistory(): AssistantMessage[] {
 
 export function saveHistory(list: AssistantMessage[]) {
   try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(-40)));
+    // Фото храним только у последних сообщений, чтобы не переполнить память телефона
+    const last = list.slice(-40);
+    const slim = last.map((m, i) => (m.image && i < last.length - 6 ? { ...m, image: undefined } : m));
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(slim));
   } catch {
     // нет места — история только до перезапуска
   }
 }
 
-export async function askAssistant(history: AssistantMessage[], context: string): Promise<string> {
+// photo — полноразмерное фото к последнему сообщению (data:image/jpeg;base64,...)
+export async function askAssistant(history: AssistantMessage[], context: string, photo?: string): Promise<string> {
   if (!API_KEY) throw new Error(`${ASSISTANT_NAME} пока не подключён.`);
   if (!navigator.onLine) throw new Error('Нет интернета. Асошику нужна сеть, чтобы ответить.');
   if (usedToday() >= DAILY_LIMIT) throw new Error(`На сегодня вопросы закончились (${DAILY_LIMIT} в день). Приходи завтра!`);
@@ -86,7 +92,14 @@ export async function askAssistant(history: AssistantMessage[], context: string)
       signal: controller.signal,
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: `${SYSTEM_PROMPT}\n\nДанные ученика:\n${context}` }] },
-        contents: history.slice(-HISTORY_FOR_MODEL).map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
+        contents: history.slice(-HISTORY_FOR_MODEL).map((m, i, arr) => {
+          const parts: Record<string, unknown>[] = [{ text: m.text }];
+          if (photo && i === arr.length - 1) {
+            const [head, data] = photo.split(',');
+            parts.unshift({ inlineData: { mimeType: head.match(/data:([^;]+)/)?.[1] || 'image/jpeg', data } });
+          }
+          return { role: m.role, parts };
+        }),
         generationConfig: { maxOutputTokens: 1600, temperature: 0.6 },
       }),
     });

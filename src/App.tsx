@@ -516,6 +516,13 @@ export default function App() {
     }
   };
 
+  // Вопрос Асошику из другого раздела: открываем его экран, и вопрос уходит сразу
+  const [assistantPrompt, setAssistantPrompt] = useState<{ text: string; photo?: string } | null>(null);
+  const askAsoshik = (text: string, photo?: string) => {
+    setAssistantPrompt({ text, photo });
+    setCurrentScreen('assistant');
+  };
+
   // Splashes and Motivators
   const [currentSplash, setCurrentSplash] = useState('');
   const [currentMotivator, setCurrentMotivator] = useState('');
@@ -1549,6 +1556,7 @@ export default function App() {
             onNavigate={(s) => setCurrentScreen(s)}
             onOpenCalc={() => setIsCalcOpen(true)}
             onOpenWhatsNew={() => setWhatsNewOpen(true)}
+            onAskAsoshik={askAsoshik}
             onLogoTap={handleLogoTap}
             lang={lang}
             showBackpackHint={activeTime.getHours() >= 15 && tomorrowLessons.length > 0}
@@ -1584,6 +1592,7 @@ export default function App() {
 
         {currentScreen === 'schedule' && (
           <ScheduleScreen
+            onAskAsoshik={askAsoshik}
             selectedDay={selectedDaySchedule}
             currentDayName={currentDayName}
             onSelectDay={(d) => setSelectedDaySchedule(d)}
@@ -1617,7 +1626,7 @@ export default function App() {
 
         {currentScreen === 'quarter' && <QuarterScreen lang={lang} />}
 
-        {currentScreen === 'formulas' && <FormulasScreen lang={lang} />}
+        {currentScreen === 'formulas' && <FormulasScreen lang={lang} onAskAsoshik={askAsoshik} />}
 
         {currentScreen === 'pomodoro' && (
           <PomodoroScreen
@@ -1631,6 +1640,7 @@ export default function App() {
 
         {currentScreen === 'homework' && (
           <HomeworkScreen
+            onAskAsoshik={askAsoshik}
             cls={cls}
             homeworkList={homeworkList}
             onAddHomework={handleAddHomework}
@@ -1656,7 +1666,14 @@ export default function App() {
           />
         )}
 
-        {currentScreen === 'assistant' && <AssistantScreen context={buildAssistantContext()} vibro={settings.vibro} />}
+        {currentScreen === 'assistant' && (
+          <AssistantScreen
+            context={buildAssistantContext()}
+            vibro={settings.vibro}
+            autoPrompt={assistantPrompt}
+            onAutoPromptUsed={() => setAssistantPrompt(null)}
+          />
+        )}
 
         {currentScreen === 'map' && (
           <MapScreen
