@@ -1250,3 +1250,16 @@ body.ui-light .journal th, body.ui-light .journal td.name, body.ui-light .journa
 /* Асошик: сделанные действия и подтверждение публикации */
 .asoshik-actions { margin-top: 8px; padding-top: 6px; border-top: 1px dashed rgba(255, 255, 255, 0.18); font-size: 12px; font-weight: 700; display: grid; gap: 3px; opacity: 0.9; }
 .asoshik-confirm { padding: 12px; border-radius: 18px; background: rgba(var(--accent-rgb), 0.12); border: 1px solid rgba(var(--accent-rgb), 0.45); }
+
+/* Окно между уроками в расписании */
+.lesson-window {
+  display: flex; justify-content: space-between; gap: 8px; padding: 6px 14px; border-radius: 12px;
+  font-size: 11px; font-weight: 700; opacity: 0.6; border: 1px dashed rgba(255, 255, 255, 0.2);
+}
+body.ui-light .lesson-window { border-color: rgba(15, 23, 42, 0.25); }
+
+.mark-chip.fresh { box-shadow: 0 0 0 2px #fbbf24, 0 0 10px rgba(251, 191, 36, 0.6); }
+.tile-badge {
+  position: absolute; top: 6px; right: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  background: #ef4444; color: #fff; font-size: 10px; font-weight: 900; display: grid; place-items: center;
+}

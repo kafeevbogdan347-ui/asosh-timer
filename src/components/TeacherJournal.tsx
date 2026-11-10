@@ -168,6 +168,11 @@ export const TeacherJournal: React.FC<Props> = ({ account, defaultCls, onShowToa
               ))}
             </div>
             {edit.grade && (
+              <button type="button" className="w-full text-xs font-bold text-cyan-300 py-1 cursor-pointer" onClick={() => { setEdit({ ...edit, grade: undefined }); setNote(''); }}>
+                ＋ Поставить ещё одну оценку за этот день
+              </button>
+            )}
+            {edit.grade && (
               <button
                 type="button"
                 className="w-full text-xs font-bold text-red-300 py-1 cursor-pointer"
@@ -180,7 +185,7 @@ export const TeacherJournal: React.FC<Props> = ({ account, defaultCls, onShowToa
                 Удалить мою оценку «{edit.grade.v}»
               </button>
             )}
-            <p className="text-[10px] text-white/50 text-center">«Н» — отсутствовал. Ещё одна оценка за тот же день добавится рядом.</p>
+            <p className="text-[10px] text-white/50 text-center">{edit.grade ? `Сейчас стоит «${edit.grade.v}» — новая оценка её заменит.` : '«Н» — отсутствовал.'}</p>
           </div>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { normalizeCode } from '../utils/normalizeCode';
 import { sha256Hex } from '../utils/sha256';
+import { OFFICIAL_SCHEDULE_2026, SECOND_SHIFT_CLASSES } from './schoolSchedule';
 
 // Реестр классов МОУ АСОШ №2
 // Сами коды классов задаются в CLASS_CODES (.env или секрет на GitHub) и обновляются каждый год
@@ -11,49 +12,15 @@ export interface ClassCodeInfo {
   defaultShift: '1' | '2';
 }
 
-export const CLASS_LIST: ClassCodeInfo[] = [
-  // 5 КЛАССЫ
-  { className: '5А', grade: 5, letter: 'А', defaultShift: '1' },
-  { className: '5Б', grade: 5, letter: 'Б', defaultShift: '1' },
-  { className: '5В', grade: 5, letter: 'В', defaultShift: '1' },
-  { className: '5Г', grade: 5, letter: 'Г', defaultShift: '1' },
-
-  // 6 КЛАССЫ
-  { className: '6А', grade: 6, letter: 'А', defaultShift: '2' },
-  { className: '6Б', grade: 6, letter: 'Б', defaultShift: '2' },
-  { className: '6В', grade: 6, letter: 'В', defaultShift: '2' },
-  { className: '6Г', grade: 6, letter: 'Г', defaultShift: '2' },
-
-  // 7 КЛАССЫ
-  { className: '7А', grade: 7, letter: 'А', defaultShift: '1' },
-  { className: '7Б', grade: 7, letter: 'Б', defaultShift: '1' },
-  { className: '7В', grade: 7, letter: 'В', defaultShift: '1' },
-  { className: '7Г', grade: 7, letter: 'Г', defaultShift: '1' },
-
-  // 8 КЛАССЫ
-  { className: '8А', grade: 8, letter: 'А', defaultShift: '1' },
-  { className: '8Б', grade: 8, letter: 'Б', defaultShift: '1' },
-  { className: '8В', grade: 8, letter: 'В', defaultShift: '1' },
-  { className: '8Г', grade: 8, letter: 'Г', defaultShift: '1' },
-
-  // 9 КЛАССЫ
-  { className: '9А', grade: 9, letter: 'А', defaultShift: '1' },
-  { className: '9Б', grade: 9, letter: 'Б', defaultShift: '1' },
-  { className: '9В', grade: 9, letter: 'В', defaultShift: '1' },
-  { className: '9Г', grade: 9, letter: 'Г', defaultShift: '1' },
-
-  // 10 КЛАССЫ
-  { className: '10А', grade: 10, letter: 'А', defaultShift: '1' },
-  { className: '10Б', grade: 10, letter: 'Б', defaultShift: '1' },
-  { className: '10В', grade: 10, letter: 'В', defaultShift: '1' },
-  { className: '10Г', grade: 10, letter: 'Г', defaultShift: '1' },
-
-  // 11 КЛАССЫ
-  { className: '11А', grade: 11, letter: 'А', defaultShift: '1' },
-  { className: '11Б', grade: 11, letter: 'Б', defaultShift: '1' },
-  { className: '11В', grade: 11, letter: 'В', defaultShift: '1' },
-  { className: '11Г', grade: 11, letter: 'Г', defaultShift: '1' },
-];
+// Только классы, которые есть в официальном расписании; смена берётся оттуда же
+export const CLASS_LIST: ClassCodeInfo[] = Object.keys(OFFICIAL_SCHEDULE_2026)
+  .map((className) => ({
+    className,
+    grade: parseInt(className, 10),
+    letter: className.replace(/^\d+/, ''),
+    defaultShift: (SECOND_SHIFT_CLASSES.includes(className) ? '2' : '1') as '1' | '2',
+  }))
+  .sort((a, b) => a.grade - b.grade || a.letter.localeCompare(b.letter, 'ru'));
 
 export { normalizeCode };
 

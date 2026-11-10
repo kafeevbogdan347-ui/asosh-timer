@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   ScreenId,
   AppSettings,
@@ -63,6 +63,7 @@ import { HomeworkScreen } from './screens/HomeworkScreen';
 import { MapScreen } from './screens/MapScreen';
 import { AssistantScreen } from './screens/AssistantScreen';
 import { WhatsNewModal } from './components/WhatsNewModal';
+import { computeLessonStatus, firstLessonStart, toSec, roomLabel, lessonNo, LessonStatus } from './utils/lessonStatus';
 import { t } from './i18n';
 import { AddUpdateScreen } from './screens/AddUpdateScreen';
 import { GamesScreen } from './screens/GamesScreen';
@@ -74,10 +75,11 @@ import { PortfolioScreen } from './screens/PortfolioScreen';
 import { FocusAudioScreen } from './screens/FocusAudioScreen';
 import { ChatScreen } from './screens/ChatScreen';
 import { isClassUnlocked, saveClassUnlocked } from './data/classCodes';
-import { Account, getLocalAccount, logoutAccount, moveStudentToClass } from './services/accounts';
+import { Account, getLocalAccount, logoutAccount, moveStudentToClass, verifyAccountSession } from './services/accounts';
 import type { AccountDone } from './components/AccountForms';
 import { AccountForms } from './components/AccountForms';
 import { DiaryScreen } from './screens/DiaryScreen';
+import { subscribeStudentGrades, newGrades } from './services/journal';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { RetroFirstScreen } from './screens/RetroFirstScreen';
 import { BellsScreen } from './screens/BellsScreen';
@@ -412,6 +414,29 @@ export default function App() {
     toastTimeoutRef.current = setTimeout(() => setToastMsg(null), 2500);
   };
 
+  // «Что нового»: после обновления показываем один раз. Новому пользователю — не показываем.
+  const WHATS_NEW_KEY = 'asosh_seen_version';
+  const [whatsNewOpen, setWhatsNewOpen] = useState<boolean>(() => {
+    try {
+      const seen = localStorage.getItem(WHATS_NEW_KEY);
+      if (!accountVault.registered) {
+        localStorage.setItem(WHATS_NEW_KEY, APP_VERSION);
+        return false;
+      }
+      return seen !== APP_VERSION;
+    } catch {
+      return false;
+    }
+  });
+  const closeWhatsNew = () => {
+    setWhatsNewOpen(false);
+    try {
+      localStorage.setItem(WHATS_NEW_KEY, APP_VERSION);
+    } catch {
+      // нет места — окно покажется ещё раз, не страшно
+    }
+  };
+
   // Android APK (MConvertor) & Browser Hardware Back Button Handler
   const lastBackPressRef = useRef<number>(0);
 
@@ -449,6 +474,8 @@ export default function App() {
       if (isPinLocked) { stay(); return; }
 
       // 1. If any modal is open, close modal first
+      if (whatsNewOpen) { closeWhatsNew(); stay(); return; }
+      if (isDevPasswordPromptOpen) { setIsDevPasswordPromptOpen(false); stay(); return; }
       if (isCalcOpen) { setIsCalcOpen(false); stay(); return; }
       if (isDevOpen) { setIsDevOpen(false); stay(); return; }
       if (isPinSetupOpen) { setIsPinSetupOpen(false); stay(); return; }
@@ -499,30 +526,7 @@ export default function App() {
       window.removeEventListener('popstate', onPopState);
       document.removeEventListener('backbutton', onBackButton);
     };
-  }, [currentScreen, isCalcOpen, isDevOpen, isPinSetupOpen, isPinLocked]);
-
-  // «Что нового»: после обновления показываем один раз. Новому пользователю — не показываем.
-  const WHATS_NEW_KEY = 'asosh_seen_version';
-  const [whatsNewOpen, setWhatsNewOpen] = useState<boolean>(() => {
-    try {
-      const seen = localStorage.getItem(WHATS_NEW_KEY);
-      if (!accountVault.registered) {
-        localStorage.setItem(WHATS_NEW_KEY, APP_VERSION);
-        return false;
-      }
-      return seen !== APP_VERSION;
-    } catch {
-      return false;
-    }
-  });
-  const closeWhatsNew = () => {
-    setWhatsNewOpen(false);
-    try {
-      localStorage.setItem(WHATS_NEW_KEY, APP_VERSION);
-    } catch {
-      // нет места — окно покажется ещё раз, не страшно
-    }
-  };
+  }, [currentScreen, isCalcOpen, isDevOpen, isPinSetupOpen, isPinLocked, whatsNewOpen, isDevPasswordPromptOpen]);
 
   // Вопрос Асошику из другого раздела: открываем его экран, и вопрос уходит сразу
   const [assistantPrompt, setAssistantPrompt] = useState<{ text: string; photo?: string } | null>(null);
@@ -635,17 +639,25 @@ export default function App() {
     setSelectedDaySchedule(currentDayName);
   }, [currentDayName]);
 
-  const toSec = (t: string) => {
-    const p = t.split(':').map(Number);
-    return p[0] * 3600 + p[1] * 60;
-  };
-
   const getDayBells = (dayName: string) => {
     const base = shift === '1' ? B1 : dayName === 'Пятница' ? B2F : B2;
     return isShortDay(dayName) ? shortenBells(base, settings.shortLessonMin ?? SHORT_LESSON_MIN) : base;
   };
   // Сокращённые уроки включаются на конкретную дату (сегодня / завтра) и сами выключаются потом
-  const isShortDay = (dayName: string) => (settings.shortLessonDates || []).includes(dateKeyForDay(dayName));
+  const calendarShortDates = useMemo(() => {
+    try {
+      const list = JSON.parse(localStorage.getItem('asosh_calendar_events') || '[]') as { date: string; kind: string }[];
+      return list.filter((e) => e.kind === 'short').map((e) => e.date);
+    } catch {
+      return [];
+    }
+    // Календарь меняется на своём экране и через Асошика — перечитываем при смене экрана
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentScreen]);
+  const isShortDay = (dayName: string) => {
+    const key = dateKeyForDay(dayName);
+    return (settings.shortLessonDates || []).includes(key) || calendarShortDates.includes(key);
+  };
 
   // Parse room based on subgroup (e.g. "301 / 302")
   const parseRoom = (roomStr: string) => {
@@ -760,91 +772,11 @@ export default function App() {
   const tomorrowLessons = tomorrowOff ? [] : getLessonsForDay(tomorrowDayName);
   const tomorrowBells = getDayBells(tomorrowDayName);
 
-  // Compute current lesson / break state
+  // Что сейчас идёт: урок, перемена или ожидание первого урока (окна уроками не считаются)
   const curSec = activeTime.getHours() * 3600 + activeTime.getMinutes() * 60 + activeTime.getSeconds();
-  let lessonStatus: {
-    type: 'lesson' | 'break' | 'before' | 'none';
-    currentIdx: number;
-    nextIdx: number;
-    remainSec: number;
-    totalSec: number;
-    nowText: string;
-    nextText: string;
-  } = {
-    type: 'none',
-    currentIdx: -1,
-    nextIdx: -1,
-    remainSec: 0,
-    totalSec: 0,
-    nowText: 'Уроков сейчас нет',
-    nextText: '—',
-  };
-
-  const activeBells = currentBells.slice(0, currentLessons.length);
-  const firstStart = activeBells.length ? toSec(activeBells[0][0]) : null;
-
-  if (currentLessons.length > 0) {
-    if (firstStart !== null && curSec < firstStart) {
-      const countdownStart = firstStart - 3600;
-      if (curSec >= countdownStart) {
-        lessonStatus = {
-          type: 'before',
-          currentIdx: -1,
-          nextIdx: 0,
-          remainSec: firstStart - curSec,
-          totalSec: firstStart - countdownStart,
-          nowText: 'Ожидание начала занятий',
-          nextText: `${currentLessons[0][0]} ${currentLessons[0][1] ? `(каб. ${currentLessons[0][1]})` : ''}`,
-        };
-      }
-    } else {
-      for (let i = 0; i < activeBells.length; i++) {
-        const s = toSec(activeBells[i][0]);
-        const e = toSec(activeBells[i][1]);
-
-        if (curSec >= s && curSec < e) {
-          const nextL = currentLessons[i + 1];
-          lessonStatus = {
-            type: 'lesson',
-            currentIdx: i,
-            nextIdx: i + 1,
-            remainSec: e - curSec,
-            totalSec: e - s,
-            nowText: `${currentLessons[i][0]} ${currentLessons[i][1] ? `(каб. ${currentLessons[i][1]})` : ''}`,
-            nextText: nextL ? `${nextL[0]} ${nextL[1] ? `(каб. ${nextL[1]})` : ''}` : 'Это последний урок 🎉',
-          };
-          break;
-        }
-
-        if (i < activeBells.length - 1) {
-          const nextStart = toSec(activeBells[i + 1][0]);
-          if (curSec >= e && curSec < nextStart) {
-            const nextL = currentLessons[i + 1];
-            lessonStatus = {
-              type: 'break',
-              currentIdx: -1,
-              nextIdx: i + 1,
-              remainSec: nextStart - curSec,
-              totalSec: nextStart - e,
-              nowText: 'Перемена',
-              nextText: nextL ? `${nextL[0]} ${nextL[1] ? `(каб. ${nextL[1]})` : ''}` : '—',
-            };
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  if (lessonStatus.type === 'none' && firstStart !== null && currentLessons.some((l) => l[0] !== '—')) {
-    lessonStatus = curSec < firstStart
-      ? {
-          ...lessonStatus,
-          nowText: 'Занятия ещё не начались',
-          nextText: `${currentLessons[0][0]} ${currentLessons[0][1] ? `(каб. ${currentLessons[0][1]})` : ''}`,
-        }
-      : { ...lessonStatus, nowText: 'Уроки на сегодня закончены 🎉' };
-  }
+  let lessonStatus: LessonStatus = computeLessonStatus(currentLessons, currentBells, curSec);
+  const firstStartTime = firstLessonStart(currentLessons, currentBells);
+  const firstStart = firstStartTime ? toSec(firstStartTime) : null;
   if (todayOff) lessonStatus = { ...lessonStatus, nowText: vacationToday ? 'Сейчас каникулы 🏖️' : 'Сегодня праздник 🎉' };
 
   // «Куда идти дальше»: ближайший урок (пропуская окна), его кабинет, этаж и время начала
@@ -893,7 +825,7 @@ export default function App() {
       finish_homework: async (a) => {
         const sub = str(a.subject, 60).toLowerCase();
         const part = str(a.text_contains, 100).toLowerCase();
-        const item = homeworkList.find((h) => h.cls === cls && h.sub.toLowerCase().includes(sub) && (!part || h.text.toLowerCase().includes(part)) && (a.action === 'delete' || !h.done));
+        const item = hwRef.current.find((h) => h.cls === cls && h.sub.toLowerCase().includes(sub) && (!part || h.text.toLowerCase().includes(part)) && (a.action === 'delete' || !h.done));
         if (!item) return say(false, 'Такого ДЗ в твоём дневнике нет');
         if (a.action === 'delete') {
           handleDeleteHomework(item.id);
@@ -932,7 +864,9 @@ export default function App() {
       },
       add_replacement: async (a) => {
         const day = dayFrom(str(a.day, 20));
-        const num = Math.round(Number(a.lesson_number));
+        // Пользователь называет номер как на стенде; в базе — позиция в дне с единицы
+        const shown = Math.round(Number(a.lesson_number));
+        const num = shift === '2' ? shown + 1 : shown;
         const sub = str(a.subject, 60);
         const room = str(a.room, 20);
         if (!day || !(num >= 1 && num <= 8) || !sub) return say(false, 'Не понял день, номер урока или предмет');
@@ -940,12 +874,12 @@ export default function App() {
         if (a.scope === 'class') {
           if (!canShareClass) return say(false, 'Замены для класса — только с кодом класса');
           const date = dateKeyForDay(day);
-          if (!(await confirm(`🔄 Замена для всего ${cls} на ${date}: ${num}-й урок — ${sub}${room ? `, каб. ${room}` : ''}?`))) return say(false, 'Замену отменили');
+          if (!(await confirm(`🔄 Замена для всего ${cls} на ${date}: ${shown}-й урок — ${sub}${room ? `, ${roomLabel(room)}` : ''}?`))) return say(false, 'Замену отменили');
           const ok = await addClassReplacement(cls, { date, num, sub, room, author });
-          return say(ok, ok ? `Замена для ${cls}: ${num}-й урок — ${sub}` : 'Не получилось отправить замену');
+          return say(ok, ok ? `Замена для ${cls}: ${shown}-й урок — ${sub}` : 'Не получилось отправить замену');
         }
         handleAddUpdate({ id: `${cls}-${day}-${num}-${Date.now()}`, cls, day, num, sub, room });
-        return say(true, `Замена себе: ${day}, ${num}-й урок — ${sub}`);
+        return say(true, `Замена себе: ${day}, ${shown}-й урок — ${sub}`);
       },
       publish_announcement: async (a) => {
         if (!isTeacher || !teacher) return say(false, 'Объявления публикуют только учителя');
@@ -979,7 +913,7 @@ export default function App() {
       if (off) return 'выходной / каникулы — уроков нет';
       const bells = getDayBells(day);
       const list = getLessonsForDay(day)
-        .map(([sub, room], i) => (sub === '—' ? '' : `${bells[i]?.[0] || '?'}–${bells[i]?.[1] || '?'} ${sub.replace('🔄 ', '(замена) ')}${room ? `, каб. ${room}` : ''}`))
+        .map(([sub, room], i) => (sub === '—' ? '' : `${lessonNo(shift, i)}-й урок ${bells[i]?.[0] || '?'}–${bells[i]?.[1] || '?'} ${sub.replace('🔄 ', '(замена) ')}${room ? `, ${roomLabel(room)}` : ''}`))
         .filter(Boolean);
       return list.length ? list.join('; ') : 'уроков нет';
     };
@@ -1017,7 +951,7 @@ export default function App() {
         if (!bells[i] || sub === '—') return;
         const [h, m] = bells[i][0].split(':').map(Number);
         const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m - 5);
-        list.push({ at, title: `Через 5 минут: ${sub.replace('🔄 ', '')}`, body: `${i + 1} урок в ${bells[i][0]}${room ? ` · каб. ${room}` : ''}` });
+        list.push({ at, title: `Через 5 минут: ${sub.replace('🔄 ', '')}`, body: `${lessonNo(shift, i)}-й урок в ${bells[i][0]}${room ? ` · ${roomLabel(room)}` : ''}` });
       });
     }
     return list;
@@ -1042,7 +976,7 @@ export default function App() {
     const remain = lessonStatus.remainSec;
 
     // 5-minute pre-bell reminder with room info
-    if (lessonStatus.type === 'break' && remain <= 300 && remain > 240 && warned5minRef.current !== periodKey) {
+    if ((lessonStatus.type === 'break' || lessonStatus.type === 'before') && remain <= 300 && remain > 240 && warned5minRef.current !== periodKey) {
       warned5minRef.current = periodKey;
       playSound('warn', settings.soundProfile);
       doVibro(settings.vibro, 30);
@@ -1072,7 +1006,7 @@ export default function App() {
     const minutes = activeTime.getMinutes();
     if (hours === 20 && minutes === 0 && !eveningBackpackRemindedRef.current) {
       eveningBackpackRemindedRef.current = true;
-      if (tomorrowLessons.length > 0) showToast('🎒 20:00 — Не забудь собрать портфель на завтра!');
+      if (tomorrowLessons.some((l) => l[0] !== '—')) showToast('🎒 20:00 — Не забудь собрать портфель на завтра!');
     }
     if (hours !== 20) {
       eveningBackpackRemindedRef.current = false;
@@ -1135,7 +1069,7 @@ export default function App() {
     bellIcon = '🎒';
   } else if (numLessonsToday > 0 && firstStart !== null && curSec < firstStart) {
     bellTitle = t('bStartsAt', lang);
-    bellTimeText = activeBells[0][0];
+    bellTimeText = firstStartTime || '—';
     bellIcon = '🌙';
   } else if (numLessonsToday > 0) {
     bellTitle = t('bDone', lang);
@@ -1286,6 +1220,49 @@ export default function App() {
     }
   };
 
+  // Аккаунт есть на телефоне, а вход в базе потерян (например, после переноса по QR) — просим войти заново
+  useEffect(() => {
+    if (!account) return;
+    verifyAccountSession(account).then((ok) => {
+      if (ok) return;
+      setAccount(null);
+      if (account.role === 'teacher') setTeacher(null);
+      showToast('Войди в аккаунт заново: Опции → Аккаунт');
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Новые оценки ученика: значок на плитке «Дневник» и сообщение, когда учитель поставил оценку
+  const [newGradeCount, setNewGradeCount] = useState(0);
+  useEffect(() => {
+    if (account?.role !== 'student' || !account.cls) {
+      setNewGradeCount(0);
+      return;
+    }
+    const sid = account.uid;
+    let known = -1; // -1 — первых данных из базы ещё не было
+    return subscribeStudentGrades(account.cls, sid, (list, fromServer) => {
+      if (!fromServer) return;
+      const fresh = newGrades(sid, list);
+      if (fresh.length > Math.max(known, 0)) {
+        const last = fresh.reduce((a, b) => (b.t > a.t ? b : a));
+        showToast(known < 0 && fresh.length > 1 ? `📒 Новых оценок: ${fresh.length}` : `📒 Новая оценка: ${last.v} · ${last.sub}`);
+        playSound('coin', settings.soundProfile);
+      }
+      known = fresh.length;
+      setNewGradeCount(fresh.length);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.uid, account?.cls, account?.role]);
+  useEffect(() => {
+    if (currentScreen === 'diary') setNewGradeCount(0);
+  }, [currentScreen]);
+
+  // У учителя вместо дневника — журнал
+  useEffect(() => {
+    if (currentScreen === 'diary' && account?.role === 'teacher') setCurrentScreen('teacher');
+  }, [currentScreen, account]);
+
   const handleLogoutAccount = async () => {
     const wasTeacher = account?.role === 'teacher';
     await logoutAccount();
@@ -1355,71 +1332,63 @@ export default function App() {
     }
   };
 
+  // Свежий список лежит в ref: два действия подряд (например, от Асошика) не затирают друг друга
+  const hwRef = useRef(homeworkList);
+  hwRef.current = homeworkList;
+  const setHomework = (next: HomeworkItem[]) => {
+    hwRef.current = next;
+    setHomeworkList(next);
+    saveHomeworks(next);
+  };
+  const lastHwIdRef = useRef(0);
+
   const handleAddHomework = (item: Omit<HomeworkItem, 'id' | 'createdAt'>) => {
-    const newItem: HomeworkItem = {
-      ...item,
-      id: Date.now(),
-      createdAt: Date.now(),
-    };
-    const updated = [newItem, ...homeworkList];
-    setHomeworkList(updated);
-    saveHomeworks(updated);
+    const id = Math.max(Date.now(), lastHwIdRef.current + 1);
+    lastHwIdRef.current = id;
+    setHomework([{ ...item, id, createdAt: Date.now() }, ...hwRef.current]);
     showToast('ДЗ добавлено!');
     handleUnlockAchievement('hw_starter');
   };
 
   const handleToggleHomework = (id: number) => {
-    const updated = homeworkList.map((h) => {
-      if (h.id === id) {
-        const next = !h.done;
-        playSound(next ? 'coin' : 'click', settings.soundProfile);
-        doVibro(settings.vibro, 15);
-        return { ...h, done: next };
-      }
-      return h;
-    });
-    setHomeworkList(updated);
-    saveHomeworks(updated);
+    const item = hwRef.current.find((h) => h.id === id);
+    if (!item) return;
+    playSound(item.done ? 'click' : 'coin', settings.soundProfile);
+    doVibro(settings.vibro, 15);
+    setHomework(hwRef.current.map((h) => (h.id === id ? { ...h, done: !h.done } : h)));
   };
 
   const handleTogglePin = (id: number) => {
-    const updated = homeworkList.map((h) => {
-      if (h.id === id) {
-        const nextPin = !h.pinned;
-        playSound('star', settings.soundProfile);
-        doVibro(settings.vibro, 20);
-        showToast(nextPin ? 'ДЗ закреплено сверху ⭐' : 'ДЗ откреплено');
-        return { ...h, pinned: nextPin };
-      }
-      return h;
-    });
-    setHomeworkList(updated);
-    saveHomeworks(updated);
+    const item = hwRef.current.find((h) => h.id === id);
+    if (!item) return;
+    playSound('star', settings.soundProfile);
+    doVibro(settings.vibro, 20);
+    showToast(item.pinned ? 'ДЗ откреплено' : 'ДЗ закреплено сверху ⭐');
+    setHomework(hwRef.current.map((h) => (h.id === id ? { ...h, pinned: !h.pinned } : h)));
   };
 
   const handleDeleteHomework = (id: number) => {
-    const updated = homeworkList.filter((h) => h.id !== id);
-    setHomeworkList(updated);
-    saveHomeworks(updated);
+    setHomework(hwRef.current.filter((h) => h.id !== id));
     playSound('settings', settings.soundProfile);
     showToast('Задание удалено');
   };
 
   // Lesson Update Actions
+  const updatesRef = useRef(lessonUpdates);
+  updatesRef.current = lessonUpdates;
+  const setUpdates = (next: LessonUpdate[]) => {
+    updatesRef.current = next;
+    setLessonUpdates(next);
+    localStorage.setItem('asosh_updates_v105', JSON.stringify(next));
+  };
+
   const handleAddUpdate = (update: LessonUpdate) => {
     // Новое изменение того же урока заменяет старое
-    const updated = [
-      update,
-      ...lessonUpdates.filter((u) => !(u.cls === update.cls && u.day === update.day && u.num === update.num)),
-    ];
-    setLessonUpdates(updated);
-    localStorage.setItem('asosh_updates_v105', JSON.stringify(updated));
+    setUpdates([update, ...updatesRef.current.filter((u) => !(u.cls === update.cls && u.day === update.day && u.num === update.num))]);
   };
 
   const handleDeleteUpdate = (id: string) => {
-    const updated = lessonUpdates.filter((u) => u.id !== id);
-    setLessonUpdates(updated);
-    localStorage.setItem('asosh_updates_v105', JSON.stringify(updated));
+    setUpdates(updatesRef.current.filter((u) => u.id !== id));
     showToast('Урок удален');
   };
 
@@ -1436,7 +1405,7 @@ export default function App() {
 
   // Seed Mock Data
   const seedMockData = () => {
-    const daysArr = DAYS;
+    if (!window.confirm('Демо-расписание заменит все твои правки расписания. Продолжить?')) return;
     const demoUpdates: LessonUpdate[] = [
       { id: 'd1', cls: cls || '8А', day: 'Понедельник', num: 1, sub: 'Алгебра', room: '324' },
       { id: 'd2', cls: cls || '8А', day: 'Понедельник', num: 2, sub: 'Русский язык', room: '208' },
@@ -1467,6 +1436,7 @@ export default function App() {
 
   // Seed Sample Homeworks
   const seedSampleHomeworks = () => {
+    if (!window.confirm('Демо-ДЗ заменят все твои домашние задания. Продолжить?')) return;
     const samples: HomeworkItem[] = [
       { id: Date.now() + 1, cls: cls || '8А', sub: 'Алгебра', text: '№ 342, 345 (а, б), подготовиться к К/Р', date: 'Завтра', done: false, pinned: true },
       { id: Date.now() + 2, cls: cls || '8А', sub: 'Физика', text: '§ 18 читать, выучить формулу давления', date: 'Четверг', done: false, pinned: true },
@@ -1474,8 +1444,7 @@ export default function App() {
       { id: Date.now() + 4, cls: cls || '8А', sub: 'Литература', text: 'Прочитать главы 4-6 («Капитанская дочка»)', date: 'Пятница', done: false },
       { id: Date.now() + 5, cls: cls || '8А', sub: 'История', text: 'Составить таблицу реформ Петра I', date: 'Среда', done: true },
     ];
-    setHomeworkList(samples);
-    localStorage.setItem('asosh_hw_v105', JSON.stringify(samples));
+    setHomework(samples);
   };
 
   // Full Backup Export
@@ -1533,8 +1502,11 @@ export default function App() {
 
   const handleResetAll = () => {
     if (confirm('Сбросить ВСЕ сохранённые данные, настройки и домашние задания?')) {
-      localStorage.clear();
-      location.reload();
+      // Выходим и из аккаунта, иначе вход в базе остался бы без записи на телефоне
+      logoutAccount().finally(() => {
+        localStorage.clear();
+        location.reload();
+      });
     }
   };
 
@@ -1729,9 +1701,10 @@ export default function App() {
             onOpenCalc={() => setIsCalcOpen(true)}
             onOpenWhatsNew={() => setWhatsNewOpen(true)}
             onAskAsoshik={askAsoshik}
+            diaryBadge={newGradeCount}
             onLogoTap={handleLogoTap}
             lang={lang}
-            showBackpackHint={activeTime.getHours() >= 15 && tomorrowLessons.length > 0}
+            showBackpackHint={activeTime.getHours() >= 15 && tomorrowLessons.some((l) => l[0] !== '—')}
             quarterProgress={{
               name: activeQuarter.name,
               percent: quarterPercent,
@@ -1764,6 +1737,7 @@ export default function App() {
 
         {currentScreen === 'schedule' && (
           <ScheduleScreen
+            shift={shift}
             onAskAsoshik={askAsoshik}
             selectedDay={selectedDaySchedule}
             currentDayName={currentDayName}
@@ -1778,6 +1752,7 @@ export default function App() {
 
         {currentScreen === 'tomorrow' && (
           <TomorrowScreen
+            shift={shift}
             tomorrowDayName={tomorrowDayName}
             lessons={tomorrowLessons}
             bells={tomorrowBells}
@@ -1789,6 +1764,7 @@ export default function App() {
         {currentScreen === 'backpack' && (
           <BackpackScreen
             tomorrowLessons={tomorrowLessons}
+            forDate={dateKeyForDay(tomorrowDayName)}
             lang={lang}
             soundProfile={settings.soundProfile}
             vibro={settings.vibro}
@@ -1828,8 +1804,8 @@ export default function App() {
             isTeacher={isTeacher}
             onShareHomework={(h) =>
               teacher
-                ? addClassHomework(cls, { ...h, forDate: '', author: teacher.name.slice(0, 60), teacher: true })
-                : addClassHomework(cls, { ...h, forDate: '', author: (studentName || 'Ученик').slice(0, 60) })
+                ? addClassHomework(cls, { sub: h.sub, text: h.text, forDate: h.forDate || '', author: teacher.name.slice(0, 60), teacher: true })
+                : addClassHomework(cls, { sub: h.sub, text: h.text, forDate: h.forDate || '', author: (studentName || 'Ученик').slice(0, 60) })
             }
             onDeleteClassHomework={(id) => {
               deleteClassHomework(cls, id).then((ok) => showToast(ok ? 'Удалено у класса' : 'Не получилось удалить. Проверь интернет.'));
@@ -1886,6 +1862,7 @@ export default function App() {
 
         {currentScreen === 'updates' && (
           <AddUpdateScreen
+            shift={shift}
             cls={cls}
             updates={lessonUpdates}
             onAddUpdate={handleAddUpdate}

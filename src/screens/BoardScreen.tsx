@@ -1,3 +1,4 @@
+import { isWindow, lessonNo, roomLabel } from '../utils/lessonStatus';
 import React, { useEffect, useState } from 'react';
 
 // Экран для проектора или школьного телевизора: крупные часы, текущий урок и время до звонка
@@ -117,18 +118,18 @@ export const BoardScreen: React.FC<BoardScreenProps> = ({ cls, shift, time, stat
 
         <div className="card !m-0">
           <h2 className="text-lg sm:text-2xl font-black mb-3">Уроки сегодня</h2>
-          {lessons.length > 0 ? (
+          {lessons.some((l) => !isWindow(l)) ? (
             <ol className="space-y-2">
-              {lessons.map(([sub, room], i) => (
+              {lessons.map(([sub, room], i) => isWindow([sub, room]) ? null : (
                 <li
                   key={i}
                   className={`lesson !m-0 text-base sm:text-xl ${i === status.currentIdx ? 'current' : ''}`}
                 >
-                  <div className="num">{i + 1}</div>
+                  <div className="num">{lessonNo(shift, i)}</div>
                   <div className="flex flex-wrap justify-between gap-x-2 min-w-0">
                     <b className="truncate">{sub}</b>
                     <span className="text-white/60 tabular-nums shrink-0">
-                      {bells[i] ? `${bells[i][0]}–${bells[i][1]}` : ''} {room ? `· ${room}` : ''}
+                      {bells[i] ? `${bells[i][0]}–${bells[i][1]}` : ''} {room ? `· ${roomLabel(room)}` : ''}
                     </span>
                   </div>
                 </li>

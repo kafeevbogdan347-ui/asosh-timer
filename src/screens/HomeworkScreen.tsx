@@ -1,4 +1,5 @@
 import { AskAsoshikButton } from '../components/AskAsoshikButton';
+import { toDateKey } from '../services/classShared';
 import React, { useState, useRef } from 'react';
 import { HomeworkItem, LanguageType, SoundProfileType } from '../types';
 import { DICT } from '../data/constants';
@@ -21,7 +22,7 @@ interface HomeworkScreenProps {
   onOpenAi?: () => void;
   classHomework: ClassHomework[];
   myUid: string;
-  onShareHomework: (h: { sub: string; text: string }) => Promise<boolean>;
+  onShareHomework: (h: { sub: string; text: string; forDate?: string }) => Promise<boolean>;
   onDeleteClassHomework: (id: string) => void;
   onShowToast: (msg: string) => void;
   // Гость без кода класса не может делиться ДЗ с классом
@@ -60,6 +61,21 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   const [sub, setSub] = useState('');
   const [text, setText] = useState('');
   const [pinned, setPinned] = useState(false);
+  // Срок сдачи: YYYY-MM-DD или пусто
+  const dayKey = (offset: number) => {
+    const d0 = new Date();
+    return toDateKey(new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + offset));
+  };
+  const todayKey = dayKey(0);
+  const tomorrowKey = dayKey(1);
+  const [dueDate, setDueDate] = useState('');
+  const isDateKey = (v?: string) => !!v && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const dueLabel = (key: string) =>
+    key === todayKey
+      ? 'на сегодня'
+      : key === tomorrowKey
+        ? 'на завтра'
+        : `к ${new Date(key + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', weekday: 'short' })}`;
   const [filter, setFilter] = useState<'all' | 'pinned' | 'active' | 'done'>('all');
   const [photoUrl, setPhotoUrl] = useState<string>('');
   const [previewModalImg, setPreviewModalImg] = useState<string | null>(null);
@@ -94,10 +110,11 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
       done: false,
       pinned,
       photoUrl: photoUrl || undefined,
+      ...(dueDate ? { dueDate } : {}),
     });
     if (shareWithClass) {
       // Фото не отправляем: только текст задания
-      const shared = { sub: sub.trim(), text: text.trim() };
+      const shared = { sub: sub.trim(), text: text.trim(), forDate: dueDate };
       checkBeforePublish(shared.sub, shared.text).then((modError) => {
         if (modError) {
           onShowToast(`ДЗ сохранено у тебя, но классу не отправлено. ${modError}`);
@@ -112,6 +129,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
     setSub('');
     setText('');
     setPinned(false);
+    setDueDate('');
     setPhotoUrl('');
     setShareWithClass(isTeacher);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -132,7 +150,11 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
     .sort((a, b) => {
       if (a.pinned && !b.pinned) return -1;
       if (!a.pinned && b.pinned) return 1;
-      return b.createdAt - a.createdAt;
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      const da = isDateKey(a.dueDate) ? a.dueDate! : '9999';
+      const db = isDateKey(b.dueDate) ? b.dueDate! : '9999';
+      if (!a.done && da !== db) return da < db ? -1 : 1;
+      return (b.createdAt || b.id) - (a.createdAt || a.id);
     });
 
   // Accurate Grade Simulator calculation without hardcoded limit bugs
@@ -202,6 +224,29 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
               rows={2}
               maxLength={1000}
             />
+          </div>
+
+          {/* Срок сдачи */}
+          <div>
+            <label className="text-xs font-bold text-white/70">К какому дню</label>
+            <div className="flex flex-wrap gap-1.5 items-center">
+              <button type="button" className={`choice !py-1.5 !px-3 !text-xs ${dueDate === tomorrowKey ? 'active' : ''}`} onClick={() => setDueDate(dueDate === tomorrowKey ? '' : tomorrowKey)}>
+                На завтра
+              </button>
+              <input
+                type="date"
+                value={dueDate}
+                min={todayKey}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="!py-1.5 !px-2 text-xs w-auto flex-1 min-w-[130px]"
+                aria-label="Срок сдачи"
+              />
+              {dueDate && (
+                <button type="button" className="text-[11px] font-bold text-white/60 px-1 cursor-pointer" onClick={() => setDueDate('')}>
+                  без срока
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Прикрепление фото доски / тетради */}
@@ -296,6 +341,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
               <div key={h.id} className={`p-3 rounded-2xl border flex items-start justify-between gap-2 ${h.teacher ? 'bg-amber-500/10 border-amber-400/40' : 'bg-white/5 border-white/10'}`}>
                 <div className="min-w-0">
                   <b className="text-sm text-cyan-200">{h.sub}</b>
+                  {isDateKey(h.forDate) && <span className="text-[10px] font-bold text-cyan-300"> · 📅 {dueLabel(h.forDate)}</span>}
                   <div className="text-xs text-white/85 whitespace-pre-line break-words">{h.text}</div>
                   {onAskAsoshik && (
                     <AskAsoshikButton className="mt-1.5" label="Помочь с ДЗ" onClick={() => onAskAsoshik(`Помоги сделать домашку по предмету «${h.sub}»: ${h.text}`)} />
@@ -313,7 +359,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                       type="button"
                       className="text-[11px] font-bold px-2 py-1 rounded-lg bg-cyan-500/20 text-cyan-200 border border-cyan-400/40 cursor-pointer"
                       onClick={() => {
-                        onAddHomework({ cls, sub: h.sub, text: h.text, done: false, pinned: false });
+                        onAddHomework({ cls, sub: h.sub, text: h.text, done: false, pinned: false, ...(isDateKey(h.forDate) ? { dueDate: h.forDate } : {}) });
                         onShowToast('Добавлено в мои ДЗ');
                       }}
                     >
@@ -392,6 +438,22 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                       {item.pinned && (
                         <span className="badge bg-amber-400/20 text-amber-300 border-amber-400/40 text-[9px] py-0.5 px-1.5">
                           ⭐ СРОЧНО
+                        </span>
+                      )}
+                      {isDateKey(item.dueDate) && (
+                        <span
+                          className={`badge text-[9px] py-0.5 px-1.5 ${
+                            item.done
+                              ? 'bg-white/10 text-white/50 border-white/15'
+                              : item.dueDate! < todayKey
+                                ? 'bg-red-500/20 text-red-300 border-red-400/40'
+                                : item.dueDate! <= tomorrowKey
+                                  ? 'bg-cyan-500/20 text-cyan-200 border-cyan-400/40'
+                                  : 'bg-white/10 text-white/70 border-white/15'
+                          }`}
+                        >
+                          {!item.done && item.dueDate! < todayKey ? '⏰ просрочено · ' : '📅 '}
+                          {dueLabel(item.dueDate!)}
                         </span>
                       )}
                     </div>

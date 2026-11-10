@@ -13,11 +13,12 @@ import {
   subscribeMyParents,
   subscribeMyRosterStatus,
 } from '../services/accounts';
-import { Grade, bySubject, average, markColor, subscribeStudentGrades } from '../services/journal';
+import { Grade, bySubject, average, markColor, subscribeStudentGrades, newGrades, markGradesSeen } from '../services/journal';
 import { ClassHomework, subscribeClassHomework, toDateKey } from '../services/classShared';
 import { BoardPost, postsFor } from '../services/teacher';
 import { getBaseLessonsForClass } from '../data/schoolSchedule';
 import { DAYS } from '../data/constants';
+import { roomLabel } from '../utils/lessonStatus';
 
 interface DiaryScreenProps {
   account: Account;
@@ -29,9 +30,21 @@ interface DiaryScreenProps {
 
 const fmtDate = (key: string) => new Date(key + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 
-const MarkChip: React.FC<{ g: Grade }> = ({ g }) => (
+// Новые с прошлого просмотра оценки подсвечиваем, после чего считаем просмотренными
+function useFreshMarks(): [Set<string>, (sid: string, list: Grade[], fromServer: boolean) => void] {
+  const [fresh, setFresh] = useState<Set<string>>(new Set());
+  const track = (sid: string, list: Grade[], fromServer: boolean) => {
+    if (!fromServer) return;
+    const ids = newGrades(sid, list).map((g) => g.id);
+    if (ids.length) setFresh((prev) => new Set([...prev, ...ids]));
+    markGradesSeen(sid, list);
+  };
+  return [fresh, track];
+}
+
+const MarkChip: React.FC<{ g: Grade; fresh?: boolean }> = ({ g, fresh }) => (
   <span
-    className="mark-chip"
+    className={`mark-chip ${fresh ? 'fresh' : ''}`}
     style={{ background: markColor(g.v) }}
     title={`${fmtDate(g.date)} · ${g.teacher}${g.note ? ` · ${g.note}` : ''}`}
   >
@@ -40,7 +53,7 @@ const MarkChip: React.FC<{ g: Grade }> = ({ g }) => (
 );
 
 // Оценки по предметам + последние оценки с комментариями
-const GradesBlock: React.FC<{ grades: Grade[] }> = ({ grades }) => {
+const GradesBlock: React.FC<{ grades: Grade[]; fresh?: Set<string> }> = ({ grades, fresh }) => {
   const subjects = useMemo(() => bySubject(grades), [grades]);
   const recent = useMemo(() => [...grades].sort((a, b) => (a.date === b.date ? b.t - a.t : a.date < b.date ? 1 : -1)).slice(0, 8), [grades]);
   const total = average(grades);
@@ -77,7 +90,7 @@ const GradesBlock: React.FC<{ grades: Grade[] }> = ({ grades }) => {
             </div>
             <div className="flex flex-wrap gap-1 mt-1.5">
               {s.grades.map((g) => (
-                <MarkChip key={g.id} g={g} />
+                <MarkChip key={g.id} g={g} fresh={fresh?.has(g.id)} />
               ))}
             </div>
           </div>
@@ -89,8 +102,9 @@ const GradesBlock: React.FC<{ grades: Grade[] }> = ({ grades }) => {
         <div className="space-y-1">
           {recent.map((g) => (
             <div key={g.id} className="flex items-start gap-2 text-xs p-2 rounded-xl bg-black/15">
-              <MarkChip g={g} />
+              <MarkChip g={g} fresh={fresh?.has(g.id)} />
               <div className="min-w-0">
+                {fresh?.has(g.id) && <span className="text-[10px] font-black text-amber-300">НОВАЯ · </span>}
                 <b>{g.sub}</b> · {fmtDate(g.date)} · <span className="text-white/60">{g.teacher}</span>
                 {g.note && <div className="text-white/75">💬 {g.note}</div>}
               </div>
@@ -110,7 +124,18 @@ const StudentDiary: React.FC<{ account: Account; onShowToast: (m: string) => voi
   const [code, setCode] = useState<string | null>(null);
   const [parents, setParents] = useState<ParentEntry[]>([]);
 
-  useEffect(() => (cls ? subscribeStudentGrades(cls, account.uid, setGrades) : undefined), [cls, account.uid]);
+  const [fresh, trackFresh] = useFreshMarks();
+  useEffect(
+    () =>
+      cls
+        ? subscribeStudentGrades(cls, account.uid, (list, fromServer) => {
+            setGrades(list);
+            trackFresh(account.uid, list, fromServer);
+          })
+        : undefined,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cls, account.uid]
+  );
   useEffect(() => (cls ? subscribeMyRosterStatus(cls, account.uid, setStatus) : undefined), [cls, account.uid]);
   useEffect(() => subscribeMyParents(account.uid, setParents), [account.uid]);
   useEffect(() => {
@@ -134,7 +159,7 @@ const StudentDiary: React.FC<{ account: Account; onShowToast: (m: string) => voi
         </p>
       )}
 
-      <GradesBlock grades={grades} />
+      <GradesBlock grades={grades} fresh={fresh} />
 
       <div className="p-3 rounded-2xl bg-white/5 border border-white/15 space-y-2">
         <div className="flex items-center justify-between gap-2">
@@ -186,13 +211,24 @@ const ParentDiary: React.FC<DiaryScreenProps> = ({ account, posts, today, onShow
   const [adding, setAdding] = useState(false);
   const [code, setCode] = useState('');
   const [tab, setTab] = useState<'grades' | 'hw' | 'sched' | 'news'>('grades');
+  const [denied, setDenied] = useState(false);
+  const [fresh, trackFresh] = useFreshMarks();
 
   useEffect(() => subscribeMyChildren(account.uid, setChildren), [account.uid]);
   const child = children?.find((c) => c.sid === sel) || children?.[0];
   useEffect(() => {
     if (!child) return;
     onChildClass?.(child.cls);
-    const a = subscribeStudentGrades(child.cls, child.sid, setGrades);
+    setDenied(false);
+    const a = subscribeStudentGrades(
+      child.cls,
+      child.sid,
+      (list, fromServer) => {
+        setGrades(list);
+        trackFresh(child.sid, list, fromServer);
+      },
+      () => setDenied(true)
+    );
     const b = subscribeClassHomework(child.cls, setHomework);
     return () => {
       a();
@@ -268,7 +304,14 @@ const ParentDiary: React.FC<DiaryScreenProps> = ({ account, posts, today, onShow
             ))}
           </div>
 
-          {tab === 'grades' && <GradesBlock grades={grades} />}
+          {tab === 'grades' &&
+            (denied ? (
+              <div className="text-center text-sm text-white/70 py-6 px-2">
+                🔒 Доступ к оценкам закрыт: ребёнок отключил его в своём «Дневнике» или сменил класс. Попросите у него новый код и добавьте заново.
+              </div>
+            ) : (
+              <GradesBlock grades={grades} fresh={fresh} />
+            ))}
 
           {tab === 'hw' && (
             <div className="space-y-1.5">
@@ -299,7 +342,7 @@ const ParentDiary: React.FC<DiaryScreenProps> = ({ account, posts, today, onShow
                       {d.lessons.map(([sub, room], i) => (
                         <li key={i}>
                           {sub}
-                          {room && <span className="text-white/55"> · каб. {room}</span>}
+                          {room && <span className="text-white/55"> · {roomLabel(room)}</span>}
                         </li>
                       ))}
                     </ol>

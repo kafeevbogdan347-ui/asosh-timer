@@ -88,8 +88,9 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
   const splashes = lang === 'ba' ? SPLASHES_BA : SPLASHES_RU;
   const splash = splashes[Math.floor(Math.random() * splashes.length)] || 'Аргаяшский вайб ⚡';
 
-  const grades = [5, 6, 7, 8, 9, 10, 11];
-  const letters = ['А', 'Б', 'В', 'Г'];
+  // Параллели и буквы — только те классы, что есть в расписании школы
+  const grades = [...new Set(CLASS_LIST.map((c) => c.grade))];
+  const lettersOf = (g: number) => CLASS_LIST.filter((c) => c.grade === g).map((c) => c.letter);
 
   // Неудачная проверка кода: учитываем попытку и включаем блокировку при переборе
   const handleFailedCheck = (res: ClassCodeCheck): string => {
@@ -323,14 +324,14 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
                 onClick={() => setSelectedParallel(g)}
               >
                 <div className="text-lg font-black">{g} класс</div>
-                <div className="text-[11px] text-white/70">А • Б • В • Г</div>
+                <div className="text-[11px] text-white/70">{lettersOf(g).join(' • ')}</div>
               </button>
             ))}
           </div>
         ) : (
           <div className="space-y-3">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              {letters.map((l) => {
+              {lettersOf(selectedParallel).map((l) => {
                 const fullCls = `${selectedParallel}${l}`;
                 const unlocked = isClassUnlocked(fullCls);
 

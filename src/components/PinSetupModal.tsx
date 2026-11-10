@@ -38,9 +38,10 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({
         if (next.length === 4) {
           // Check if match
           if (next === pin) {
-            savePin(pin);
-            onUpdated(true);
-            onClose();
+            savePin(pin).then(() => {
+              onUpdated(true);
+              onClose();
+            });
           } else {
             setError('PIN-коды не совпадают. Попробуйте снова.');
             setTimeout(() => {

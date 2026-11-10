@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
+    "test": "node --experimental-strip-types tests/lessonStatus.test.mjs",
     "presentation:md": "node --experimental-strip-types scripts/presentation-md.mjs"
   },
   "dependencies": {

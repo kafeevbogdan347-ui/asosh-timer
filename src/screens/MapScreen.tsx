@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Building } from 'lucide-react';
 import { roomFloor } from '../data/schoolSchedule';
+import { roomLabel } from '../utils/lessonStatus';
 
 export interface WeekLesson {
   day: string; // «Понедельник»
@@ -35,7 +36,6 @@ const PLACES: { keys: string[]; text: string }[] = [
 ];
 
 const roomParts = (room: string) => room.split('/').map((r) => r.trim().toLowerCase()).filter(Boolean);
-const roomLabel = (room: string) => (/^\d/.test(room) ? `каб. ${room}` : room);
 
 export const MapScreen: React.FC<MapScreenProps> = ({ cls, weekLessons, currentDayName }) => {
   const [query, setQuery] = useState('');

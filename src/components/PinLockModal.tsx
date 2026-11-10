@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Lock, Unlock, Delete, Shield, Eye, EyeOff, ShieldAlert, Sparkles } from 'lucide-react';
-import { verifyPin } from '../utils/privacy';
+import { verifyPin, pinLockRemainingSec, recordPinFail, resetPinFails } from '../utils/privacy';
 
 interface PinLockModalProps {
   isOpen: boolean;
@@ -22,7 +22,8 @@ export const PinLockModal: React.FC<PinLockModalProps> = ({
   const [shake, setShake] = useState(false);
   const [showDigits, setShowDigits] = useState(false);
   const [failedCount, setFailedCount] = useState(0);
-  const [lockTimer, setLockTimer] = useState<number>(0);
+  // Блокировка хранится на устройстве: перезапуск приложения её не снимает
+  const [lockTimer, setLockTimer] = useState<number>(() => pinLockRemainingSec());
 
   // Countdown timer for lockout after 3 fails
   useEffect(() => {
@@ -70,14 +71,15 @@ export const PinLockModal: React.FC<PinLockModalProps> = ({
 
     if (next.length === 4) {
       // Check PIN
-      setTimeout(() => {
-        if (verifyPin(next)) {
+      setTimeout(async () => {
+        if (await verifyPin(next)) {
           setPin('');
           setFailedCount(0);
+          resetPinFails();
           onSuccess();
         } else {
           setShake(true);
-          const newFails = failedCount + 1;
+          const newFails = recordPinFail();
           setFailedCount(newFails);
 
           if (newFails >= 3) {

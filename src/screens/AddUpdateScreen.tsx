@@ -1,3 +1,4 @@
+import { lessonNo, roomLabel } from '../utils/lessonStatus';
 import React, { useMemo, useState } from 'react';
 import { DAYS, DICT } from '../data/constants';
 import { LessonUpdate, LanguageType, SoundProfileType } from '../types';
@@ -22,6 +23,7 @@ interface AddUpdateScreenProps {
   onShowToast: (msg: string) => void;
   // Гость без кода класса не может отправлять замены всему классу
   canShare: boolean;
+  shift: string; // во 2-й смене первый урок — нулевой
 }
 
 const RU_DATE = (key: string) => {
@@ -44,6 +46,7 @@ export const AddUpdateScreen: React.FC<AddUpdateScreenProps> = ({
   vibro,
   onShowToast,
   canShare,
+  shift,
 }) => {
   const [mode, setMode] = useState<'class' | 'me'>(canShare ? 'class' : 'me');
   const todayKey = toDateKey(today);
@@ -174,9 +177,10 @@ export const AddUpdateScreen: React.FC<AddUpdateScreenProps> = ({
           <div>
             <label className="text-xs font-bold text-white/70">Номер урока</label>
             <select value={num} onChange={(e) => setNum(Number(e.target.value))} className="cursor-pointer text-sm w-full">
+              {/* В базе хранится позиция урока в дне (с единицы), на экране — номер как на стенде */}
               {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
                 <option key={n} value={n}>
-                  {n} урок
+                  {lessonNo(shift, n - 1)} урок
                 </option>
               ))}
             </select>
@@ -219,10 +223,10 @@ export const AddUpdateScreen: React.FC<AddUpdateScreenProps> = ({
                   <div key={r.id} className="flex items-center justify-between gap-2 p-3 bg-white/5 rounded-2xl border border-white/10">
                     <div className="min-w-0">
                       <b className="text-sm text-cyan-200">
-                        {r.date === todayKey ? 'Сегодня' : r.date === tomorrowKey ? 'Завтра' : RU_DATE(r.date)} · {r.num} урок
+                        {r.date === todayKey ? 'Сегодня' : r.date === tomorrowKey ? 'Завтра' : RU_DATE(r.date)} · {lessonNo(shift, r.num - 1)} урок
                       </b>
                       <div className="text-xs text-white/80">
-                        {r.sub} {r.room ? `(каб. ${r.room})` : ''}
+                        {r.sub} {r.room ? `(${roomLabel(r.room)})` : ''}
                       </div>
                       <div className="text-[10px] text-white/50">Добавил(а): {r.author || 'ученик'}</div>
                     </div>
@@ -247,10 +251,10 @@ export const AddUpdateScreen: React.FC<AddUpdateScreenProps> = ({
                   <div key={u.id} className="flex items-center justify-between p-3 bg-white/5 rounded-2xl border border-white/10">
                     <div>
                       <b className="text-sm text-cyan-200">
-                        {u.day} · {u.num} урок
+                        {u.day} · {lessonNo(shift, u.num - 1)} урок
                       </b>
                       <div className="text-xs text-white/70">
-                        {u.sub} {u.room ? `(каб. ${u.room})` : ''}
+                        {u.sub} {u.room ? `(${roomLabel(u.room)})` : ''}
                       </div>
                     </div>
                     <button type="button" onClick={() => onDeleteUpdate(u.id)} className="p-1.5 text-red-400 hover:text-red-300" title="Удалить">

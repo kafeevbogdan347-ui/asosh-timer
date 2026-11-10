@@ -1,3 +1,5 @@
+import { LessonRows } from '../components/LessonRows';
+import { isWindow } from '../utils/lessonStatus';
 import { AskAsoshikButton } from '../components/AskAsoshikButton';
 import React from 'react';
 import { LanguageType, SmartDayData } from '../types';
@@ -15,12 +17,14 @@ interface ScheduleScreenProps {
   onGoAddUpdates: () => void;
   smartDayAdvice?: SmartDayData | null;
   onAskAsoshik?: (text: string) => void;
+  shift: string;
 }
 
 const SHORT_DAYS_RU = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
   onAskAsoshik,
+  shift,
   selectedDay,
   currentDayName,
   onSelectDay,
@@ -95,46 +99,23 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
 
       {/* Lesson List */}
       <div className="space-y-2 mt-2">
-        {lessons.length > 0 ? (
-          lessons.map((lesson, idx) => {
-            const bell = bells[idx];
-            const isCur = currentLessonIdx === idx;
-            return (
-              <div
-                key={idx}
-                className={`lesson ${isCur ? 'current' : ''} transition-all relative overflow-hidden`}
-              >
-                <div className="num font-black">{idx + 1}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <b className="text-base text-white truncate">{lesson[0]}</b>
-                    {onAskAsoshik && lesson[0] !== '—' && !isCur && (
-                      <AskAsoshikButton
-                        label="Готовлюсь"
-                        onClick={() =>
-                          onAskAsoshik(`Скоро урок «${lesson[0].replace('🔄 ', '')}»${bell ? ` в ${bell[0]}` : ''}. Подскажи коротко: что повторить перед уроком и что взять с собой.`)
-                        }
-                      />
-                    )}
-                    {isCur && (
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/30 border border-emerald-400 text-emerald-200 text-[10px] font-bold font-mono shrink-0 animate-pulse">
-                        Идёт урок 🔔
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-white/70 mt-0.5 flex flex-wrap items-center gap-x-2">
-                    <span className="font-mono text-cyan-300">
-                      {bell ? `${bell[0]} – ${bell[1]}` : '—'}
-                    </span>
-                    <span>•</span>
-                    <span className={lesson[1] ? 'text-white/90 font-medium' : 'text-white/50 italic'}>
-                      {lesson[1] ? `каб. ${lesson[1]}` : 'кабинет не указан'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })
+        {lessons.some((l) => !isWindow(l)) ? (
+          <LessonRows
+            lessons={lessons}
+            bells={bells}
+            shift={shift}
+            currentIdx={currentLessonIdx}
+            extra={(lesson, _idx, bell) =>
+              onAskAsoshik && (
+                <AskAsoshikButton
+                  label="Готовлюсь"
+                  onClick={() =>
+                    onAskAsoshik(`Скоро урок «${lesson[0].replace('🔄 ', '')}»${bell ? ` в ${bell[0]}` : ''}. Подскажи коротко: что повторить перед уроком и что взять с собой.`)
+                  }
+                />
+              )
+            }
+          />
         ) : (
           <div className="text-center py-8 bg-white/5 rounded-2xl border border-white/10 p-4">
             <div className="text-3xl mb-2">📅</div>

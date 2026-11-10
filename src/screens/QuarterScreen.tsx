@@ -20,8 +20,8 @@ export const QuarterScreen: React.FC<QuarterScreenProps> = ({ lang }) => {
 
   // Find which quarter is active today or default to 0
   const qList = SCHOOL_QUARTERS.map((q, idx) => {
-    const sTime = new Date(q.start).getTime();
-    const eTime = new Date(q.end).getTime();
+    const sTime = new Date(`${q.start}T00:00:00`).getTime();
+    const eTime = new Date(`${q.end}T23:59:59`).getTime();
     const totalDays = Math.max(1, Math.round((eTime - sTime) / (1000 * 60 * 60 * 24)));
     let passedDays = Math.round((nowTime - sTime) / (1000 * 60 * 60 * 24));
     passedDays = Math.max(0, Math.min(totalDays, passedDays));
