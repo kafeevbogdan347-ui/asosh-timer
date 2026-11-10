@@ -64,7 +64,7 @@ import { MapScreen } from './screens/MapScreen';
 import { AssistantScreen } from './screens/AssistantScreen';
 import { WhatsNewModal } from './components/WhatsNewModal';
 import { computeLessonStatus, firstLessonStart, toSec, roomLabel, lessonNo, LessonStatus } from './utils/lessonStatus';
-import { t } from './i18n';
+import { t, LANGS } from './i18n';
 import { AddUpdateScreen } from './screens/AddUpdateScreen';
 import { GamesScreen } from './screens/GamesScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
@@ -80,6 +80,7 @@ import type { AccountDone } from './components/AccountForms';
 import { AccountForms } from './components/AccountForms';
 import { DiaryScreen } from './screens/DiaryScreen';
 import { UpdateRequired } from './components/UpdateRequired';
+import { setAutoLanguage, tr as autoTr } from './i18n/auto';
 import { subscribeStudentGrades, newGrades } from './services/journal';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { RetroFirstScreen } from './screens/RetroFirstScreen';
@@ -124,6 +125,14 @@ export default function App() {
   const [shift, setShift] = useState<string>(() => accountVault.shift);
   const [subGroup, setSubGroup] = useState<number>(() => accountVault.subGroup);
   const [lang, setLang] = useState<LanguageType>(() => accountVault.lang);
+  // Только для автотестов (сборка с VITE_E2E=1): переход на любой экран
+  useEffect(() => {
+    if (import.meta.env.VITE_E2E) (window as unknown as { __asoshGo?: (s: ScreenId) => void }).__asoshGo = setCurrentScreen;
+  }, []);
+  // Экраны без готового перевода переводятся словарём на лету
+  useEffect(() => {
+    setAutoLanguage(lang);
+  }, [lang]);
   const [studentName, setStudentName] = useState<string>(() => accountVault.studentName);
   const [parentName, setParentName] = useState<string>(() => accountVault.parentName);
   const [authProvider, setAuthProvider] = useState<'guest' | 'local' | 'google' | 'apple'>(() => accountVault.authProvider);
@@ -926,6 +935,7 @@ export default function App() {
       .map((t) => t.slice(0, 200));
     return [
       `Роль: ${isTeacher ? `учитель (${teacher?.name})` : account?.role === 'parent' ? 'родитель' : 'ученик'}. Класс: ${cls || 'не выбран'}, ${shift} смена, подгруппа ${subGroup}. Может публиковать для класса: ${classVerified || isTeacher ? 'да' : 'нет'}.`,
+      lang !== 'ru' ? `Язык интерфейса: ${LANGS.find((l) => l.id === lang)?.ru || lang}. Отвечай на этом языке (термины и формулы можно по-русски).` : '',
       `Сегодня: ${todayDateKey}. Темы оформления: ${THEMES.map((t) => `${t.id} («${t.name}»)`).join(', ')}.`,
       `Сейчас: ${currentDayName}, ${activeTime.toLocaleDateString('ru-RU')} ${activeTime.toTimeString().slice(0, 5)}.`,
       isShortDay(currentDayName) ? 'Сегодня сокращённые уроки.' : '',
@@ -983,7 +993,7 @@ export default function App() {
       doVibro(settings.vibro, 30);
       showToast(`🔔 Урок через ${Math.ceil(remain / 60)} мин! ${lessonStatus.nextText ? `(${lessonStatus.nextText})` : ''}`);
       if (settings.bellNotifications) {
-        showSystemNotification(`🔔 Урок через ${Math.ceil(remain / 60)} мин`, lessonStatus.nextText || '');
+        showSystemNotification(autoTr(`🔔 Урок через ${Math.ceil(remain / 60)} мин`), autoTr(lessonStatus.nextText || ''));
       }
     }
 
@@ -999,7 +1009,7 @@ export default function App() {
       playSound('warn', settings.soundProfile);
       doVibro(settings.vibro, 50);
       showToast('⏳ 2 минуты до звонка!');
-      if (settings.bellNotifications) showSystemNotification('⏳ 2 минуты до звонка', lessonStatus.nowText || '');
+      if (settings.bellNotifications) showSystemNotification(autoTr('⏳ 2 минуты до звонка'), autoTr(lessonStatus.nowText || ''));
     }
 
     // 20:00 evening backpack reminder
@@ -1845,6 +1855,7 @@ export default function App() {
           <AssistantScreen
             context={buildAssistantContext()}
             vibro={settings.vibro}
+            appLang={lang}
             autoPrompt={assistantPrompt}
             onAutoPromptUsed={() => setAssistantPrompt(null)}
             agent={account?.role === 'parent' ? undefined : makeAgentHandlers}

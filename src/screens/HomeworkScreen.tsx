@@ -342,7 +342,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                 <div className="min-w-0">
                   <b className="text-sm text-cyan-200">{h.sub}</b>
                   {isDateKey(h.forDate) && <span className="text-[10px] font-bold text-cyan-300"> · 📅 {dueLabel(h.forDate)}</span>}
-                  <div className="text-xs text-white/85 whitespace-pre-line break-words">{h.text}</div>
+                  <div data-no-tr className="text-xs text-white/85 whitespace-pre-line break-words">{h.text}</div>
                   {onAskAsoshik && (
                     <AskAsoshikButton className="mt-1.5" label="Помочь с ДЗ" onClick={() => onAskAsoshik(`Помоги сделать домашку по предмету «${h.sub}»: ${h.text}`)} />
                   )}

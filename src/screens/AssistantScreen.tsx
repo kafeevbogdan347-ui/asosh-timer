@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { Send, Trash2, Camera, X } from 'lucide-react';
+import { Send, Trash2, Camera, X, Mic, Volume2, VolumeX } from 'lucide-react';
 import { compressImage } from '../utils/image';
 import {
   AssistantMessage,
@@ -13,6 +13,7 @@ import {
   AgentHandlers,
 } from '../services/assistant';
 import { useOnline } from '../utils/useOnline';
+import { listenOnce, speak, stopSpeaking, voiceInputSupported, voiceLang, voiceOutputSupported } from '../utils/voice';
 
 interface AssistantScreenProps {
   context: string; // класс, расписание и домашка — собирает App
@@ -22,6 +23,7 @@ interface AssistantScreenProps {
   onAutoPromptUsed?: () => void;
   // Действия в приложении. confirm показывает в чате карточку «Опубликовать / Отмена»
   agent?: (confirm: (text: string) => Promise<boolean>) => AgentHandlers;
+  appLang?: string; // язык интерфейса, от него зависит голос
 }
 
 // Маскот Асошика: градиентная капля с лицом и искоркой. Середина градиента — цвет темы (--accent)
@@ -96,7 +98,7 @@ const renderText = (text: string) =>
     );
   });
 
-export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro, autoPrompt, onAutoPromptUsed, agent }) => {
+export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro, autoPrompt, onAutoPromptUsed, agent, appLang = 'ru' }) => {
   const [pending, setPending] = useState<{ text: string; resolve: (ok: boolean) => void } | null>(null);
   const confirm = (text: string) => new Promise<boolean>((resolve) => setPending({ text, resolve }));
   const answerPending = (ok: boolean) => {
@@ -106,6 +108,47 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
   const [messages, setMessages] = useState<AssistantMessage[]>(loadHistory);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  // Голос: отвечать вслух и слушать микрофон. Выбор помнится на этом телефоне.
+  const [voiceOn, setVoiceOn] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('asosh_asoshik_voice') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const [listening, setListening] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const stopListening = useRef<() => void>(() => {});
+  const toggleVoice = () => {
+    const next = !voiceOn;
+    setVoiceOn(next);
+    try {
+      localStorage.setItem('asosh_asoshik_voice', next ? '1' : '0');
+    } catch {
+      // без памяти голос просто не запомнится
+    }
+    if (!next) {
+      stopSpeaking();
+      setSpeaking(false);
+    }
+  };
+  const micOn = () => {
+    if (listening) {
+      stopListening.current();
+      return;
+    }
+    setError('');
+    setListening(true);
+    stopListening.current = listenOnce(
+      voiceLang(appLang),
+      (text) => setInput(text),
+      (err) => {
+        setListening(false);
+        if (err) setError(err);
+      }
+    );
+  };
+  useEffect(() => () => stopSpeaking(), []);
   const [error, setError] = useState('');
   const [used, setUsed] = useState(usedToday);
   const online = useOnline();
@@ -149,6 +192,10 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
       setMessages(withAnswer);
       saveHistory(withAnswer);
       if (vibro && navigator.vibrate) navigator.vibrate(15);
+      if (voiceOn && answer.text) {
+        setSpeaking(true);
+        speak(answer.text, voiceLang(appLang), () => setSpeaking(false));
+      }
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -288,6 +335,18 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
         <button type="button" className="asoshik-cam" onClick={() => fileRef.current?.click()} disabled={!available || busy || left === 0} aria-label="Прикрепить фото задания" title="Фото задания">
           <Camera className="w-4 h-4" />
         </button>
+        {voiceInputSupported() && (
+          <button
+            type="button"
+            className={`asoshik-cam ${listening ? 'asoshik-mic-on' : ''}`}
+            onClick={micOn}
+            disabled={!available || busy || left === 0}
+            aria-label={listening ? 'Остановить запись' : 'Сказать голосом'}
+            title={listening ? 'Слушаю… нажми, чтобы остановить' : 'Сказать голосом'}
+          >
+            <Mic className="w-4 h-4" />
+          </button>
+        )}
         <input
           type="text"
           value={input}
@@ -301,6 +360,26 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
           <Send className="w-4 h-4" />
         </button>
       </form>
+      {voiceOutputSupported() && (
+        <div className="flex justify-center mt-1.5">
+          <button type="button" onClick={toggleVoice} className="text-[11px] font-bold text-cyan-300 flex items-center gap-1.5 cursor-pointer">
+            {voiceOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+            {voiceOn ? 'Отвечает голосом' : 'Отвечать голосом'}
+            {speaking && (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  stopSpeaking();
+                  setSpeaking(false);
+                }}
+                className="ml-1 underline"
+              >
+                · стоп
+              </span>
+            )}
+          </button>
+        </div>
+      )}
       <div className="text-[10px] text-white/50 text-center mt-1.5">
         Осталось вопросов сегодня: {left} из {DAILY_LIMIT} · Ответы даёт ИИ Google Gemini и могут быть с ошибками. Имя не передаётся. Не фотографируй лица и личные данные.
       </div>
