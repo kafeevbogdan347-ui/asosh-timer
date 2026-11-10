@@ -79,6 +79,7 @@ import { Account, getLocalAccount, logoutAccount, moveStudentToClass, verifyAcco
 import type { AccountDone } from './components/AccountForms';
 import { AccountForms } from './components/AccountForms';
 import { DiaryScreen } from './screens/DiaryScreen';
+import { UpdateRequired } from './components/UpdateRequired';
 import { subscribeStudentGrades, newGrades } from './services/journal';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { RetroFirstScreen } from './screens/RetroFirstScreen';
@@ -1532,6 +1533,9 @@ export default function App() {
       {/* 4-digit PIN Authentication Modal */}
       {/* Проверка «Я не робот» перед публикацией для класса */}
       <HumanCheckHost />
+
+      {/* Вышла новая версия — просим обновиться */}
+      <UpdateRequired />
 
       <PinLockModal
         isOpen={isPinLocked}
