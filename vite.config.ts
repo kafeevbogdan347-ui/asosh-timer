@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { createHash } from 'crypto';
 import path from 'path';
+import { readFileSync } from 'fs';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { normalizeCode } from './src/utils/normalizeCode';
 import { buildPresentationHtml, buildPresentationMarkdown } from './src/data/presentationContent';
@@ -33,6 +34,17 @@ function presentationPlugin(): Plugin {
   };
 }
 
+// version.json рядом с сайтом: по нему старые копии приложения узнают, что вышла новая версия
+function versionPlugin(): Plugin {
+  const version = (readFileSync(path.resolve(__dirname, 'src/data/constants.ts'), 'utf8').match(/APP_VERSION = '([^']+)'/) || [])[1] || '';
+  return {
+    name: 'asosh-version',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ version }) });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
@@ -48,7 +60,7 @@ export default defineConfig(({ mode }) => {
   return {
     // На GitHub Pages приложение открывается в подпапке /asosh-timer/
     base: env.BASE_PATH || '/',
-    plugins: [react(), tailwindcss(), presentationPlugin()],
+    plugins: [react(), tailwindcss(), presentationPlugin(), versionPlugin()],
     define: {
       __CLASS_CODE_HASHES__: JSON.stringify(classCodeHashes),
       __DEV_PASSWORD_HASH__: JSON.stringify(devPassword ? sha256(devPassword) : ''),
