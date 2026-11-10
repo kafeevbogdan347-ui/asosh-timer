@@ -13,7 +13,9 @@ import {
   AgentHandlers,
 } from '../services/assistant';
 import { useOnline } from '../utils/useOnline';
-import { listenOnce, speak, stopSpeaking, voiceInputSupported, voiceLang, voiceOutputSupported } from '../utils/voice';
+import { listenOnce, voiceInputSupported, voiceLang, voiceOutputSupported } from '../utils/voice';
+import { geminiVoiceAvailable, micSupported, speakAnswer, startRecording, stopVoice, transcribe, unlockAudio, Recording } from '../services/voiceGemini';
+import { LANGS } from '../i18n';
 
 interface AssistantScreenProps {
   context: string; // класс, расписание и домашка — собирает App
@@ -117,9 +119,17 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
     }
   });
   const [listening, setListening] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const stopListening = useRef<() => void>(() => {});
+  const recording = useRef<Recording | null>(null);
+  // Запись через Gemini работает везде, где есть микрофон (и в APK); встроенное распознавание — запасной вариант
+  const geminiMic = geminiVoiceAvailable() && micSupported();
+  const showMic = geminiMic || voiceInputSupported();
+  const showVoiceToggle = geminiVoiceAvailable() || voiceOutputSupported();
+  const langName = (LANGS.find((l) => l.id === appLang)?.ru || 'Русский').toLowerCase();
   const toggleVoice = () => {
+    unlockAudio();
     const next = !voiceOn;
     setVoiceOn(next);
     try {
@@ -128,16 +138,56 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
       // без памяти голос просто не запомнится
     }
     if (!next) {
-      stopSpeaking();
+      stopVoice();
       setSpeaking(false);
     }
   };
-  const micOn = () => {
+  const finishRecording = async () => {
+    const rec = recording.current;
+    recording.current = null;
+    setListening(false);
+    if (!rec) return;
+    const wav = await rec.stop();
+    if (!wav) {
+      setError('Запись слишком короткая — нажми микрофон и говори, потом нажми ещё раз');
+      return;
+    }
+    setTranscribing(true);
+    try {
+      const text = await transcribe(wav, langName);
+      if (!text) setError('Не расслышал, попробуй ещё раз');
+      else send(text);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setTranscribing(false);
+    }
+  };
+  const micOn = async () => {
+    unlockAudio();
+    stopVoice();
+    setSpeaking(false);
+    setError('');
+    if (geminiMic) {
+      if (recording.current) {
+        finishRecording();
+        return;
+      }
+      try {
+        recording.current = await startRecording(() => finishRecording());
+        setListening(true);
+        if (vibro && navigator.vibrate) navigator.vibrate(20);
+      } catch (e) {
+        const name = (e as Error).name;
+        setError(name === 'NotAllowedError' || name === 'SecurityError' ? 'Разреши доступ к микрофону в настройках телефона' : 'Не получилось включить микрофон');
+      }
+      return;
+    }
+    // Запасной путь: встроенное распознавание браузера
     if (listening) {
       stopListening.current();
       return;
     }
-    setError('');
     setListening(true);
     stopListening.current = listenOnce(
       voiceLang(appLang),
@@ -148,7 +198,10 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
       }
     );
   };
-  useEffect(() => () => stopSpeaking(), []);
+  useEffect(() => () => {
+    stopVoice();
+    recording.current?.cancel();
+  }, []);
   const [error, setError] = useState('');
   const [used, setUsed] = useState(usedToday);
   const online = useOnline();
@@ -194,7 +247,7 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
       if (vibro && navigator.vibrate) navigator.vibrate(15);
       if (voiceOn && answer.text) {
         setSpeaking(true);
-        speak(answer.text, voiceLang(appLang), () => setSpeaking(false));
+        speakAnswer(answer.text, voiceLang(appLang), () => setSpeaking(false));
       }
     } catch (err) {
       setError((err as Error).message);
@@ -328,6 +381,7 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
         className="asoshik-input"
         onSubmit={(e) => {
           e.preventDefault();
+          unlockAudio();
           send(input);
         }}
       >
@@ -335,14 +389,14 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
         <button type="button" className="asoshik-cam" onClick={() => fileRef.current?.click()} disabled={!available || busy || left === 0} aria-label="Прикрепить фото задания" title="Фото задания">
           <Camera className="w-4 h-4" />
         </button>
-        {voiceInputSupported() && (
+        {showMic && (
           <button
             type="button"
-            className={`asoshik-cam ${listening ? 'asoshik-mic-on' : ''}`}
+            className={`asoshik-cam ${listening ? 'asoshik-mic-on' : ''} ${transcribing ? 'asoshik-mic-busy' : ''}`}
             onClick={micOn}
-            disabled={!available || busy || left === 0}
+            disabled={!available || busy || transcribing || left === 0}
             aria-label={listening ? 'Остановить запись' : 'Сказать голосом'}
-            title={listening ? 'Слушаю… нажми, чтобы остановить' : 'Сказать голосом'}
+            title={listening ? 'Слушаю… нажми, чтобы отправить' : 'Сказать голосом'}
           >
             <Mic className="w-4 h-4" />
           </button>
@@ -360,7 +414,12 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
           <Send className="w-4 h-4" />
         </button>
       </form>
-      {voiceOutputSupported() && (
+      {(listening || transcribing) && (
+        <div className="text-[11px] font-bold text-rose-300 text-center mt-1.5">
+          {listening ? '🎙 Слушаю… нажми микрофон ещё раз, чтобы отправить' : '✍️ Распознаю…'}
+        </div>
+      )}
+      {showVoiceToggle && (
         <div className="flex justify-center mt-1.5">
           <button type="button" onClick={toggleVoice} className="text-[11px] font-bold text-cyan-300 flex items-center gap-1.5 cursor-pointer">
             {voiceOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
@@ -369,7 +428,7 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
               <span
                 onClick={(e) => {
                   e.stopPropagation();
-                  stopSpeaking();
+                  stopVoice();
                   setSpeaking(false);
                 }}
                 className="ml-1 underline"

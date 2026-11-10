@@ -16,6 +16,13 @@ export interface WhatsNewRelease {
 
 export const WHATS_NEW: WhatsNewRelease[] = [
   {
+    version: 'v16.4',
+    date: '10 ноября 2026',
+    items: [
+      { icon: '🎙', title: 'Асошик слышит и говорит', text: 'Нажми микрофон, скажи вопрос и нажми ещё раз — Асошик поймёт и ответит вслух. Теперь работает и в приложении для Android.' },
+    ],
+  },
+  {
     version: 'v16.3',
     date: '10 ноября 2026',
     items: [
