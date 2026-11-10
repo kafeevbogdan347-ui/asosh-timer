@@ -115,6 +115,7 @@ const ChangePasswordForm: React.FC = () => {
   const [newPass, setNewPass] = useState('');
   const [repeat, setRepeat] = useState('');
   const [busy, setBusy] = useState(false);
+  const [show, setShow] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const submit = async (e: React.FormEvent) => {
@@ -152,12 +153,15 @@ const ChangePasswordForm: React.FC = () => {
       )}
       {open && (
         <form onSubmit={submit} className="space-y-2">
-          <input type="password" autoComplete="current-password" value={oldPass} onChange={(e) => setOldPass(e.target.value)} placeholder="Старый пароль" className="text-sm" required />
-          <input type="password" autoComplete="new-password" value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder="Новый пароль (от 8 символов)" className="text-sm" required />
-          <input type="password" autoComplete="new-password" value={repeat} onChange={(e) => setRepeat(e.target.value)} placeholder="Новый пароль ещё раз" className="text-sm" required />
+          <input type={show ? 'text' : 'password'} autoComplete="current-password" value={oldPass} onChange={(e) => setOldPass(e.target.value)} placeholder="Старый пароль" className="text-sm" required />
+          <input type={show ? 'text' : 'password'} autoComplete="new-password" value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder="Новый пароль (от 8 символов)" className="text-sm" required />
+          <input type={show ? 'text' : 'password'} autoComplete="new-password" value={repeat} onChange={(e) => setRepeat(e.target.value)} placeholder="Новый пароль ещё раз" className="text-sm" required />
           <div className="flex gap-2">
             <button type="submit" disabled={busy} className="btn text-xs py-1.5 px-3 font-bold cursor-pointer disabled:opacity-50">
               {busy ? 'Меняю…' : 'Сменить пароль'}
+            </button>
+            <button type="button" onClick={() => setShow(!show)} className="btn darkBtn text-xs py-1.5 px-3 font-bold cursor-pointer">
+              {show ? 'Скрыть' : 'Показать'}
             </button>
             <button type="button" onClick={() => { setOpen(false); setMsg(null); }} className="btn darkBtn text-xs py-1.5 px-3 font-bold cursor-pointer">
               Отмена
