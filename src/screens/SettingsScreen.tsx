@@ -9,7 +9,7 @@ import {
   ScreenId,
 } from '../types';
 import { DICT, SHORT_LESSON_MIN } from '../data/constants';
-import { Account } from '../services/accounts';
+import { Account, changePassword } from '../services/accounts';
 import { toDateKey } from '../services/classShared';
 import { playSound, doVibro } from '../utils/audio';
 import {
@@ -64,6 +64,7 @@ import {
   isHideGradesInProfile,
   setHideGradesInProfile,
   wipeConfidentialData,
+  clearCaches,
   PRIVACY_POLICY_URL,
 } from '../utils/privacy';
 import { THEMES } from '../data/themes';
@@ -106,6 +107,68 @@ type SettingsSectionId =
   | 'device'
   | 'storage'
   | 'server';
+
+// Смена пароля аккаунта: нужен старый пароль, новый вводится дважды
+const ChangePasswordForm: React.FC = () => {
+  const [open, setOpen] = useState(false);
+  const [oldPass, setOldPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [repeat, setRepeat] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (busy) return;
+    if (newPass !== repeat) {
+      setMsg({ ok: false, text: 'Новый пароль и повтор не совпадают' });
+      return;
+    }
+    if (newPass === oldPass) {
+      setMsg({ ok: false, text: 'Новый пароль совпадает со старым' });
+      return;
+    }
+    setBusy(true);
+    setMsg(null);
+    const res = await changePassword(oldPass, newPass);
+    setBusy(false);
+    if (res.ok) {
+      setOldPass('');
+      setNewPass('');
+      setRepeat('');
+      setOpen(false);
+      setMsg({ ok: true, text: '✅ Пароль изменён. На других телефонах войди заново с новым паролем.' });
+    } else {
+      setMsg({ ok: false, text: 'error' in res ? res.error : 'Не получилось сменить пароль' });
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      {!open && (
+        <button type="button" onClick={() => { setOpen(true); setMsg(null); }} className="text-[11px] font-bold text-cyan-300 underline underline-offset-2 cursor-pointer">
+          Сменить пароль
+        </button>
+      )}
+      {open && (
+        <form onSubmit={submit} className="space-y-2">
+          <input type="password" autoComplete="current-password" value={oldPass} onChange={(e) => setOldPass(e.target.value)} placeholder="Старый пароль" className="text-sm" required />
+          <input type="password" autoComplete="new-password" value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder="Новый пароль (от 8 символов)" className="text-sm" required />
+          <input type="password" autoComplete="new-password" value={repeat} onChange={(e) => setRepeat(e.target.value)} placeholder="Новый пароль ещё раз" className="text-sm" required />
+          <div className="flex gap-2">
+            <button type="submit" disabled={busy} className="btn text-xs py-1.5 px-3 font-bold cursor-pointer disabled:opacity-50">
+              {busy ? 'Меняю…' : 'Сменить пароль'}
+            </button>
+            <button type="button" onClick={() => { setOpen(false); setMsg(null); }} className="btn darkBtn text-xs py-1.5 px-3 font-bold cursor-pointer">
+              Отмена
+            </button>
+          </div>
+        </form>
+      )}
+      {msg && <div className={`text-[11px] font-bold ${msg.ok ? 'text-emerald-300' : 'text-rose-300'}`}>{msg.text}</div>}
+    </div>
+  );
+};
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   account,
@@ -246,15 +309,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   };
 
   const handleClearCacheOnly = () => {
-    if (window.confirm('Очистить временный кэш (историю поиска, временные логи)? Ваши оценки, класс и ДЗ останутся на месте.')) {
-      try {
-        localStorage.removeItem('asosh_ai_chat_v105');
-        localStorage.removeItem('asosh_search_cache');
-        localStorage.removeItem('asosh_temp_logs');
-        onShowToast('Временный кэш успешно очищен! Оценки и ДЗ сохранены.');
-      } catch {
-        onShowToast('Кэш очищен');
-      }
+    if (window.confirm('Очистить кэш: переписку с Асошиком и сохранённые копии чата, оценок и объявлений? ДЗ, класс и настройки останутся.')) {
+      const n = clearCaches();
+      onShowToast(n ? `Кэш очищен (${n}). ДЗ, класс и настройки на месте.` : 'Кэш уже пуст');
     }
   };
 
@@ -778,7 +835,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </div>
 
           {/* Аккаунт по логину и паролю */}
-          <div className="p-3 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-between gap-3">
+          <div className="p-3 bg-white/5 rounded-2xl border border-white/10 space-y-2">
+          <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <b className="text-xs text-white block">🔑 Аккаунт</b>
               <span className="text-[11px] text-white/60 block">
@@ -796,6 +854,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 Войти / создать
               </button>
             )}
+          </div>
+          {account && <ChangePasswordForm />}
           </div>
 
           {/* Быстрая смена класса */}
@@ -988,7 +1048,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             <button
               type="button"
               onClick={() => {
-                if (window.confirm('Очистить личные заметки, историю переписки и восстановить приватность по умолчанию?')) {
+                if (window.confirm('Удалить с этого телефона переписку с Асошиком, свои события календаря, портфолио и профиль чата? ДЗ и настройки останутся.')) {
                   wipeConfidentialData();
                   onShowToast('Конфиденциальные данные успешно очищены');
                 }

@@ -24,6 +24,7 @@ interface MainScreenProps {
   onOpenCalc: () => void;
   onOpenWhatsNew: () => void;
   onAskAsoshik: (text: string) => void;
+  diaryBadge?: number; // новые оценки в дневнике
   onLogoTap: () => void;
   lang: LanguageType;
   showBackpackHint: boolean;
@@ -102,6 +103,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
   onOpenCalc,
   onOpenWhatsNew,
   onAskAsoshik,
+  diaryBadge = 0,
   onLogoTap,
   lang,
   showBackpackHint,
@@ -316,8 +318,9 @@ export const MainScreen: React.FC<MainScreenProps> = ({
                 key={item.label}
                 type="button"
                 onClick={() => (item.screen === 'calc' ? onOpenCalc() : item.screen === 'whatsnew' ? onOpenWhatsNew() : onNavigate(item.screen))}
-                className="flex flex-col items-center justify-center gap-1 p-3 min-h-[72px] rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-400/40 active:scale-95 transition-all cursor-pointer"
+                className="relative flex flex-col items-center justify-center gap-1 p-3 min-h-[72px] rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-400/40 active:scale-95 transition-all cursor-pointer"
               >
+                {item.screen === 'diary' && diaryBadge > 0 && <span className="tile-badge">{diaryBadge}</span>}
                 <span className="text-xl">{item.icon}</span>
                 <span className="text-[11px] font-bold text-white/90 text-center leading-tight">{t(item.label, lang)}</span>
               </button>

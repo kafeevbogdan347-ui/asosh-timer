@@ -26,13 +26,16 @@ export function isPinEnabled(): boolean {
   return localStorage.getItem(PIN_ENABLED_KEY) === 'true' && !!getStoredPin();
 }
 
-export function savePin(pin: string): boolean {
-  if (/^\d{4}$/.test(pin)) {
-    localStorage.setItem(PIN_STORAGE_KEY, pin);
-    localStorage.setItem(PIN_ENABLED_KEY, 'true');
-    return true;
-  }
-  return false;
+// PIN хранится только как отпечаток: «h1:<sha256 от соли и PIN>». Старые записи с открытым PIN
+// переводятся в отпечаток при первом верном вводе.
+const PIN_SALT = 'asosh-pin-v1:';
+const pinHash = async (pin: string) => `h1:${await sha256Hex(PIN_SALT + pin)}`;
+
+export async function savePin(pin: string): Promise<boolean> {
+  if (!/^\d{4}$/.test(pin)) return false;
+  localStorage.setItem(PIN_STORAGE_KEY, await pinHash(pin));
+  localStorage.setItem(PIN_ENABLED_KEY, 'true');
+  return true;
 }
 
 export function disablePin(): void {
@@ -40,10 +43,40 @@ export function disablePin(): void {
   localStorage.setItem(PIN_ENABLED_KEY, 'false');
 }
 
-export function verifyPin(enteredPin: string): boolean {
+export async function verifyPin(enteredPin: string): Promise<boolean> {
   const current = getStoredPin();
   if (!current) return true;
-  return current === enteredPin;
+  if (current.startsWith('h1:')) return current === (await pinHash(enteredPin));
+  // Старый формат (открытый текст): проверяем и сразу заменяем отпечатком
+  if (current !== enteredPin) return false;
+  localStorage.setItem(PIN_STORAGE_KEY, await pinHash(enteredPin));
+  return true;
+}
+
+// Блокировка после трёх неверных PIN: хранится на устройстве, перезапуск её не сбрасывает
+const PIN_FAILS_KEY = 'asosh_pin_fails';
+const PIN_LOCK_UNTIL_KEY = 'asosh_pin_lock_until';
+
+export function pinLockRemainingSec(): number {
+  const until = Number(localStorage.getItem(PIN_LOCK_UNTIL_KEY) || '0');
+  return until > Date.now() ? Math.ceil((until - Date.now()) / 1000) : 0;
+}
+
+// Возвращает число неверных попыток подряд; на третьей включает блокировку на 30 секунд
+export function recordPinFail(): number {
+  const fails = Number(localStorage.getItem(PIN_FAILS_KEY) || '0') + 1;
+  if (fails >= 3) {
+    localStorage.setItem(PIN_LOCK_UNTIL_KEY, String(Date.now() + 30_000));
+    localStorage.setItem(PIN_FAILS_KEY, '0');
+  } else {
+    localStorage.setItem(PIN_FAILS_KEY, String(fails));
+  }
+  return fails;
+}
+
+export function resetPinFails(): void {
+  localStorage.removeItem(PIN_FAILS_KEY);
+  localStorage.removeItem(PIN_LOCK_UNTIL_KEY);
 }
 
 // ==========================================
@@ -138,18 +171,36 @@ export function resetFailedClassCodeAttempts(): void {
 // 4. ЭКСТРЕННАЯ ОЧИСТКА КОНФИДЕНЦИАЛЬНЫХ ДАННЫХ
 // ==========================================
 
-export function wipeConfidentialData(): void {
-  // Очистка переписки, персональных заметок и профиля
-  const keysToClear = [
-    'asosh_chat_history',
-    'asosh_profile_v1',
-    'studentName',
-    'parentName',
-    'asosh_hw_pinned',
-    'asosh_custom_notes',
-  ];
+// Ключи с данными, которые приложение само восстановит из сети или которые не жалко потерять:
+// переписка с Асошиком, сохранённые копии чатов, оценок, замен, ДЗ класса и объявлений
+const isCacheKey = (key: string) =>
+  key === 'asosh_assistant_history' ||
+  key === 'asosh_board_cache' ||
+  key.startsWith('asosh_chat_cache_') ||
+  key.startsWith('asosh_grades_cache_') ||
+  key.startsWith('asosh_asosh_class_');
 
-  keysToClear.forEach((key) => localStorage.removeItem(key));
+function removeKeys(match: (key: string) => boolean): number {
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && match(k)) keys.push(k);
+  }
+  keys.forEach((k) => localStorage.removeItem(k));
+  return keys.length;
+}
+
+// «Очистить кэш»: ДЗ, оценки в калькуляторе, класс и настройки остаются
+export function clearCaches(): number {
+  return removeKeys(isCacheKey);
+}
+
+// «Очистить личные заметки»: кэш + личные записи (свои события календаря, портфолио, профиль чата)
+export function wipeConfidentialData(): void {
+  removeKeys(isCacheKey);
+  ['asosh_calendar_events', 'asosh_portfolio_items', 'asosh_chat_username', 'asosh_chat_avatar', 'asosh_user_profile_v1'].forEach((key) =>
+    localStorage.removeItem(key)
+  );
 }
 
 // ==========================================

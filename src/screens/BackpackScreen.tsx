@@ -6,6 +6,7 @@ import { CheckCircle2, Circle, Plus, Trash2, RotateCcw } from 'lucide-react';
 
 interface BackpackScreenProps {
   tomorrowLessons: [string, string][];
+  forDate: string; // на какой день собираем (YYYY-MM-DD): на новый день галочки сбрасываются
   lang: LanguageType;
   soundProfile: SoundProfileType;
   vibro: boolean;
@@ -14,6 +15,7 @@ interface BackpackScreenProps {
 
 export const BackpackScreen: React.FC<BackpackScreenProps> = ({
   tomorrowLessons,
+  forDate,
   soundProfile,
   vibro,
   onUnlockAchievement,
@@ -25,8 +27,11 @@ export const BackpackScreen: React.FC<BackpackScreenProps> = ({
   useEffect(() => {
     const saved = localStorage.getItem('asosh_backpack_items_v11') || localStorage.getItem('asosh_backpack_items_v105');
     const checkedMap: Record<string, boolean> = {};
+    // Вчерашние галочки к завтрашнему портфелю не относятся
+    const sameDay = localStorage.getItem('asosh_backpack_date') === forDate;
+    localStorage.setItem('asosh_backpack_date', forDate);
 
-    if (saved) {
+    if (saved && sameDay) {
       try {
         const parsed: BackpackItem[] = JSON.parse(saved);
         parsed.forEach((it) => {
@@ -40,7 +45,10 @@ export const BackpackScreen: React.FC<BackpackScreenProps> = ({
     const newItems: BackpackItem[] = [];
 
     // 1. Auto items from tomorrow's lessons
-    const uniqueSubs: string[] = Array.from(new Set(tomorrowLessons.map((l) => l[0].trim()))).filter((s): s is string => Boolean(s) && s !== '—');
+    // Уроки, на которые учебник не нужен
+    const NO_BOOK = ['разговор о важном', 'россия — мои горизонты', 'классный час'];
+    const names: string[] = tomorrowLessons.map((l) => l[0].replace('🔄 ', '').trim());
+    const uniqueSubs = [...new Set(names)].filter((n) => n && n !== '—' && !NO_BOOK.includes(n.toLowerCase()));
     uniqueSubs.forEach((sub: string) => {
       let itemName = `Учебник и тетрадь: ${sub}`;
       const lower = sub.toLowerCase();
@@ -50,9 +58,15 @@ export const BackpackScreen: React.FC<BackpackScreenProps> = ({
         itemName = `📐 Линейка, циркуль, тетрадь: ${sub}`;
       } else if (lower.includes('информ')) {
         itemName = `💻 Тетрадь/флешка: ${sub}`;
-      } else if (lower.includes('англ') || lower.includes('нем') || lower.includes('башк') || lower.includes('яз')) {
-        itemName = `📖 Учебник и словарь: ${sub}`;
-      } else if (lower.includes('хим') || lower.includes('физ')) {
+      } else if (lower === 'изо' || lower.includes('изобраз')) {
+        itemName = `🎨 Альбом, карандаши и краски: ${sub}`;
+      } else if (lower.includes('технол') || lower === 'труд') {
+        itemName = `🛠 Материалы и фартук: ${sub}`;
+      } else if (lower.includes('музык')) {
+        itemName = `🎵 Тетрадь: ${sub}`;
+      } else if (lower.includes('иностр') || lower.includes('англ') || lower.includes('нем')) {
+        itemName = `📖 Учебник, тетрадь и словарь: ${sub}`;
+      } else if (lower.includes('хим') || lower.includes('физик')) {
         itemName = `🧪 Учебник, тетрадь и калькулятор: ${sub}`;
       }
 
@@ -81,7 +95,7 @@ export const BackpackScreen: React.FC<BackpackScreenProps> = ({
         parsed
           .filter((it) => it.isCustom)
           .forEach((it) => {
-            newItems.push(it);
+            newItems.push(sameDay ? it : { ...it, checked: false });
           });
       } catch {
         // ignore
@@ -91,7 +105,7 @@ export const BackpackScreen: React.FC<BackpackScreenProps> = ({
     setItems(newItems);
     // App пересоздаёт массив уроков каждую секунду, поэтому зависим от содержимого, а не от ссылки
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(tomorrowLessons)]);
+  }, [JSON.stringify(tomorrowLessons), forDate]);
 
   const saveBackpack = (updated: BackpackItem[]) => {
     setItems(updated);

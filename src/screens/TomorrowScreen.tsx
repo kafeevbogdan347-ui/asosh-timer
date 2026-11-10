@@ -1,3 +1,5 @@
+import { LessonRows } from '../components/LessonRows';
+import { isWindow } from '../utils/lessonStatus';
 import React from 'react';
 import { LanguageType, ScreenId } from '../types';
 import { DICT } from '../data/constants';
@@ -8,6 +10,7 @@ interface TomorrowScreenProps {
   bells: [string, string][];
   lang: LanguageType;
   onNavigate: (screen: ScreenId) => void;
+  shift: string;
 }
 
 export const TomorrowScreen: React.FC<TomorrowScreenProps> = ({
@@ -16,8 +19,10 @@ export const TomorrowScreen: React.FC<TomorrowScreenProps> = ({
   bells,
   lang,
   onNavigate,
+  shift,
 }) => {
   const d = DICT[lang] || DICT.ru;
+  const hasLessons = lessons.some((l) => !isWindow(l));
 
   return (
     <div className="card screen-enter">
@@ -28,7 +33,7 @@ export const TomorrowScreen: React.FC<TomorrowScreenProps> = ({
         </span>
       </div>
 
-      {lessons.length > 0 && (
+      {hasLessons && (
         <button
           type="button"
           className="btn green text-sm py-2.5 mb-3 justify-center"
@@ -40,22 +45,8 @@ export const TomorrowScreen: React.FC<TomorrowScreenProps> = ({
       )}
 
       <div className="space-y-2 mt-2">
-        {lessons.length > 0 ? (
-          lessons.map((lesson, idx) => {
-            const bell = bells[idx];
-            return (
-              <div key={idx} className="lesson">
-                <div className="num">{idx + 1}</div>
-                <div>
-                  <b className="text-base text-white">{lesson[0]}</b>
-                  <div className="text-xs text-white/70 mt-0.5">
-                    {bell ? `${bell[0]} – ${bell[1]}` : '—'} •{' '}
-                    {lesson[1] ? `каб. ${lesson[1]}` : 'кабинет не указан'}
-                  </div>
-                </div>
-              </div>
-            );
-          })
+        {hasLessons ? (
+          <LessonRows lessons={lessons} bells={bells} shift={shift} />
         ) : (
           <div className="text-center py-8 bg-white/5 rounded-2xl border border-white/10 p-4">
             <div className="text-3xl mb-2">🎉</div>

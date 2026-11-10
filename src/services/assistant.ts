@@ -81,7 +81,7 @@ const AGENT_TOOLS = [
       type: 'OBJECT',
       properties: {
         day: { type: 'STRING', description: '«Сегодня», «Завтра» или день недели, например «Среда»' },
-        lesson_number: { type: 'INTEGER', description: 'Номер урока, 1–8' },
+        lesson_number: { type: 'INTEGER', description: 'Номер урока как в расписании из данных (во 2-й смене бывает нулевой урок — 0)' },
         subject: { type: 'STRING', description: 'Новый предмет или «Урока не будет»' },
         room: { type: 'STRING', description: 'Кабинет (необязательно)' },
         scope: { type: 'STRING', description: '"me" или "class"' },

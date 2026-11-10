@@ -1,5 +1,5 @@
 // Версия приложения: одна на всё приложение
-export const APP_VERSION = 'v16.0';
+export const APP_VERSION = 'v16.1';
 
 import { FormulaCard, ChemicalElement } from '../types';
 
@@ -92,7 +92,7 @@ export const SCHOOL_QUARTERS = [
     nameKy: 'I Чейрек',
     nameBe: 'I Чвэрць',
     nameHy: 'I Քառորդ',
-    nameAz: 'I Rübr',
+    nameAz: 'I Rüb',
     start: '2026-09-01',
     end: '2026-10-30',
     breakName: 'Осенние каникулы',
@@ -115,7 +115,7 @@ export const SCHOOL_QUARTERS = [
     nameKy: 'II Чейрек',
     nameBe: 'II Чвэрць',
     nameHy: 'II Քառորդ',
-    nameAz: 'II Rübr',
+    nameAz: 'II Rüb',
     start: '2026-11-09',
     end: '2026-12-30',
     breakName: 'Зимние каникулы',
@@ -138,7 +138,7 @@ export const SCHOOL_QUARTERS = [
     nameKy: 'III Чейрек',
     nameBe: 'III Чвэрць',
     nameHy: 'III Քառորդ',
-    nameAz: 'III Rübr',
+    nameAz: 'III Rüb',
     start: '2027-01-11',
     end: '2027-03-20',
     breakName: 'Весенние каникулы',
@@ -161,7 +161,7 @@ export const SCHOOL_QUARTERS = [
     nameKy: 'IV Чейрек',
     nameBe: 'IV Чвэрць',
     nameHy: 'IV Քառորդ',
-    nameAz: 'IV Rübr',
+    nameAz: 'IV Rüb',
     start: '2027-03-29',
     end: '2027-05-28',
     breakName: 'Летние каникулы',

@@ -18,6 +18,8 @@ import {
   linkWithCredential,
   unlink,
   EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
   User,
 } from 'firebase/auth';
 import { ref, get, update, remove, onValue } from 'firebase/database';
@@ -355,8 +357,53 @@ export async function loginAccount(login: string, password: string): Promise<{ o
   }
 }
 
+// Сохранённые копии оценок не должны оставаться на телефоне после выхода
+function clearGradeCaches() {
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && (k.startsWith('asosh_grades_cache_') || k.startsWith('asosh_grades_seen_'))) keys.push(k);
+  }
+  keys.forEach((k) => localStorage.removeItem(k));
+}
+
+// Аккаунт записан на телефоне, а вход в базе потерян (перенос по QR, очистка данных браузера):
+// тогда оценки молча не читаются. Возвращает false — нужно войти заново.
+export async function verifyAccountSession(account: Account): Promise<boolean> {
+  const ctx = authOrNull();
+  if (!ctx) return true; // база не настроена — проверять нечем
+  try {
+    await ctx.auth.authStateReady();
+  } catch {
+    return true;
+  }
+  if (ctx.auth.currentUser?.uid === account.uid) return true;
+  saveLocalAccount(null);
+  if (account.role === 'teacher') localStorage.removeItem('asosh_teacher');
+  clearGradeCaches();
+  return false;
+}
+
+export async function changePassword(oldPassword: string, newPassword: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const err = passwordError(newPassword);
+  if (err) return { ok: false, error: err };
+  const ctx = authOrNull();
+  const user = ctx?.auth.currentUser;
+  if (!ctx || !user?.email) return { ok: false, error: 'Сначала войди в аккаунт' };
+  try {
+    await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, oldPassword));
+    await updatePassword(user, newPassword);
+    return { ok: true };
+  } catch (e) {
+    const c = errCode(e);
+    if (c.includes('invalid-credential') || c.includes('wrong-password')) return { ok: false, error: 'Старый пароль неверный' };
+    return { ok: false, error: authMessage(e) };
+  }
+}
+
 export async function logoutAccount(): Promise<void> {
   saveLocalAccount(null);
+  clearGradeCaches();
   localStorage.removeItem('asosh_teacher');
   const ctx = authOrNull();
   if (ctx) await signOut(ctx.auth).catch(() => {});

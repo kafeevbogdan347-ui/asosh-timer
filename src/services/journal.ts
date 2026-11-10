@@ -41,12 +41,14 @@ export function subscribeClassJournal(cls: string, cb: (grades: Grade[]) => void
 }
 
 // Оценки одного ученика (сам ученик или его родитель). Последнее полученное храним для офлайна
-export function subscribeStudentGrades(cls: string, sid: string, cb: (grades: Grade[]) => void): () => void {
+// onDenied — доступ закрыт (ученик отключил родителя): сохранённую копию стираем
+// cb получает fromServer=false для сохранённой копии и true для свежих данных из базы
+export function subscribeStudentGrades(cls: string, sid: string, cb: (grades: Grade[], fromServer: boolean) => void, onDenied?: () => void): () => void {
   const cacheKey = `asosh_grades_cache_${sid}`;
   try {
-    cb(JSON.parse(localStorage.getItem(cacheKey) || '[]'));
+    cb(JSON.parse(localStorage.getItem(cacheKey) || '[]'), false);
   } catch {
-    cb([]);
+    cb([], false);
   }
   const { db } = initFirebase();
   if (!db) return () => {};
@@ -59,9 +61,18 @@ export function subscribeStudentGrades(cls: string, sid: string, cb: (grades: Gr
       } catch {
         // нет места
       }
-      cb(list);
+      cb(list, true);
     },
-    () => {}
+    (err) => {
+      if (!/permission/i.test(String((err as { code?: string }).code || err))) return;
+      try {
+        localStorage.removeItem(cacheKey);
+      } catch {
+        // не страшно
+      }
+      cb([], true);
+      onDenied?.();
+    }
   );
 }
 
@@ -115,3 +126,31 @@ export function bySubject(grades: Grade[]): { sub: string; grades: Grade[]; avg:
 
 export const markColor = (v: Mark) =>
   v === 5 ? '#22c55e' : v === 4 ? '#38bdf8' : v === 3 ? '#f59e0b' : v === 2 ? '#ef4444' : '#a1a1aa';
+
+// ---------- Новые оценки: что уже видели на этом телефоне ----------
+const seenKey = (sid: string) => `asosh_grades_seen_${sid}`;
+
+// Оценки, поставленные после последнего просмотра дневника.
+// На новом телефоне (отметки ещё нет) всё считается просмотренным.
+export function newGrades(sid: string, grades: Grade[]): Grade[] {
+  try {
+    const raw = localStorage.getItem(seenKey(sid));
+    if (raw === null) {
+      markGradesSeen(sid, grades);
+      return [];
+    }
+    const seen = Number(raw) || 0;
+    return grades.filter((g) => g.t > seen);
+  } catch {
+    return [];
+  }
+}
+
+export function markGradesSeen(sid: string, grades: Grade[]): void {
+  try {
+    const prev = Number(localStorage.getItem(seenKey(sid)) || '0') || 0;
+    localStorage.setItem(seenKey(sid), String(Math.max(prev, 1, ...grades.map((g) => g.t))));
+  } catch {
+    // нет места — отметки просто покажутся ещё раз
+  }
+}
