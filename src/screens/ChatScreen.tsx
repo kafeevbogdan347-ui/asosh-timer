@@ -426,6 +426,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 <div
                   onClick={() => handleCopyText(msg.content, msg.id)}
                   title="Нажмите, чтобы скопировать текст"
+                  data-no-tr
                   className={`sensitive-data max-w-[85%] sm:max-w-[75%] px-3.5 py-2 rounded-2xl text-xs sm:text-sm break-words shadow-md cursor-pointer transition-all active:scale-[0.98] ${
                     isMe
                       ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-br-xs border border-cyan-400/40'
