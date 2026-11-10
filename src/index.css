@@ -1263,3 +1263,7 @@ body.ui-light .lesson-window { border-color: rgba(15, 23, 42, 0.25); }
   position: absolute; top: 6px; right: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
   background: #ef4444; color: #fff; font-size: 10px; font-weight: 900; display: grid; place-items: center;
 }
+
+/* Голос Асошика: кнопка микрофона, пока идёт запись */
+.asoshik-mic-on { background: rgba(239, 68, 68, 0.25) !important; border-color: #f87171 !important; color: #fecaca !important; animation: asoshik-mic 1s ease-in-out infinite; }
+@keyframes asoshik-mic { 0%, 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.5); } 50% { box-shadow: 0 0 0 6px rgba(248, 113, 113, 0); } }

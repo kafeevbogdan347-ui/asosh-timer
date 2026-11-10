@@ -1855,6 +1855,7 @@ export default function App() {
           <AssistantScreen
             context={buildAssistantContext()}
             vibro={settings.vibro}
+            appLang={lang}
             autoPrompt={assistantPrompt}
             onAutoPromptUsed={() => setAssistantPrompt(null)}
             agent={account?.role === 'parent' ? undefined : makeAgentHandlers}
