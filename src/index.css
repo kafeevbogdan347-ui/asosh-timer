@@ -1267,3 +1267,4 @@ body.ui-light .lesson-window { border-color: rgba(15, 23, 42, 0.25); }
 /* Голос Асошика: кнопка микрофона, пока идёт запись */
 .asoshik-mic-on { background: rgba(239, 68, 68, 0.25) !important; border-color: #f87171 !important; color: #fecaca !important; animation: asoshik-mic 1s ease-in-out infinite; }
 @keyframes asoshik-mic { 0%, 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.5); } 50% { box-shadow: 0 0 0 6px rgba(248, 113, 113, 0); } }
+.asoshik-mic-busy { opacity: 0.6; animation: asoshik-mic 0.6s ease-in-out infinite; }
