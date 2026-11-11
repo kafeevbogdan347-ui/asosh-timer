@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { ref, set, get, update, remove } from 'firebase/database';
+import { ref, set, get, update, remove, serverTimestamp } from 'firebase/database';
 
 const sha = (s) => createHash('sha256').update(s).digest('hex');
 const env = await initializeTestEnvironment({
@@ -92,6 +92,37 @@ await check('онлайн: больше недели секунд нельзя',
 await check('онлайн: время из будущего нельзя', assertFails(set(ref(stu1, `asosh_online/${cls}/stu1`), card({ last: Date.now() + 3600000 }))));
 await check('онлайн: длинное «о себе» отклоняется', assertFails(set(ref(stu1, `asosh_online/${cls}/stu1`), card({ bio: 'x'.repeat(201) }))));
 await check('онлайн: выключаю — запись удаляется', assertSucceeds(remove(ref(stu1, `asosh_online/${cls}/stu1`))));
+
+// --- Защита от спама: лимиты на сервере ---
+const msg = (extra = {}) => ({ username: 'ivan_p', content: 'Привет', created_at: '2026-11-11T08:00:00Z', ...extra });
+const sendChat = (d, uid, key) => update(ref(d), { [`asosh_timer/${key}`]: msg(), [`asosh_rate/${uid}/chat`]: serverTimestamp() });
+await check('чат: сообщение с отметкой времени проходит', assertSucceeds(sendChat(stu1, 'stu1', 'm1')));
+await check('чат: второе сразу же — отклоняется', assertFails(sendChat(stu1, 'stu1', 'm2')));
+await check('чат: без отметки времени не пишется', assertFails(set(ref(stu2, 'asosh_timer/m3'), msg())));
+await check('чат: чужую отметку не поставить', assertFails(update(ref(stu2), { 'asosh_timer/m4': msg(), 'asosh_rate/stu1/chat': serverTimestamp() })));
+await check('чат: время подделать нельзя', assertFails(update(ref(stu2), { 'asosh_timer/m5': msg(), 'asosh_rate/stu2/chat': 1 })));
+await check('чат: другой ученик пишет', assertSucceeds(sendChat(stu2, 'stu2', 'm6')));
+await check('чат: чужое сообщение не перезаписать', assertFails(set(ref(stu1, 'asosh_timer/m6'), msg({ content: 'взлом' }))));
+await check('чат: неизвестный вид лимита нельзя', assertFails(set(ref(stu1, 'asosh_rate/stu1/hack'), serverTimestamp())));
+const hw = { sub: 'Математика', text: '№ 125', uid: 'stu1', created_at: 1 };
+const share = (d, uid, key) => update(ref(d), { [`asosh_class/${cls}/homework/${key}`]: { ...hw, uid }, [`asosh_rate/${uid}/share`]: serverTimestamp() });
+await check('домашка: делюсь с отметкой', assertSucceeds(share(stu1, 'stu1', 'h1')));
+await check('домашка: вторая сразу же — отклоняется', assertFails(share(stu1, 'stu1', 'h2')));
+await check('домашка: без отметки не пишется', assertFails(set(ref(stu2, `asosh_class/${cls}/homework/h3`), { ...hw, uid: 'stu2' })));
+await check('домашка: удаляю свою', assertSucceeds(remove(ref(stu1, `asosh_class/${cls}/homework/h1`))));
+
+// --- Рубильник ---
+await check('рубильник: ученик не включает и не выключает', assertFails(set(ref(stu1, 'asosh_config/lockdown'), false)));
+await check('рубильник: учитель тоже нет', assertFails(set(ref(teacher, 'asosh_config/lockdown'), true)));
+await env.withSecurityRulesDisabled(async (c) => { await set(ref(c.database(), 'asosh_config/lockdown'), true); });
+await check('рубильник: состояние видно приложению', assertSucceeds(get(ref(stu1, 'asosh_config/lockdown'))));
+await check('рубильник: чат остановлен', assertFails(sendChat(stu2, 'stu2', 'm7')));
+await check('рубильник: оценки остановлены', assertFails(set(ref(teacher, `asosh_journal/${cls}/stu1/g8`), grade(5))));
+await check('рубильник: профиль не меняется', assertFails(set(ref(stu1, 'asosh_users/stu1'), user('student', { cls: '5А' }))));
+await check('рубильник: онлайн не пишется', assertFails(set(ref(stu1, `asosh_online/${cls}/stu1`), card())));
+await check('рубильник: чтение работает', assertSucceeds(get(ref(stu1, 'asosh_timer'))));
+await env.withSecurityRulesDisabled(async (c) => { await remove(ref(c.database(), 'asosh_config/lockdown')); });
+await check('рубильник снят: онлайн снова пишется', assertSucceeds(set(ref(stu1, `asosh_online/${cls}/stu1`), card())));
 
 for (const [s, n] of results) console.log(s, n);
 const bad = results.filter(([s]) => s === '❌').length;

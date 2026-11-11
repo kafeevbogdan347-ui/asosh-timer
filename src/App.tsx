@@ -83,6 +83,7 @@ import { UpdateRequired } from './components/UpdateRequired';
 import { HolidayLayer } from './components/HolidayLayer';
 import { OnlineScreen } from './screens/OnlineScreen';
 import { startPresence } from './services/online';
+import { subscribeLockdown } from './services/lockdown';
 import { setAutoLanguage, tr as autoTr } from './i18n/auto';
 import { subscribeStudentGrades, newGrades } from './services/journal';
 import { ProfileScreen } from './screens/ProfileScreen';
@@ -128,6 +129,10 @@ export default function App() {
   const [shift, setShift] = useState<string>(() => accountVault.shift);
   const [subGroup, setSubGroup] = useState<number>(() => accountVault.subGroup);
   const [lang, setLang] = useState<LanguageType>(() => accountVault.lang);
+  // Защитный режим: администратор остановил запись на сервере
+  const [lockdown, setLockdown] = useState(false);
+  useEffect(() => (registered ? subscribeLockdown(setLockdown) : undefined), [registered]);
+
   // Онлайн класса: считаем время в приложении и (если ученик разрешил) отмечаемся «в сети»
   useEffect(() => {
     if (!cls || isGuest || isTeacher) return;
@@ -1552,6 +1557,12 @@ export default function App() {
       {/* 4-digit PIN Authentication Modal */}
       {/* Проверка «Я не робот» перед публикацией для класса */}
       <HumanCheckHost />
+
+      {lockdown && (
+        <div className="lockdown-banner" role="alert">
+          🛡 Защитный режим: отправка сообщений, домашки и оценок временно остановлена. Расписание и таймер работают.
+        </div>
+      )}
 
       {/* Праздники: снег, салют, лепестки — поверх приложения, не мешают нажатиям */}
       <HolidayLayer

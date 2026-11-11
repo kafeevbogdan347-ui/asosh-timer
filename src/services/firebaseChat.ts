@@ -5,6 +5,7 @@ import {
   connectDatabaseEmulator,
   ref,
   push,
+  update,
   onValue,
   query,
   limitToLast,
@@ -128,6 +129,9 @@ export async function ensureSignedIn(): Promise<boolean> {
 /**
  * Send message to Firebase Realtime Database
  */
+const CHAT_COOLDOWN_MS = 2100;
+let lastChatSentAt = 0;
+
 export async function sendFirebaseMessage(
   username: string,
   content: string,
@@ -147,6 +151,11 @@ export async function sendFirebaseMessage(
   if (!trimmedContent) {
     return { success: false, error: 'Сообщение не может быть пустым' };
   }
+  // Защита от флуда: сервер принимает не чаще одного сообщения в 2 секунды — не шлём лишнего
+  const wait = CHAT_COOLDOWN_MS - (Date.now() - lastChatSentAt);
+  if (wait > 0) {
+    return { success: false, error: `Не так быстро — подожди ${Math.ceil(wait / 1000)} с` };
+  }
 
   let firebaseSuccess = false;
   let createdId = '';
@@ -156,23 +165,32 @@ export async function sendFirebaseMessage(
     const { db } = initFirebase();
     if (db && (await ensureSignedIn())) {
       const path = getChatRoomPath(room);
-      const chatRef = ref(db, path);
-      const newMsgRef = await push(chatRef, {
-        username: trimmedUser,
-        userId: finalUserId,
-        avatar: finalAvatar,
-        content: trimmedContent,
-        room: room,
-        isIncognito,
-        isSelfDestruct,
-        created_at: new Date().toISOString(),
-        timestamp: Date.now(),
+      const key = push(ref(db, path)).key || '';
+      const uid = getAuth(getApp()).currentUser?.uid || '';
+      // Сообщение и отметка «когда писал» уходят одной записью: сервер проверяет частоту сам
+      await update(ref(db), {
+        [`${path}/${key}`]: {
+          username: trimmedUser,
+          userId: finalUserId,
+          avatar: finalAvatar,
+          content: trimmedContent,
+          room: room,
+          isIncognito,
+          isSelfDestruct,
+          created_at: new Date().toISOString(),
+          timestamp: Date.now(),
+        },
+        [`asosh_rate/${uid}/chat`]: serverTimestamp(),
       });
+      lastChatSentAt = Date.now();
       firebaseSuccess = true;
-      if (!createdId) createdId = newMsgRef.key || '';
+      if (!createdId) createdId = key;
     }
   } catch (err: any) {
     console.warn('Firebase chat send error:', err?.message);
+    if (/permission/i.test(String(err?.code || err?.message))) {
+      return { success: false, error: 'Сервер не принял сообщение: слишком часто или включён защитный режим. Попробуй позже.' };
+    }
   }
 
   if (firebaseSuccess) {
