@@ -81,6 +81,8 @@ import { AccountForms } from './components/AccountForms';
 import { DiaryScreen } from './screens/DiaryScreen';
 import { UpdateRequired } from './components/UpdateRequired';
 import { HolidayLayer } from './components/HolidayLayer';
+import { OnlineScreen } from './screens/OnlineScreen';
+import { startPresence } from './services/online';
 import { setAutoLanguage, tr as autoTr } from './i18n/auto';
 import { subscribeStudentGrades, newGrades } from './services/journal';
 import { ProfileScreen } from './screens/ProfileScreen';
@@ -126,6 +128,12 @@ export default function App() {
   const [shift, setShift] = useState<string>(() => accountVault.shift);
   const [subGroup, setSubGroup] = useState<number>(() => accountVault.subGroup);
   const [lang, setLang] = useState<LanguageType>(() => accountVault.lang);
+  // Онлайн класса: считаем время в приложении и (если ученик разрешил) отмечаемся «в сети»
+  useEffect(() => {
+    if (!cls || isGuest || isTeacher) return;
+    return startPresence(cls);
+  }, [cls, isGuest, isTeacher]);
+
   // Только для автотестов (сборка с VITE_E2E=1): переход на любой экран
   useEffect(() => {
     if (import.meta.env.VITE_E2E) (window as unknown as { __asoshGo?: (s: ScreenId) => void }).__asoshGo = setCurrentScreen;
@@ -1867,6 +1875,8 @@ export default function App() {
             <AccountForms onDone={applyAccount} />
           </div>
         )}
+
+        {currentScreen === 'online' && <OnlineScreen cls={cls} isGuest={isGuest || isTeacher} onShowToast={showToast} />}
 
         {currentScreen === 'assistant' && (
           <AssistantScreen

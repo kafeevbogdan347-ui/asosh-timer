@@ -61,6 +61,7 @@ const QUICK_GROUPS: { title: UIKey; items: { icon: string; label: UIKey; screen:
     items: [
       { icon: '📒', label: 'diary', screen: 'diary' },
       { icon: '💬', label: 'chat', screen: 'chat' },
+      { icon: '🏆', label: 'online', screen: 'online' },
       { icon: '👤', label: 'profile', screen: 'profile' },
       { icon: '🏅', label: 'portfolio', screen: 'portfolio' },
       { icon: '🏆', label: 'achievements', screen: 'achievements' },
