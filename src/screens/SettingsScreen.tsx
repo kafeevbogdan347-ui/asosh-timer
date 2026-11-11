@@ -72,6 +72,7 @@ import { THEMES } from '../data/themes';
 import { useOnline } from '../utils/useOnline';
 import QRCode from 'qrcode';
 import { createTransfer } from '../services/transfer';
+import { isOptedIn, setOptIn } from '../services/online';
 import { isNativeApp, requestNotificationPermission } from '../services/bellNotifications';
 
 interface SettingsScreenProps {
@@ -97,6 +98,7 @@ interface SettingsScreenProps {
   account?: Account | null;
   onOpenAccount?: () => void;
   onLogoutAccount?: () => void;
+  cls?: string;
 }
 
 type SettingsSectionId =
@@ -191,6 +193,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onImportData,
   onResetAll,
   onShowToast,
+  cls,
   onNavigate,
   onOpenDev,
   onOpenPinSetup,
@@ -199,6 +202,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onToggleMaintenanceMode,
   onOpenMaintenanceScreen,
 }) => {
+  const [onlineOn, setOnlineOn] = useState(isOptedIn);
   const [transferQr, setTransferQr] = useState('');
   const [transferBusy, setTransferBusy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -966,7 +970,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
           <p className="text-xs text-white/80 leading-relaxed">
             Заметки, личные ДЗ и оценки из калькулятора хранятся только на этом устройстве. В интернет уходят сообщения чата, то, чем ты делишься с классом (ДЗ и замены), вопросы и фото Асошику (в Google Gemini вместе с классом, расписанием и домашкой — без имени), анонимная статистика устройства, а если заведёшь аккаунт — логин, «Имя Ф.», класс и оценки от учителей (их видишь ты, учителя и подключённые тобой родители).{' '}
-            <span>Если включишь «Онлайн класса», одноклассники увидят твой ник, эмодзи-аватар, статус, «о себе», время в приложении за неделю и в сети ли ты.</span>{' '}
+            <span>В «Онлайн класса» одноклассники видят твой ник, эмодзи-аватар, статус, «о себе», время в приложении за неделю и в сети ли ты — это можно выключить ниже.</span>{' '}
             <a
               href={PRIVACY_POLICY_URL}
               target="_blank"
@@ -976,6 +980,25 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               Политика конфиденциальности
             </a>
           </p>
+
+          <label className="flex items-center justify-between gap-3 text-xs font-bold text-white cursor-pointer select-none p-2.5 rounded-xl bg-white/5 border border-white/10">
+            <div>
+              <div>🏆 Показывать меня в рейтинге «Онлайн класса»</div>
+              <div className="text-[11px] text-white/60 font-normal">Включено по умолчанию. Выключишь — одноклассники перестанут видеть тебя в рейтинге.</div>
+            </div>
+            <input
+              type="checkbox"
+              checked={onlineOn}
+              onChange={async (e) => {
+                const next = e.target.checked;
+                setOnlineOn(next);
+                const ok = await setOptIn(cls || '', next);
+                if (!ok) onShowToast(next ? 'Включено — появишься в рейтинге, когда будет интернет' : 'Выключено. Запись удалится, когда будет интернет');
+                else onShowToast(next ? '✅ Теперь одноклассники видят тебя в рейтинге' : 'Ты скрыт из рейтинга');
+              }}
+              className="w-5 h-5 shrink-0"
+            />
+          </label>
 
           {/* PIN-код приложения */}
           <div className="p-3 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-between gap-3">
