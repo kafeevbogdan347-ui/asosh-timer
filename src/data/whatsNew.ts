@@ -16,6 +16,13 @@ export interface WhatsNewRelease {
 
 export const WHATS_NEW: WhatsNewRelease[] = [
   {
+    version: 'v16.7',
+    date: '11 ноября 2026',
+    items: [
+      { icon: '📷', title: 'Асошику — фото, галерея или файл', text: 'Нажми на камеру рядом со строкой ввода: можно сфотографировать задание, выбрать фото из галереи или прислать файл, в том числе PDF.' },
+    ],
+  },
+  {
     version: 'v16.6',
     date: '11 ноября 2026',
     items: [
