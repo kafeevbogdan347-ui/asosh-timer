@@ -16,6 +16,13 @@ export interface WhatsNewRelease {
 
 export const WHATS_NEW: WhatsNewRelease[] = [
   {
+    version: 'v16.10',
+    date: '11 ноября 2026',
+    items: [
+      { icon: '🏆', title: 'Рейтинг онлайна для всего класса', text: 'Теперь в рейтинге сразу видно всех одноклассников. Скрыть себя можно в Опциях → Приватность.' },
+    ],
+  },
+  {
     version: 'v16.9',
     date: '11 ноября 2026',
     items: [

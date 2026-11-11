@@ -1,5 +1,5 @@
-// Рейтинг онлайна класса. Только по желанию ученика: пока он не включил «Показывать меня»,
-// ничего не отправляется. Видят только одноклассники (путь в базе — по классу).
+// Рейтинг онлайна класса. Включён у всех по умолчанию, выключается в Опциях → Приватность.
+// Видят только одноклассники (путь в базе — по классу).
 // Хранится: ник, эмодзи-аватар, статус, «о себе», минуты в приложении за неделю и время последней активности.
 
 import { ref, set, remove, onValue, onDisconnect, serverTimestamp } from 'firebase/database';
@@ -25,9 +25,9 @@ export interface OnlineEntry {
 
 export const isOptedIn = () => {
   try {
-    return localStorage.getItem(OPT_KEY) === '1';
+    return localStorage.getItem(OPT_KEY) !== '0';
   } catch {
-    return false;
+    return true;
   }
 };
 

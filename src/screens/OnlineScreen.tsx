@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { OnlineEntry, formatDuration, isOptedIn, myWeekSec, presenceLabel, setOptIn, subscribeOnline } from '../services/online';
+import { OnlineEntry, formatDuration, isOptedIn, myWeekSec, presenceLabel, subscribeOnline } from '../services/online';
 import { myUid } from '../services/classShared';
 
 interface Props {
@@ -15,8 +15,6 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 export const OnlineScreen: React.FC<Props> = ({ cls, isGuest, onShowToast }) => {
   const [list, setList] = useState<OnlineEntry[] | null>(null);
   const [failed, setFailed] = useState(false);
-  const [optIn, setOptInState] = useState(isOptedIn);
-  const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState<OnlineEntry | null>(null);
   const [now, setNow] = useState(Date.now());
 
@@ -26,17 +24,6 @@ export const OnlineScreen: React.FC<Props> = ({ cls, isGuest, onShowToast }) => 
     const t = setInterval(() => setNow(Date.now()), 20000);
     return () => clearInterval(t);
   }, []);
-
-  const toggle = async () => {
-    if (busy) return;
-    setBusy(true);
-    const next = !optIn;
-    const ok = await setOptIn(cls, next);
-    setBusy(false);
-    setOptInState(next);
-    if (!ok) onShowToast(next ? 'Включено — появишься в рейтинге, когда будет интернет' : 'Выключено. Запись удалится, когда будет интернет');
-    else onShowToast(next ? '✅ Теперь одноклассники видят тебя в рейтинге' : 'Ты скрыт из рейтинга');
-  };
 
   const me = myUid();
   const onlineCount = (list || []).filter((e) => presenceLabel(e.last, now).online).length;
@@ -57,20 +44,16 @@ export const OnlineScreen: React.FC<Props> = ({ cls, isGuest, onShowToast }) => 
         <p className="text-xs text-white/60">Кто больше всех в АСОШ Таймере на этой неделе. Сейчас в сети: {onlineCount}</p>
       </div>
 
-      <div className="p-3 rounded-2xl bg-white/5 border border-white/15 space-y-2">
-        <label className="flex items-center justify-between gap-3 cursor-pointer select-none">
-          <span>
-            <b className="text-sm text-white block">Показывать меня в рейтинге</b>
-            <span className="text-[11px] text-white/60 block">Одноклассники увидят твой ник, аватар, статус, время в приложении за неделю и в сети ли ты. Можно выключить в любой момент.</span>
-          </span>
-          <input type="checkbox" className="w-5 h-5 shrink-0" checked={optIn} disabled={busy} onChange={toggle} />
-        </label>
+      <div className="p-3 rounded-2xl bg-white/5 border border-white/15 space-y-1">
         <div className="text-[11px] text-white/60">Твоё время на этой неделе: <b className="text-cyan-300">{formatDuration(myWeekSec())}</b></div>
+        <div className="text-[11px] text-white/50">
+          {isOptedIn() ? 'Одноклассники видят твой ник, аватар, статус и время в приложении.' : 'Ты скрыт из рейтинга.'} Скрыть или показать себя — в Опциях → Приватность.
+        </div>
       </div>
 
       {failed && <div className="text-xs text-amber-300 font-bold">Не получилось загрузить рейтинг. Проверь интернет.</div>}
       {!failed && list === null && <div className="text-xs text-white/60">Загружаю…</div>}
-      {list && list.length === 0 && <div className="text-sm text-white/60">Пока в рейтинге никого. Включи «Показывать меня» — будешь первым!</div>}
+      {list && list.length === 0 && <div className="text-sm text-white/60">Пока в рейтинге никого — скоро появятся одноклассники.</div>}
 
       {list && list.length > 0 && (
         <div className="space-y-1.5">

@@ -133,7 +133,7 @@ export default function App() {
   const [lockdown, setLockdown] = useState(false);
   useEffect(() => (registered ? subscribeLockdown(setLockdown) : undefined), [registered]);
 
-  // Онлайн класса: считаем время в приложении и (если ученик разрешил) отмечаемся «в сети»
+  // Онлайн класса: считаем время в приложении и отмечаемся «в сети» (выключается в Опциях → Приватность)
   useEffect(() => {
     if (!cls || isGuest || isTeacher) return;
     return startPresence(cls);
@@ -2105,6 +2105,7 @@ export default function App() {
             account={account}
             onOpenAccount={() => setCurrentScreen('account')}
             onLogoutAccount={handleLogoutAccount}
+            cls={cls}
             onExportData={handleExportData}
             onImportData={handleImportData}
             onResetAll={handleResetAll}
