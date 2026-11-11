@@ -123,6 +123,7 @@ export interface AppSettings {
   devicePC: boolean;
   perfLow: boolean;
   quality?: QualityType;
+  holidays?: boolean; // праздничное оформление (снег, салют…), по умолчанию включено
   pomodoroWorkMin: number;
   pomodoroBreakMin: number;
   fpsOverlay?: boolean;

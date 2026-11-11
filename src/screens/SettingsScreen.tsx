@@ -10,6 +10,7 @@ import {
 } from '../types';
 import { DICT, SHORT_LESSON_MIN } from '../data/constants';
 import { Account, changePassword } from '../services/accounts';
+import { HOLIDAY_PREVIEWS, previewHoliday } from '../data/holidays';
 import { toDateKey } from '../services/classShared';
 import { playSound, doVibro } from '../utils/audio';
 import {
@@ -599,6 +600,23 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </div>
 
           <div className="space-y-2 pt-1">
+            <label className="flex items-center justify-between text-xs font-bold text-white cursor-pointer select-none p-2.5 rounded-xl bg-white/5 border border-white/10">
+              <div>
+                <div>🎉 Праздничное оформление</div>
+                <div className="text-[11px] text-white/60 font-normal">Снег на Новый год, салют на 9 Мая, поздравление в день рождения</div>
+              </div>
+              <input type="checkbox" checked={settings.holidays !== false} onChange={(e) => onUpdateSettings({ holidays: e.target.checked })} className="w-5 h-5 shrink-0" />
+            </label>
+            <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-2">
+              <div className="text-[11px] text-white/70 font-bold">Посмотреть, как будет выглядеть (15 секунд):</div>
+              <div className="flex flex-wrap gap-1.5">
+                {HOLIDAY_PREVIEWS.map((h) => (
+                  <button key={h.id} type="button" className="choice !py-1 !px-2.5 !text-[11px]" onClick={() => { previewHoliday(h.id); onNavigate?.('main'); }}>
+                    {h.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <label className="flex items-center justify-between text-xs font-bold text-white cursor-pointer select-none p-2.5 rounded-xl bg-white/5 border border-white/10">
               <div>
                 <div>Minecraft-сплеши у логотипа</div>

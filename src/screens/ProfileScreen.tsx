@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getBirthday, setBirthday } from '../data/holidays';
 import { UserProfile, CertificateItem, LanguageType, SoundProfileType } from '../types';
 import {
   getMyProfile,
@@ -93,6 +94,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [editFullName, setEditFullName] = useState(myProfile.fullName);
   const [editClassName, setEditClassName] = useState(myProfile.className);
   const [editStatus, setEditStatus] = useState(myProfile.status);
+  // День рождения: только месяц и день, хранится на этом телефоне — в этот день приложение поздравит
+  const [editBirthday, setEditBirthday] = useState(() => getBirthday());
   const [editBio, setEditBio] = useState(myProfile.bio || '');
   const [selectedAvatar, setSelectedAvatar] = useState(myProfile.avatar);
   const [avatarType, setAvatarType] = useState<'emoji' | 'image'>(myProfile.avatarType || 'emoji');
@@ -157,6 +160,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     };
 
     saveMyProfile(updated);
+    setBirthday(editBirthday);
     setMyProfile(updated);
     setIsEditing(false);
     playSound('coin', soundProfile);
@@ -544,6 +548,43 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   className="input"
                   placeholder="8А, 9Б, 11А..."
                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-white/80">🎂 День рождения (необязательно):</label>
+                <div className="flex gap-2">
+                  <select
+                    value={editBirthday ? String(Number(editBirthday.slice(3))) : ''}
+                    onChange={(e) => {
+                      const d = e.target.value;
+                      const m = editBirthday ? editBirthday.slice(0, 2) : '01';
+                      setEditBirthday(d ? `${m}-${d.padStart(2, '0')}` : '');
+                    }}
+                    className="input !w-24"
+                    aria-label="День"
+                  >
+                    <option value="">—</option>
+                    {Array.from({ length: 31 }, (_, i) => (
+                      <option key={i + 1} value={i + 1}>{i + 1}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={editBirthday ? editBirthday.slice(0, 2) : ''}
+                    onChange={(e) => {
+                      const m = e.target.value;
+                      const d = editBirthday ? editBirthday.slice(3) : '01';
+                      setEditBirthday(m ? `${m}-${d}` : '');
+                    }}
+                    className="input flex-1"
+                    aria-label="Месяц"
+                  >
+                    <option value="">—</option>
+                    {['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'].map((name, i) => (
+                      <option key={name} value={String(i + 1).padStart(2, '0')}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="text-[11px] text-white/50">Год не нужен. Хранится только на этом телефоне — в этот день приложение тебя поздравит.</div>
               </div>
 
               <div className="space-y-1">

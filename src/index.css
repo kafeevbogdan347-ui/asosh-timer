@@ -1268,3 +1268,56 @@ body.ui-light .lesson-window { border-color: rgba(15, 23, 42, 0.25); }
 .asoshik-mic-on { background: rgba(239, 68, 68, 0.25) !important; border-color: #f87171 !important; color: #fecaca !important; animation: asoshik-mic 1s ease-in-out infinite; }
 @keyframes asoshik-mic { 0%, 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.5); } 50% { box-shadow: 0 0 0 6px rgba(248, 113, 113, 0); } }
 .asoshik-mic-busy { opacity: 0.6; animation: asoshik-mic 0.6s ease-in-out infinite; }
+
+/* ===== Праздничное оформление ===== */
+.holiday-fall, .holiday-salute { position: fixed; inset: 0; pointer-events: none; z-index: 30; overflow: hidden; }
+.holiday-fall span {
+  position: absolute; top: -40px; line-height: 1; will-change: transform;
+  animation-name: holiday-fall; animation-timing-function: linear; animation-iteration-count: infinite;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.35);
+}
+@keyframes holiday-fall {
+  0% { transform: translate3d(0, -5vh, 0) rotate(0deg); }
+  50% { transform: translate3d(calc(var(--drift) * 0.6), 52vh, 0) rotate(calc(var(--spin) * 0.5)); }
+  100% { transform: translate3d(var(--drift), 108vh, 0) rotate(var(--spin)); }
+}
+.holiday-salute .burst { position: absolute; width: 0; height: 0; animation-name: holiday-burst; animation-iteration-count: infinite; animation-timing-function: ease-out; opacity: 0; }
+.holiday-salute .burst i {
+  position: absolute; width: 5px; height: 5px; border-radius: 50%; background: var(--c);
+  box-shadow: 0 0 8px var(--c), 0 0 16px var(--c);
+  transform: rotate(var(--a)) translateX(0);
+  animation: inherit; animation-name: holiday-spark;
+}
+@keyframes holiday-burst { 0% { opacity: 0; } 2% { opacity: 1; } 14% { opacity: 1; } 22%, 100% { opacity: 0; } }
+@keyframes holiday-spark { 0% { transform: rotate(var(--a)) translateX(0) scale(1.2); } 18% { transform: rotate(var(--a)) translateX(70px) scale(0.6); } 100% { transform: rotate(var(--a)) translateX(80px) scale(0.2); } }
+.holiday-garland {
+  position: fixed; top: 0; left: 0; right: 0; height: 18px; z-index: 31; pointer-events: none;
+  display: flex; justify-content: space-around; align-items: flex-start;
+  background: radial-gradient(ellipse at 50% -40%, transparent 60%, rgba(34, 197, 94, 0.55) 62%, transparent 66%) repeat-x;
+  background-size: 11.1% 26px;
+}
+.holiday-garland i { width: 9px; height: 13px; border-radius: 50% 50% 45% 45%; margin-top: 6px; animation: holiday-blink 1.4s ease-in-out infinite; }
+.holiday-garland i:nth-child(4n+1) { background: #f43f5e; color: #f43f5e; }
+.holiday-garland i:nth-child(4n+2) { background: #facc15; color: #facc15; }
+.holiday-garland i:nth-child(4n+3) { background: #38bdf8; color: #38bdf8; }
+.holiday-garland i:nth-child(4n+4) { background: #a3e635; color: #a3e635; }
+@keyframes holiday-blink { 0%, 100% { opacity: 1; box-shadow: 0 0 10px currentColor; } 50% { opacity: 0.35; box-shadow: none; } }
+.holiday-banner {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 12px; border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05));
+  border: 1px solid rgba(255, 255, 255, 0.22); color: #fff; animation: holiday-pop 0.5s ease-out;
+}
+.holiday-banner.hb-snow { background: linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(34, 197, 94, 0.18)); }
+.holiday-banner.hb-salute { background: linear-gradient(135deg, rgba(220, 38, 38, 0.32), rgba(250, 204, 21, 0.16)); }
+.holiday-banner.hb-petals { background: linear-gradient(135deg, rgba(244, 114, 182, 0.32), rgba(250, 204, 21, 0.12)); }
+.holiday-banner.hb-confetti { background: linear-gradient(135deg, rgba(168, 85, 247, 0.32), rgba(56, 189, 248, 0.18)); }
+.holiday-banner.hb-leaves { background: linear-gradient(135deg, rgba(249, 115, 22, 0.3), rgba(250, 204, 21, 0.14)); }
+.holiday-banner.hb-stars { background: linear-gradient(135deg, rgba(37, 99, 235, 0.32), rgba(250, 204, 21, 0.14)); }
+.holiday-banner-icon { font-size: 28px; line-height: 1; animation: holiday-wiggle 2.4s ease-in-out infinite; }
+.holiday-banner b { display: block; font-size: 15px; font-weight: 900; }
+.holiday-banner small { display: block; font-size: 11px; opacity: 0.8; }
+.holiday-banner button { margin-left: auto; width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%; background: rgba(0, 0, 0, 0.25); color: #fff; font-size: 12px; cursor: pointer; }
+@keyframes holiday-pop { from { transform: scale(0.92); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes holiday-wiggle { 0%, 100% { transform: rotate(0); } 10% { transform: rotate(-12deg); } 20% { transform: rotate(10deg); } 30% { transform: rotate(0); } }
+@media (prefers-reduced-motion: reduce) { .holiday-banner-icon, .holiday-garland i, .holiday-banner { animation: none; } }
+body.q-eco .holiday-garland i { animation: none; }
