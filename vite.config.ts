@@ -1,6 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { createHash } from 'crypto';
+import { createHash, pbkdf2Sync, randomBytes } from 'crypto';
 import path from 'path';
 import { readFileSync } from 'fs';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
@@ -8,6 +8,10 @@ import { normalizeCode } from './src/utils/normalizeCode';
 import { buildPresentationHtml, buildPresentationMarkdown } from './src/data/presentationContent';
 
 const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
+// Медленные отпечатки кодов и пароля: новая случайная соль в каждой сборке
+const KDF_ITER = 150000;
+const KDF_SALT = randomBytes(16).toString('hex');
+const slowHash = (text: string) => pbkdf2Sync(text, Buffer.from(KDF_SALT, 'hex'), KDF_ITER, 32, 'sha256').toString('hex');
 
 // Слайды и текст презентации собираются из src/data/presentationContent.ts,
 // чтобы на сайте всегда была актуальная версия: …/presentation.html и …/presentation.md
@@ -53,7 +57,7 @@ export default defineConfig(({ mode }) => {
     .split(',')
     .map((pair) => pair.split(':').map((s) => s.trim()))
     .filter(([className, code]) => className && code)
-    .map(([className, code]) => ({ className, hash: sha256(normalizeCode(code)) }));
+    .map(([className, code]) => ({ className, hash: slowHash(normalizeCode(code)) }));
 
   const devPassword = (env.DEV_PASSWORD || '').trim();
 
@@ -63,7 +67,8 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss(), presentationPlugin(), versionPlugin()],
     define: {
       __CLASS_CODE_HASHES__: JSON.stringify(classCodeHashes),
-      __DEV_PASSWORD_HASH__: JSON.stringify(devPassword ? sha256(devPassword) : ''),
+      __DEV_PASSWORD_HASH__: JSON.stringify(devPassword ? slowHash(devPassword) : ''),
+      __KDF__: JSON.stringify({ salt: KDF_SALT, iter: KDF_ITER }),
       // Ключ Асошика: VITE_GEMINI_API_KEY (сборка на GitHub) или GEMINI_API_KEY (Google AI Studio)
       'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || env.GEMINI_API_KEY || ''),
     },

@@ -2,10 +2,23 @@
   "rules": {
     ".read": false,
     ".write": false,
+    "asosh_config": {
+      ".read": "auth != null",
+      ".write": false
+    },
+    "asosh_rate": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$kind": {
+          ".write": "auth != null && auth.uid === $uid && root.child('asosh_config').child('lockdown').val() !== true",
+          ".validate": "newData.isNumber() && newData.val() === now && ($kind === 'chat' || $kind === 'share') && (!data.exists() || ($kind === 'chat' && now - data.val() >= 2000) || ($kind === 'share' && now - data.val() >= 10000))"
+        }
+      }
+    },
     "asosh_timer": {
       ".read": "auth != null",
       "$msg": {
-        ".write": "auth != null && !data.exists()",
+        ".write": "auth != null && !data.exists() && newData.parent().parent().child('asosh_rate').child(auth.uid).child('chat').val() === now && root.child('asosh_config').child('lockdown').val() !== true",
         ".validate": "newData.hasChildren(['content', 'created_at']) && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 400 && (!newData.child('username').exists() || (newData.child('username').isString() && newData.child('username').val().length <= 60))"
       }
     },
@@ -13,7 +26,7 @@
       "$room": {
         ".read": "auth != null",
         "$msg": {
-          ".write": "auth != null && !data.exists()",
+          ".write": "auth != null && !data.exists() && newData.parent().parent().parent().child('asosh_rate').child(auth.uid).child('chat').val() === now && root.child('asosh_config').child('lockdown').val() !== true",
           ".validate": "newData.hasChildren(['content', 'created_at']) && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 400 && (!newData.child('username').exists() || (newData.child('username').isString() && newData.child('username').val().length <= 60))"
         }
       }
@@ -23,14 +36,14 @@
         "replacements": {
           ".read": "auth != null",
           "$id": {
-            ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid))",
+            ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid && newData.parent().parent().parent().parent().child('asosh_rate').child(auth.uid).child('share').val() === now) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid)) && root.child('asosh_config').child('lockdown').val() !== true",
             ".validate": "newData.hasChildren(['date', 'num', 'sub', 'uid', 'created_at']) && newData.child('date').isString() && newData.child('date').val().length === 10 && newData.child('num').isNumber() && newData.child('num').val() >= 1 && newData.child('num').val() <= 12 && newData.child('sub').isString() && newData.child('sub').val().length > 0 && newData.child('sub').val().length <= 60 && (!newData.child('room').exists() || (newData.child('room').isString() && newData.child('room').val().length <= 20)) && (!newData.child('author').exists() || (newData.child('author').isString() && newData.child('author').val().length <= 60))"
           }
         },
         "homework": {
           ".read": "auth != null",
           "$id": {
-            ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid))",
+            ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid && newData.parent().parent().parent().parent().child('asosh_rate').child(auth.uid).child('share').val() === now) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid)) && root.child('asosh_config').child('lockdown').val() !== true",
             ".validate": "newData.hasChildren(['sub', 'text', 'uid', 'created_at']) && newData.child('sub').isString() && newData.child('sub').val().length > 0 && newData.child('sub').val().length <= 60 && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 1000 && (!newData.child('author').exists() || (newData.child('author').isString() && newData.child('author').val().length <= 60))",
             "teacher": {
               ".validate": "newData.isBoolean() && root.child('asosh_teachers').child(auth.uid).exists()"
@@ -43,16 +56,32 @@
       "$cls": {
         ".read": "auth != null",
         "$uid": {
-          ".write": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid && root.child('asosh_config').child('lockdown').val() !== true",
           ".validate": "newData.hasChildren(['nick', 'avatar', 'week', 'sec', 'last'])",
-          "nick": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30" },
-          "avatar": { ".validate": "newData.isString() && newData.val().length <= 12" },
-          "status": { ".validate": "newData.isString() && newData.val().length <= 60" },
-          "bio": { ".validate": "newData.isString() && newData.val().length <= 200" },
-          "week": { ".validate": "newData.isString() && newData.val().length === 10" },
-          "sec": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 604800" },
-          "last": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
-          "$other": { ".validate": false }
+          "nick": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+          },
+          "avatar": {
+            ".validate": "newData.isString() && newData.val().length <= 12"
+          },
+          "status": {
+            ".validate": "newData.isString() && newData.val().length <= 60"
+          },
+          "bio": {
+            ".validate": "newData.isString() && newData.val().length <= 200"
+          },
+          "week": {
+            ".validate": "newData.isString() && newData.val().length === 10"
+          },
+          "sec": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 604800"
+          },
+          "last": {
+            ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+          },
+          "$other": {
+            ".validate": false
+          }
         }
       }
     },
@@ -60,7 +89,7 @@
       ".read": "auth != null",
       "$day": {
         "$uid": {
-          ".write": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid && root.child('asosh_config').child('lockdown').val() !== true",
           ".validate": "$day.length === 10 && newData.hasChildren(['p', 't']) && newData.child('p').isString() && newData.child('p').val().length <= 10 && newData.child('t').isNumber()",
           "os": {
             ".validate": "newData.isString() && newData.val().length <= 20"
@@ -104,14 +133,14 @@
     "asosh_teacher_claims": {
       "$h": {
         ".read": "auth != null",
-        ".write": "auth != null && !data.exists() && ($h === '63d4b433170cddfbffe85bad220923cf157a0d246cbd28fc87095453cab1e7cb' || $h === '7c569cd721bbdeb843f446c3ebf1f05dd465b9f24c0e7fa06a30dca7ea8a02d5' || $h === '49c0be7830b9950ee9eefa192c5f2c45d9c58d71b277e9aee83b99d8b12a4ed5' || $h === '86dee101c35d23ceb08f6573c7220eaf160ec345d7a8507cdab2ba3a510b98aa' || $h === '78a11ff9cf3f35c218858d5b45c4bb437e09bcb11c0781e7e14df6c18193f940' || $h === '09fc73942eab5c0b8fe1bd97361cce884904d9f9d765f2e12dbc8f1777f84a9f' || $h === '277fd39cf077b376f4c79e94f57b61c3692b8b940021114ad8067fd5b70a61bb' || $h === '85e23e286957a0ec0ad822c75d1144f536e0d9c87ade8c76da04618a20ff1b75' || $h === '71768f492adb56f0a1c005910ae4989e290848506c25ca1edec471e338c39aee' || $h === '73804f8485f6c5a2362308fe5c3401001e39141ed78ddd8dbdaaf77803b22d64' || $h === 'bb6ff36323392c2d1f3c31405bf20165ec54d826761bc853f610e9e12ce12d25' || $h === '6b0ca9b843b7857d108dba8e79eaa44b2d3c7be50d895430eb72cc76a69767e8' || $h === '5f7ef34928c25be5e2780b02fea4cd96e454d7eed110dd6e46cdd4ad6cd9dc3f' || $h === 'df47e5e2a2601764c49a123b2623466303fd235648c9359857c3e1dfd721c3e8' || $h === 'd80428a12e343ecb4dd5e5b502a95ec00656268169915eb65616efd76a5fad4b' || $h === 'db0df25014a0a9bb9fbb522fcf203760f067f9f8bfe57db40018188edf9ccd6c' || $h === '7a2479076df69b7eec76865aedbb0a22bb40cc801d9797d361b5fd2e0927ee0c' || $h === 'ad2d498b156da10e38f0bed4c6fbde632f10592b258222fd9614ccdfa12e86d6' || $h === '4972d0398d2193a97386e0703f4951ec1038251945822cf7d75a202408bc26f1' || $h === '758151bd3a213c44304665cac36e85c4976a0bfec5c14267c830c171bfbf90bd' || $h === '528adf53c275b6d8a8dfd9ac0de72f5657556a39451d0ee93e57866eded80792' || $h === 'dc7ce9489fd198be7788d8a4625b416ca7d6c43488807e8837cf3c6e73d01dcd' || $h === '814e4de690d78c48b72d597eab4d9ddbd01bac1606b3917564b79982727df1d6' || $h === '203341c6de14df80898019c561436670178582d54d2ca110023d8d0de28ec804' || $h === '8c7009dfb0212f43a3d1dab92729576d8e24913b1753b01c0868d58b5bb9f145' || $h === 'dd5105ba6eadf664566ff99a9e5d6885c1cac6181e3ee95ac1ac7afc69d52875' || $h === '5b865fe122e1e6b7834810e254024886dc2e79b4c0637efb84275a3de1b055d7' || $h === '3b4d8a4ba1514c983d5003f0372ae03bd70c47b67b063cd394344058db1a18c3' || $h === '50f8bc29a6eaf1b9a9e867e504bf7438dc069937d81a30f62f9fb93f154b9be6' || $h === '5e36cab12b11e5adf0440dc9c164cc668571a27c22cceb429b2b32f2c69621df' || $h === '6715ce7e00e16ba252944fab6e46d7f93d2c9c6b6450135453cc275162e142c7' || $h === 'd58213e47c443d18e0d422f2471fbe51cc6cc3d379c8a14f09030f25c7c90c8f' || $h === '9bcfd4e127207f429a0fa19b24e22ad11330e78d9fa5ab6af469b0009d466124' || $h === '840f2ec5503f5412f03b1ae862bdc02be7504a460a0ecbb61d4631848e5d31c4' || $h === '1d0b04a46ecf712881a778f5282aebdba8699641c88181ba563392971de02022' || $h === '329ddb2a7cff4fc6060cc2daec501901bac5f1e1ff637f1a4bc5fcfb3a18bb5b' || $h === 'd908588f01584ac223762dd6021c168b3494667a5d2612747c767d51ae511aa9' || $h === 'de388eda5d3d9eb161680f51c11b20cef6c270ef8a41996352baf5b72fef9494' || $h === 'deb3b48ebe081c378bbf4c911bac98dc75ab90ebb036ae75553203961784e55b' || $h === 'b7471d29b0b4836bede49b005546728390db12bf7769311d446a57968bc6d5f3' || $h === '6b426004d52e417ce5caa576f3f637855f12fafc09193e9c630c78296c760f21' || $h === '25ebebf4dda1b41fa52824d482b3abe170f840a90337b7628f6bf74f5a5193fc' || $h === '0163fec749caa45508fab85ca1ee3c27568b4b006b8c294ca9fc6f3f16758abe' || $h === '55e279b1d2e2a409a4605618fb522508e8283bb7d9b50060a5224e13549ffd12' || $h === '6dfaffca6f86517f40e416d62c798dadc94b9414886ef152f27598450fbf05ce' || $h === '9465c2c285a63d59aa4b57e9fe2b8217d3aa9dd04e2bd71230745ac1f0a33b12' || $h === 'ba92859a8a89dce672e24bd87fdc632058837e83b040a1068cabedf4158c99cd' || $h === 'e582071c114a292229ca1af8527ea1fc208ddf7db3810f117dac20ebaa585d47' || $h === '2db9c64b96ccee63170548799522ee250207b6f0fc27d30940f224cebf6aafbe' || $h === 'e3b7303aa38eb8c3c9ade9902acfdf8d50c8b99bf63747641f983757136869d3' || $h === '95115e594d0217fdbc3682b7f98855bc125245ff888de2b952d88a2167a0c2a2' || $h === '715f47210ec3a698ef6cbcc707c233a0654709e0fd0e601cf85ae1ae43928be3' || $h === '7d044057b03520d49e55a32c52863f63a2c725fec4a634bd5b3c56b8fcf5ece3' || $h === '9684d69c407e26fadc75da256abb79a846827baf553c55264b4a002137b6ee2a' || $h === '52ecd27cd1aca3b66155d3293ec7f73e3a88a49866a4b79f661b6f4c1d20fb35' || $h === 'b2524619130845bcf4c551cb18b361fee62c8dbbe1a0e13d393eb420c08cb777' || $h === '9266df9caafd3cb8e52e19f931e5579c39eeec252d7ecd4d5fd273f4d5c47070' || $h === '37fe167b56b8d1443ddc8d3990a6767661e950c048d4edd702038696bf374c42' || $h === '8335afaa6cc0c01d0f4c683ab4425a213526e6fb8cc255f4f45fa19ff56acf66' || $h === 'fd64eebceb0c37ec9ef756975fab84faefb7cebd66889722416343e958813449' || $h === '9ead2803c556e92fa1a9c8710ed7befa10391c2f9802e979354d733f409133a0' || $h === '4e8b6c1adbd2d49b9c582d9d449b5f00ee5e5e8e78fc0c85f420cd7592bf1bf8')",
+        ".write": "auth != null && !data.exists() && ($h === '63d4b433170cddfbffe85bad220923cf157a0d246cbd28fc87095453cab1e7cb' || $h === '7c569cd721bbdeb843f446c3ebf1f05dd465b9f24c0e7fa06a30dca7ea8a02d5' || $h === '49c0be7830b9950ee9eefa192c5f2c45d9c58d71b277e9aee83b99d8b12a4ed5' || $h === '86dee101c35d23ceb08f6573c7220eaf160ec345d7a8507cdab2ba3a510b98aa' || $h === '78a11ff9cf3f35c218858d5b45c4bb437e09bcb11c0781e7e14df6c18193f940' || $h === '09fc73942eab5c0b8fe1bd97361cce884904d9f9d765f2e12dbc8f1777f84a9f' || $h === '277fd39cf077b376f4c79e94f57b61c3692b8b940021114ad8067fd5b70a61bb' || $h === '85e23e286957a0ec0ad822c75d1144f536e0d9c87ade8c76da04618a20ff1b75' || $h === '71768f492adb56f0a1c005910ae4989e290848506c25ca1edec471e338c39aee' || $h === '73804f8485f6c5a2362308fe5c3401001e39141ed78ddd8dbdaaf77803b22d64' || $h === 'bb6ff36323392c2d1f3c31405bf20165ec54d826761bc853f610e9e12ce12d25' || $h === '6b0ca9b843b7857d108dba8e79eaa44b2d3c7be50d895430eb72cc76a69767e8' || $h === '5f7ef34928c25be5e2780b02fea4cd96e454d7eed110dd6e46cdd4ad6cd9dc3f' || $h === 'df47e5e2a2601764c49a123b2623466303fd235648c9359857c3e1dfd721c3e8' || $h === 'd80428a12e343ecb4dd5e5b502a95ec00656268169915eb65616efd76a5fad4b' || $h === 'db0df25014a0a9bb9fbb522fcf203760f067f9f8bfe57db40018188edf9ccd6c' || $h === '7a2479076df69b7eec76865aedbb0a22bb40cc801d9797d361b5fd2e0927ee0c' || $h === 'ad2d498b156da10e38f0bed4c6fbde632f10592b258222fd9614ccdfa12e86d6' || $h === '4972d0398d2193a97386e0703f4951ec1038251945822cf7d75a202408bc26f1' || $h === '758151bd3a213c44304665cac36e85c4976a0bfec5c14267c830c171bfbf90bd' || $h === '528adf53c275b6d8a8dfd9ac0de72f5657556a39451d0ee93e57866eded80792' || $h === 'dc7ce9489fd198be7788d8a4625b416ca7d6c43488807e8837cf3c6e73d01dcd' || $h === '814e4de690d78c48b72d597eab4d9ddbd01bac1606b3917564b79982727df1d6' || $h === '203341c6de14df80898019c561436670178582d54d2ca110023d8d0de28ec804' || $h === '8c7009dfb0212f43a3d1dab92729576d8e24913b1753b01c0868d58b5bb9f145' || $h === 'dd5105ba6eadf664566ff99a9e5d6885c1cac6181e3ee95ac1ac7afc69d52875' || $h === '5b865fe122e1e6b7834810e254024886dc2e79b4c0637efb84275a3de1b055d7' || $h === '3b4d8a4ba1514c983d5003f0372ae03bd70c47b67b063cd394344058db1a18c3' || $h === '50f8bc29a6eaf1b9a9e867e504bf7438dc069937d81a30f62f9fb93f154b9be6' || $h === '5e36cab12b11e5adf0440dc9c164cc668571a27c22cceb429b2b32f2c69621df' || $h === '6715ce7e00e16ba252944fab6e46d7f93d2c9c6b6450135453cc275162e142c7' || $h === 'd58213e47c443d18e0d422f2471fbe51cc6cc3d379c8a14f09030f25c7c90c8f' || $h === '9bcfd4e127207f429a0fa19b24e22ad11330e78d9fa5ab6af469b0009d466124' || $h === '840f2ec5503f5412f03b1ae862bdc02be7504a460a0ecbb61d4631848e5d31c4' || $h === '1d0b04a46ecf712881a778f5282aebdba8699641c88181ba563392971de02022' || $h === '329ddb2a7cff4fc6060cc2daec501901bac5f1e1ff637f1a4bc5fcfb3a18bb5b' || $h === 'd908588f01584ac223762dd6021c168b3494667a5d2612747c767d51ae511aa9' || $h === 'de388eda5d3d9eb161680f51c11b20cef6c270ef8a41996352baf5b72fef9494' || $h === 'deb3b48ebe081c378bbf4c911bac98dc75ab90ebb036ae75553203961784e55b' || $h === 'b7471d29b0b4836bede49b005546728390db12bf7769311d446a57968bc6d5f3' || $h === '6b426004d52e417ce5caa576f3f637855f12fafc09193e9c630c78296c760f21' || $h === '25ebebf4dda1b41fa52824d482b3abe170f840a90337b7628f6bf74f5a5193fc' || $h === '0163fec749caa45508fab85ca1ee3c27568b4b006b8c294ca9fc6f3f16758abe' || $h === '55e279b1d2e2a409a4605618fb522508e8283bb7d9b50060a5224e13549ffd12' || $h === '6dfaffca6f86517f40e416d62c798dadc94b9414886ef152f27598450fbf05ce' || $h === '9465c2c285a63d59aa4b57e9fe2b8217d3aa9dd04e2bd71230745ac1f0a33b12' || $h === 'ba92859a8a89dce672e24bd87fdc632058837e83b040a1068cabedf4158c99cd' || $h === 'e582071c114a292229ca1af8527ea1fc208ddf7db3810f117dac20ebaa585d47' || $h === '2db9c64b96ccee63170548799522ee250207b6f0fc27d30940f224cebf6aafbe' || $h === 'e3b7303aa38eb8c3c9ade9902acfdf8d50c8b99bf63747641f983757136869d3' || $h === '95115e594d0217fdbc3682b7f98855bc125245ff888de2b952d88a2167a0c2a2' || $h === '715f47210ec3a698ef6cbcc707c233a0654709e0fd0e601cf85ae1ae43928be3' || $h === '7d044057b03520d49e55a32c52863f63a2c725fec4a634bd5b3c56b8fcf5ece3' || $h === '9684d69c407e26fadc75da256abb79a846827baf553c55264b4a002137b6ee2a' || $h === '52ecd27cd1aca3b66155d3293ec7f73e3a88a49866a4b79f661b6f4c1d20fb35' || $h === 'b2524619130845bcf4c551cb18b361fee62c8dbbe1a0e13d393eb420c08cb777' || $h === '9266df9caafd3cb8e52e19f931e5579c39eeec252d7ecd4d5fd273f4d5c47070' || $h === '37fe167b56b8d1443ddc8d3990a6767661e950c048d4edd702038696bf374c42' || $h === '8335afaa6cc0c01d0f4c683ab4425a213526e6fb8cc255f4f45fa19ff56acf66' || $h === 'fd64eebceb0c37ec9ef756975fab84faefb7cebd66889722416343e958813449' || $h === '9ead2803c556e92fa1a9c8710ed7befa10391c2f9802e979354d733f409133a0' || $h === '4e8b6c1adbd2d49b9c582d9d449b5f00ee5e5e8e78fc0c85f420cd7592bf1bf8') && root.child('asosh_config').child('lockdown').val() !== true",
         ".validate": "newData.hasChildren(['uid', 't']) && newData.child('uid').val() === auth.uid && newData.child('t').isNumber()"
       }
     },
     "asosh_teachers": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid && newData.exists()",
+        ".write": "auth != null && auth.uid === $uid && newData.exists() && root.child('asosh_config').child('lockdown').val() !== true",
         ".validate": "newData.hasChildren(['h', 'name', 't']) && newData.child('name').isString() && newData.child('name').val().length >= 3 && newData.child('name').val().length <= 60 && newData.child('t').isNumber() && newData.child('h').isString() && newData.parent().parent().child('asosh_teacher_claims').child(newData.child('h').val()).child('uid').val() === $uid"
       }
     },
@@ -119,14 +148,14 @@
       "pub": {
         ".read": "auth != null",
         "$id": {
-          ".write": "auth != null && root.child('asosh_teachers').child(auth.uid).exists() && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid))",
+          ".write": "auth != null && root.child('asosh_teachers').child(auth.uid).exists() && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid)) && root.child('asosh_config').child('lockdown').val() !== true",
           ".validate": "newData.hasChildren(['kind', 'title', 'aud', 'cls', 'uid', 'created_at']) && (newData.child('kind').val() === 'ann' || newData.child('kind').val() === 'event') && newData.child('title').isString() && newData.child('title').val().length > 0 && newData.child('title').val().length <= 120 && newData.child('cls').isString() && newData.child('cls').val().length <= 10 && newData.child('created_at').isNumber() && (!newData.child('text').exists() || (newData.child('text').isString() && newData.child('text').val().length <= 1000)) && (!newData.child('date').exists() || (newData.child('date').isString() && newData.child('date').val().length === 10)) && (!newData.child('author').exists() || (newData.child('author').isString() && newData.child('author').val().length <= 60)) && (newData.child('aud').val() === 'all' || newData.child('aud').val() === 'students')"
         }
       },
       "teach": {
         ".read": "auth != null && root.child('asosh_teachers').child(auth.uid).exists()",
         "$id": {
-          ".write": "auth != null && root.child('asosh_teachers').child(auth.uid).exists() && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid))",
+          ".write": "auth != null && root.child('asosh_teachers').child(auth.uid).exists() && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid)) && root.child('asosh_config').child('lockdown').val() !== true",
           ".validate": "newData.hasChildren(['kind', 'title', 'aud', 'cls', 'uid', 'created_at']) && (newData.child('kind').val() === 'ann' || newData.child('kind').val() === 'event') && newData.child('title').isString() && newData.child('title').val().length > 0 && newData.child('title').val().length <= 120 && newData.child('cls').isString() && newData.child('cls').val().length <= 10 && newData.child('created_at').isNumber() && (!newData.child('text').exists() || (newData.child('text').isString() && newData.child('text').val().length <= 1000)) && (!newData.child('date').exists() || (newData.child('date').isString() && newData.child('date').val().length === 10)) && (!newData.child('author').exists() || (newData.child('author').isString() && newData.child('author').val().length <= 60)) && newData.child('aud').val() === 'teachers'"
         }
       }
@@ -134,14 +163,14 @@
     "asosh_transfer": {
       "$id": {
         ".read": "auth != null",
-        ".write": "auth != null && (!data.exists() || !newData.exists())",
+        ".write": "auth != null && (!data.exists() || !newData.exists()) && root.child('asosh_config').child('lockdown').val() !== true",
         ".validate": "newData.hasChildren(['payload', 'created_at']) && newData.child('payload').isString() && newData.child('payload').val().length <= 3000000"
       }
     },
     "asosh_users": {
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || root.child('asosh_teachers').child(auth.uid).exists() || root.child('asosh_family').child($uid).child(auth.uid).exists())",
-        ".write": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && root.child('asosh_config').child('lockdown').val() !== true",
         ".validate": "newData.hasChildren(['role', 'name', 'login', 't']) && (newData.child('role').val() !== 'teacher' || newData.parent().parent().child('asosh_teachers').child($uid).exists())",
         "role": {
           ".validate": "newData.val() === 'student' || newData.val() === 'teacher' || newData.val() === 'parent'"
@@ -169,7 +198,7 @@
     "asosh_private": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && root.child('asosh_config').child('lockdown').val() !== true",
         "pcode": {
           ".validate": "newData.isString() && newData.val().length >= 8 && newData.val().length <= 12"
         },
@@ -183,7 +212,7 @@
         ".read": "auth != null && root.child('asosh_teachers').child(auth.uid).exists()",
         "$sid": {
           ".read": "auth != null && (auth.uid === $sid || root.child('asosh_family').child($sid).child(auth.uid).exists())",
-          ".write": "auth != null && ((auth.uid === $sid && (!newData.exists() || !newData.child('ok').exists())) || (root.child('asosh_teachers').child(auth.uid).exists() && !newData.exists()))",
+          ".write": "auth != null && ((auth.uid === $sid && (!newData.exists() || !newData.child('ok').exists())) || (root.child('asosh_teachers').child(auth.uid).exists() && !newData.exists())) && root.child('asosh_config').child('lockdown').val() !== true",
           ".validate": "newData.hasChildren(['name', 't'])",
           "name": {
             ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 40"
@@ -192,11 +221,11 @@
             ".validate": "newData.isNumber()"
           },
           "ok": {
-            ".write": "auth != null && root.child('asosh_teachers').child(auth.uid).exists()",
+            ".write": "auth != null && root.child('asosh_teachers').child(auth.uid).exists() && root.child('asosh_config').child('lockdown').val() !== true",
             ".validate": "newData.isBoolean()"
           },
           "okBy": {
-            ".write": "auth != null && root.child('asosh_teachers').child(auth.uid).exists()",
+            ".write": "auth != null && root.child('asosh_teachers').child(auth.uid).exists() && root.child('asosh_config').child('lockdown').val() !== true",
             ".validate": "newData.val() === auth.uid"
           },
           "$other": {
@@ -211,7 +240,7 @@
         "$sid": {
           ".read": "auth != null && (auth.uid === $sid || root.child('asosh_family').child($sid).child(auth.uid).exists())",
           "$gid": {
-            ".write": "auth != null && root.child('asosh_teachers').child(auth.uid).exists() && ((!data.exists() && newData.child('tuid').val() === auth.uid) || (data.exists() && data.child('tuid').val() === auth.uid && (!newData.exists() || newData.child('tuid').val() === auth.uid)))",
+            ".write": "auth != null && root.child('asosh_teachers').child(auth.uid).exists() && ((!data.exists() && newData.child('tuid').val() === auth.uid) || (data.exists() && data.child('tuid').val() === auth.uid && (!newData.exists() || newData.child('tuid').val() === auth.uid))) && root.child('asosh_config').child('lockdown').val() !== true",
             ".validate": "newData.hasChildren(['sub', 'v', 'date', 'tuid', 'teacher', 't']) && root.child('asosh_roster').child($cls).child($sid).child('ok').val() === true",
             "sub": {
               ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60"
@@ -244,7 +273,7 @@
     "asosh_parent_codes": {
       "$h": {
         ".read": "auth != null",
-        ".write": "auth != null && ((!data.exists() && newData.child('student').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('student').val() === auth.uid))",
+        ".write": "auth != null && ((!data.exists() && newData.child('student').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('student').val() === auth.uid)) && root.child('asosh_config').child('lockdown').val() !== true",
         ".validate": "newData.hasChildren(['student', 't']) && $h.length === 64",
         "student": {
           ".validate": "newData.isString()"
@@ -262,7 +291,7 @@
         ".read": "auth != null && auth.uid === $sid",
         "$puid": {
           ".read": "auth != null && auth.uid === $puid",
-          ".write": "auth != null && ((auth.uid === $puid && !data.exists() && newData.exists() && root.child('asosh_parent_codes').child(newData.child('h').val()).child('student').val() === $sid) || (!newData.exists() && (auth.uid === $sid || auth.uid === $puid)))",
+          ".write": "auth != null && ((auth.uid === $puid && !data.exists() && newData.exists() && root.child('asosh_parent_codes').child(newData.child('h').val()).child('student').val() === $sid) || (!newData.exists() && (auth.uid === $sid || auth.uid === $puid))) && root.child('asosh_config').child('lockdown').val() !== true",
           ".validate": "newData.hasChildren(['h', 'name', 't'])",
           "h": {
             ".validate": "newData.isString() && newData.val().length === 64"
@@ -282,7 +311,7 @@
     "asosh_parent_links": {
       "$puid": {
         ".read": "auth != null && auth.uid === $puid",
-        ".write": "auth != null && auth.uid === $puid",
+        ".write": "auth != null && auth.uid === $puid && root.child('asosh_config').child('lockdown').val() !== true",
         "$sid": {
           ".validate": "newData.hasChildren(['name', 'cls', 't'])",
           "name": {

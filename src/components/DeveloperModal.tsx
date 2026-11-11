@@ -52,11 +52,11 @@ interface DeveloperModalProps {
   isOpen: boolean;
   onClose: () => void;
   soundProfile: SoundProfileType;
-  onResetUpdates: () => void;
+  onResetUpdates?: () => void; // больше не используется: панель только для проверок
   onSeedMockData: () => void;
   onShowToast: (msg: string) => void;
   onSetSimulatedTime?: (time: Date | null) => void;
-  onUnlockAllAchievements?: () => void;
+  onUnlockAllAchievements?: () => void; // больше не используется
   onSeedHomeworks?: () => void;
   fpsOverlayActive?: boolean;
   onToggleFpsOverlay?: () => void;
@@ -66,11 +66,9 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
   isOpen,
   onClose,
   soundProfile,
-  onResetUpdates,
   onSeedMockData,
   onShowToast,
   onSetSimulatedTime,
-  onUnlockAllAchievements,
   onSeedHomeworks,
   fpsOverlayActive,
   onToggleFpsOverlay,
@@ -178,23 +176,6 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
       onShowToast('📳 Виброотклик сэмулирован (звуковой сигнал)');
       playSound('coin', soundProfile);
     }
-  };
-
-  const generateSampleGrades = () => {
-    const sampleGrades = [
-      { subject: 'Алгебра', marks: [5, 4, 5, 5, 4, 5] },
-      { subject: 'Геометрия', marks: [4, 5, 4, 4, 5] },
-      { subject: 'Русский язык', marks: [5, 5, 4, 5, 5] },
-      { subject: 'Физика', marks: [5, 5, 5, 4, 5] },
-      { subject: 'Химия', marks: [4, 5, 5, 5] },
-      { subject: 'Информатика', marks: [5, 5, 5, 5, 5] },
-      { subject: 'История', marks: [5, 4, 5, 5] },
-      { subject: 'Английский язык', marks: [5, 5, 4, 5, 5] },
-    ];
-    // Калькулятор и профиль читают asosh_gpa_subjects в формате SubjectGrades
-    const subjects = sampleGrades.map((g, i) => ({ id: String(i + 1), name: g.subject, grades: g.marks, target: 5 }));
-    localStorage.setItem('asosh_gpa_subjects', JSON.stringify(subjects));
-    onShowToast('🎯 Сгенерирован отличный табель отметок (ср. балл 4.88)!');
   };
 
   return (
@@ -727,6 +708,7 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
                     type="button"
                     className="btn green text-xs justify-center py-2"
                     onClick={() => {
+                      if (!window.confirm('Заменить расписание тестовым? Это только на этом телефоне.')) return;
                       onSeedMockData();
                       onShowToast('Эталонное расписание для всех дней загружено! 🚀');
                     }}
@@ -739,6 +721,7 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
                     type="button"
                     className="btn purple text-xs justify-center py-2"
                     onClick={() => {
+                      if (!window.confirm('Добавить 5 тестовых ДЗ? Это только на этом телефоне.')) return;
                       onSeedHomeworks?.();
                       onShowToast('5 тестовых ДЗ добавлены! 📝');
                     }}
@@ -747,27 +730,7 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
                     <span>Создать тестовые ДЗ</span>
                   </button>
 
-                  <button
-                    type="button"
-                    className="btn cyan text-xs justify-center py-2"
-                    onClick={generateSampleGrades}
-                  >
-                    <Award className="w-4 h-4" />
-                    <span>Сгенерировать отметки (5.0)</span>
-                  </button>
 
-                  <button
-                    type="button"
-                    className="btn orange text-xs justify-center py-2"
-                    onClick={() => {
-                      onUnlockAllAchievements?.();
-                      playSound('victory', soundProfile);
-                      onShowToast('🏆 Все достижения разблокированы!');
-                    }}
-                  >
-                    <Award className="w-4 h-4" />
-                    <span>Открыть все ачивки</span>
-                  </button>
 
                   <button
                     type="button"
@@ -778,17 +741,6 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
                     <span>Стресс-тест 1500 I/O</span>
                   </button>
 
-                  <button
-                    type="button"
-                    className="btn darkBtn text-xs justify-center py-2"
-                    onClick={() => {
-                      onResetUpdates();
-                      onShowToast('Временные замены очищены');
-                    }}
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    <span>Сбросить замены</span>
-                  </button>
                 </div>
               </div>
             </div>

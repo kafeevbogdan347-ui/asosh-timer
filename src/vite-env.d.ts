@@ -3,3 +3,4 @@
 // Подставляются при сборке в vite.config.ts
 declare const __CLASS_CODE_HASHES__: { className: string; hash: string }[];
 declare const __DEV_PASSWORD_HASH__: string;
+declare const __KDF__: { salt: string; iter: number };

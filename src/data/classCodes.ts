@@ -1,5 +1,5 @@
 import { normalizeCode } from '../utils/normalizeCode';
-import { sha256Hex } from '../utils/sha256';
+import { pbkdf2Hex } from '../utils/pbkdf2';
 import { OFFICIAL_SCHEDULE_2026, SECOND_SHIFT_CLASSES } from './schoolSchedule';
 
 // Реестр классов МОУ АСОШ №2
@@ -31,12 +31,12 @@ export type ClassCodeCheck =
   | { status: 'error' };
 
 // Проверка кода класса. Коды задаются в CLASS_CODES при сборке и попадают в приложение
-// только в виде SHA-256-отпечатков (__CLASS_CODE_HASHES__), открытым текстом их здесь нет
+// только в виде медленных отпечатков PBKDF2 (__CLASS_CODE_HASHES__), открытым текстом их здесь нет
 export async function checkClassCode(input: string): Promise<ClassCodeCheck> {
   const norm = normalizeCode(input);
   if (!norm) return { status: 'wrong' };
   try {
-    const hash = await sha256Hex(norm);
+    const hash = await pbkdf2Hex(norm, __KDF__.salt, __KDF__.iter);
     const match = __CLASS_CODE_HASHES__.find((item) => item.hash === hash);
     if (!match) return { status: 'wrong' };
     const info = CLASS_LIST.find((item) => normalizeCode(item.className) === normalizeCode(match.className));

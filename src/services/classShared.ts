@@ -1,4 +1,4 @@
-import { ref, push, remove, onValue, query, limitToLast, Unsubscribe } from 'firebase/database';
+import { ref, push, update, remove, onValue, query, limitToLast, serverTimestamp, Unsubscribe } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
 import { initFirebase, ensureSignedIn } from './firebaseChat';
 import { censorFields } from '../utils/moderation';
@@ -86,12 +86,25 @@ function subscribe<T extends { id: string }>(
   };
 }
 
+const SHARE_COOLDOWN_MS = 10500;
+let lastShareAt = 0;
+
 async function add(cls: string, section: Section, data: Record<string, unknown>): Promise<boolean> {
   const { db } = initFirebase();
   // Без сети запись ждала бы интернет бесконечно, и кнопка не отпускалась бы
   if (!db || !navigator.onLine || !(await ensureSignedIn())) return false;
   try {
-    await push(ref(db, classPath(cls, section)), { ...data, uid: myUid(), created_at: Date.now() });
+    // Сервер не даст делиться чаще раза в 10 секунд — если поделился только что, немного ждём
+    const wait = SHARE_COOLDOWN_MS - (Date.now() - lastShareAt);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    // Запись и отметка «когда делился» — одной записью
+    const uid = myUid();
+    const key = push(ref(db, classPath(cls, section))).key || '';
+    await update(ref(db), {
+      [`${classPath(cls, section)}/${key}`]: { ...data, uid, created_at: Date.now() },
+      [`asosh_rate/${uid}/share`]: serverTimestamp(),
+    });
+    lastShareAt = Date.now();
     return true;
   } catch (err) {
     console.warn('Class data write error:', err);
