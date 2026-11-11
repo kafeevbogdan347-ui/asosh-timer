@@ -1321,3 +1321,8 @@ body.ui-light .lesson-window { border-color: rgba(15, 23, 42, 0.25); }
 @keyframes holiday-wiggle { 0%, 100% { transform: rotate(0); } 10% { transform: rotate(-12deg); } 20% { transform: rotate(10deg); } 30% { transform: rotate(0); } }
 @media (prefers-reduced-motion: reduce) { .holiday-banner-icon, .holiday-garland i, .holiday-banner { animation: none; } }
 body.q-eco .holiday-garland i { animation: none; }
+
+/* Онлайн класса: точка «в сети» на аватаре */
+.online-dot { position: absolute; right: -2px; bottom: -2px; width: 10px; height: 10px; border-radius: 50%; background: #64748b; border: 2px solid #0f172a; }
+.online-dot.big { width: 16px; height: 16px; border-width: 3px; }
+.online-dot.on { background: #22c55e; box-shadow: 0 0 8px #22c55e; }

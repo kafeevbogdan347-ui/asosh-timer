@@ -16,6 +16,13 @@ export interface WhatsNewRelease {
 
 export const WHATS_NEW: WhatsNewRelease[] = [
   {
+    version: 'v16.6',
+    date: '11 ноября 2026',
+    items: [
+      { icon: '🏆', title: 'Онлайн класса', text: 'Рейтинг: кто больше всех в приложении на этой неделе, кто сейчас в сети, и профиль одноклассника. Участвуют только те, кто сам включил «Показывать меня».' },
+    ],
+  },
+  {
     version: 'v16.5',
     date: '11 ноября 2026',
     items: [

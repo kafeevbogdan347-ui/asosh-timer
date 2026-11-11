@@ -81,6 +81,18 @@ await check('после отключения родитель не видит', 
 await check('учитель удаляет свою оценку', assertSucceeds(remove(ref(teacher, `asosh_journal/${cls}/stu1/g2`))));
 await check('учитель убирает ученика из класса', assertSucceeds(remove(ref(teacher, `asosh_roster/${cls}/stu2`))));
 
+// --- Онлайн класса ---
+const card = (extra = {}) => ({ nick: 'ivan_p', avatar: '🎒', status: 'Учусь', bio: '', week: '2026-11-09', sec: 3600, last: 1, ...extra });
+await check('онлайн: пишу свою карточку', assertSucceeds(set(ref(stu1, `asosh_online/${cls}/stu1`), card())));
+await check('онлайн: не пишу чужую', assertFails(set(ref(stu1, `asosh_online/${cls}/stu2`), card())));
+await check('онлайн: одноклассник видит рейтинг', assertSucceeds(get(ref(stu2, `asosh_online/${cls}`))));
+await check('онлайн: без входа не видно', assertFails(get(ref(anon, `asosh_online/${cls}`))));
+await check('онлайн: лишнее поле отклоняется', assertFails(set(ref(stu1, `asosh_online/${cls}/stu1`), card({ phone: '89990000000' }))));
+await check('онлайн: больше недели секунд нельзя', assertFails(set(ref(stu1, `asosh_online/${cls}/stu1`), card({ sec: 999999 }))));
+await check('онлайн: время из будущего нельзя', assertFails(set(ref(stu1, `asosh_online/${cls}/stu1`), card({ last: Date.now() + 3600000 }))));
+await check('онлайн: длинное «о себе» отклоняется', assertFails(set(ref(stu1, `asosh_online/${cls}/stu1`), card({ bio: 'x'.repeat(201) }))));
+await check('онлайн: выключаю — запись удаляется', assertSucceeds(remove(ref(stu1, `asosh_online/${cls}/stu1`))));
+
 for (const [s, n] of results) console.log(s, n);
 const bad = results.filter(([s]) => s === '❌').length;
 console.log(bad ? `\nПровалено: ${bad}` : `\nВсе ${results.length} проверок прошли`);
