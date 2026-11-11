@@ -80,6 +80,7 @@ import type { AccountDone } from './components/AccountForms';
 import { AccountForms } from './components/AccountForms';
 import { DiaryScreen } from './screens/DiaryScreen';
 import { UpdateRequired } from './components/UpdateRequired';
+import { HolidayLayer } from './components/HolidayLayer';
 import { setAutoLanguage, tr as autoTr } from './i18n/auto';
 import { subscribeStudentGrades, newGrades } from './services/journal';
 import { ProfileScreen } from './screens/ProfileScreen';
@@ -1544,6 +1545,14 @@ export default function App() {
       {/* Проверка «Я не робот» перед публикацией для класса */}
       <HumanCheckHost />
 
+      {/* Праздники: снег, салют, лепестки — поверх приложения, не мешают нажатиям */}
+      <HolidayLayer
+        mode="effects"
+        enabled={settings.holidays !== false}
+        quality={settings.quality ?? (settings.perfLow ? 'eco' : 'normal')}
+        name={(account?.name || studentName || '').split(' ')[0]}
+      />
+
       {/* Вышла новая версия — просим обновиться */}
       <UpdateRequired />
 
@@ -1696,6 +1705,14 @@ export default function App() {
           />
         )}
 
+        {currentScreen === 'main' && (
+          <HolidayLayer
+            mode="banner"
+            enabled={settings.holidays !== false}
+            quality={settings.quality ?? (settings.perfLow ? 'eco' : 'normal')}
+            name={(account?.name || studentName || '').split(' ')[0]}
+          />
+        )}
         {currentScreen === 'main' && (
           <MainScreen
             cls={cls}
