@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { Send, Trash2, Camera, X, Mic, Volume2, VolumeX } from 'lucide-react';
+import { Send, Trash2, Camera, X, Mic, Volume2, VolumeX, Image as ImageIcon, FileText } from 'lucide-react';
 import { compressImage } from '../utils/image';
 import {
   AssistantMessage,
@@ -16,6 +16,11 @@ import { useOnline } from '../utils/useOnline';
 import { listenOnce, voiceInputSupported, voiceLang, voiceOutputSupported } from '../utils/voice';
 import { geminiVoiceAvailable, micSupported, speakAnswer, startRecording, stopVoice, transcribe, unlockAudio, Recording } from '../services/voiceGemini';
 import { LANGS } from '../i18n';
+
+// Значок вместо превью для PDF
+const PDF_THUMB =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="150"><rect width="120" height="150" rx="14" fill="#e11d48"/><text x="60" y="88" font-family="Arial" font-size="34" font-weight="700" fill="#fff" text-anchor="middle">PDF</text></svg>');
 
 interface AssistantScreenProps {
   context: string; // класс, расписание и домашка — собирает App
@@ -215,9 +220,48 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
 
   // Фото к вопросу: для отправки — крупное (читается текст), для истории — маленькое
   const [photo, setPhoto] = useState<{ full: string; thumb: string } | null>(null);
+  // Три способа: снять камерой, выбрать из галереи или взять файл (фото или PDF)
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [attachMenu, setAttachMenu] = useState(false);
+  const attachWrap = useRef<HTMLDivElement>(null);
+  // Нажатие мимо меню — закрываем
+  useEffect(() => {
+    if (!attachMenu) return;
+    const close = (e: PointerEvent) => {
+      if (!attachWrap.current?.contains(e.target as Node)) setAttachMenu(false);
+    };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [attachMenu]);
   const pickPhoto = async (file?: File) => {
+    setAttachMenu(false);
     if (!file) return;
+    // PDF отправляем как есть (Gemini читает PDF), в истории — значок
+    if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
+      if (file.size > 8 * 1024 * 1024) {
+        setError('PDF слишком большой — до 8 МБ. Сфотографируй нужную страницу.');
+        return;
+      }
+      const full = await new Promise<string>((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result).replace(/^data:[^;]*;/, 'data:application/pdf;'));
+        r.onerror = () => rej(r.error);
+        r.readAsDataURL(file);
+      }).catch(() => '');
+      if (!full) {
+        setError('Не получилось открыть файл. Попробуй другой.');
+        return;
+      }
+      setPhoto({ full, thumb: PDF_THUMB });
+      setError('');
+      return;
+    }
+    if (file.type && !file.type.startsWith('image/')) {
+      setError('Асошик понимает фото и PDF. Этот файл не подойдёт.');
+      return;
+    }
     try {
       const [full, thumb] = await Promise.all([compressImage(file, 1400, 0.82), compressImage(file, 360, 0.6)]);
       setPhoto({ full, thumb });
@@ -371,7 +415,7 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
       {photo && (
         <div className="asoshik-attach">
           <img src={photo.thumb} alt="Фото к вопросу" />
-          <span>Фото прикреплено. Напиши вопрос или просто отправь — Асошик решит задание с фото.</span>
+          <span>{photo.thumb === PDF_THUMB ? 'Файл прикреплён. Напиши, что сделать, или просто отправь — Асошик разберёт задание из файла.' : 'Фото прикреплено. Напиши вопрос или просто отправь — Асошик решит задание с фото.'}</span>
           <button type="button" onClick={() => setPhoto(null)} aria-label="Убрать фото">
             <X className="w-4 h-4" />
           </button>
@@ -385,10 +429,35 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
           send(input);
         }}
       >
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { pickPhoto(e.target.files?.[0]); e.target.value = ''; }} />
-        <button type="button" className="asoshik-cam" onClick={() => fileRef.current?.click()} disabled={!available || busy || left === 0} aria-label="Прикрепить фото задания" title="Фото задания">
-          <Camera className="w-4 h-4" />
-        </button>
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { pickPhoto(e.target.files?.[0]); e.target.value = ''; }} />
+        <input ref={galleryRef} type="file" accept="image/*" hidden onChange={(e) => { pickPhoto(e.target.files?.[0]); e.target.value = ''; }} />
+        <input ref={fileRef} type="file" accept="image/*,application/pdf,.pdf" hidden onChange={(e) => { pickPhoto(e.target.files?.[0]); e.target.value = ''; }} />
+        <div className="relative" ref={attachWrap}>
+          <button
+            type="button"
+            className="asoshik-cam"
+            onClick={() => setAttachMenu((v) => !v)}
+            disabled={!available || busy || left === 0}
+            aria-label="Прикрепить фото задания"
+            aria-expanded={attachMenu}
+            title="Фото задания"
+          >
+            <Camera className="w-4 h-4" />
+          </button>
+          {attachMenu && (
+            <div className="asoshik-attach-menu" role="menu">
+              <button type="button" role="menuitem" onClick={() => cameraRef.current?.click()}>
+                <Camera className="w-4 h-4" /> Сфотографировать
+              </button>
+              <button type="button" role="menuitem" onClick={() => galleryRef.current?.click()}>
+                <ImageIcon className="w-4 h-4" /> Из галереи
+              </button>
+              <button type="button" role="menuitem" onClick={() => fileRef.current?.click()}>
+                <FileText className="w-4 h-4" /> Файл (фото или PDF)
+              </button>
+            </div>
+          )}
+        </div>
         {showMic && (
           <button
             type="button"

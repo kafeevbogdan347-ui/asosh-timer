@@ -42,10 +42,10 @@ jobs:
           java-version: 21
       - run: npx cap add android
       - run: npx cap sync android
-      # Микрофон для голосовых вопросов Асошику
-      - name: Microphone permission
+      # Микрофон для голосовых вопросов и камера для фото задания Асошику
+      - name: Microphone and camera permissions
         run: |
-          sed -i 's#<application#<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <application#' android/app/src/main/AndroidManifest.xml
+          sed -i 's#<application#<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <application#' android/app/src/main/AndroidManifest.xml
           grep -c RECORD_AUDIO android/app/src/main/AndroidManifest.xml
       # Номер версии растёт с каждой сборкой, чтобы новый APK ставился поверх старого
       - name: Set version
