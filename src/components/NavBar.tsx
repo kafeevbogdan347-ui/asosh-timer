@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { ScreenId, LanguageType, SoundProfileType } from '../types';
 import { DICT } from '../data/constants';
 import { playSound, doVibro } from '../utils/audio';
@@ -32,6 +33,7 @@ export const NavBar: React.FC<NavBarProps> = ({
     { id: 'homework', icon: '📘', label: d.hw, badge: activeHwCount },
     { id: 'games', icon: '🎮', label: d.games },
     { id: 'settings', icon: '⚙️', label: d.settings },
+    { id: 'assistant', icon: '🫧', label: 'Асошик' },
   ];
 
   const handleClick = (id: ScreenId) => {
@@ -40,15 +42,16 @@ export const NavBar: React.FC<NavBarProps> = ({
     onNavigate(id);
   };
 
-  return (
+  // Панель рисуем прямо в body: так её не сдвигают стили экранов при прокрутке
+  return createPortal(
     <nav className="nav-bar">
       {navItems.map((item) => {
-        const isActive不易 = currentScreen === item.id;
+        const isActive = currentScreen === item.id;
         return (
           <button
             key={item.id}
             type="button"
-            className={`${isActive不易 ? 'active' : ''} relative`}
+            className={`${isActive ? 'active' : ''} relative`}
             onClick={() => handleClick(item.id)}
           >
             <span>{item.icon}</span>
@@ -61,6 +64,7 @@ export const NavBar: React.FC<NavBarProps> = ({
           </button>
         );
       })}
-    </nav>
+    </nav>,
+    document.body
   );
 };
