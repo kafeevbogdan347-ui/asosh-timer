@@ -33,16 +33,6 @@ export function setBirthday(md: string): void {
 
 const md = (d: Date) => `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-// Для просмотра в Опциях: все праздники по id
-export const HOLIDAY_PREVIEWS: { id: string; label: string }[] = [
-  { id: 'newyear', label: '🎄 Новый год' },
-  { id: 'feb23', label: '⭐ 23 февраля' },
-  { id: 'mar8', label: '🌷 8 Марта' },
-  { id: 'may9', label: '🎆 9 Мая' },
-  { id: 'sep1', label: '🍁 1 сентября' },
-  { id: 'birthday', label: '🎂 День рождения' },
-];
-
 export function holidayById(id: string, name = ''): Holiday | null {
   switch (id) {
     case 'newyear':
@@ -98,8 +88,3 @@ export function activeHoliday(date: Date, name = ''): Holiday | null {
   return fixed[today] ? holidayById(fixed[today]) : null;
 }
 
-// Просмотр праздника из Опций (на 15 секунд), без перезагрузки
-export const HOLIDAY_PREVIEW_EVENT = 'asosh-holiday-preview';
-export function previewHoliday(id: string | null): void {
-  window.dispatchEvent(new CustomEvent(HOLIDAY_PREVIEW_EVENT, { detail: id }));
-}

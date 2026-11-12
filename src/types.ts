@@ -58,6 +58,12 @@ export type ThemeType =
   | 'dark_matter_pulsar'
   | 'cyber_emerald_core'
   | 'first'
+  | 'hol_newyear'
+  | 'hol_feb23'
+  | 'hol_mar8'
+  | 'hol_may9'
+  | 'hol_sep1'
+  | 'hol_birthday'
   | 'notebook'
   | 'pixel'
   | 'winter'
@@ -123,7 +129,6 @@ export interface AppSettings {
   devicePC: boolean;
   perfLow: boolean;
   quality?: QualityType;
-  holidays?: boolean; // праздничное оформление (снег, салют…), по умолчанию включено
   pomodoroWorkMin: number;
   pomodoroBreakMin: number;
   fpsOverlay?: boolean;

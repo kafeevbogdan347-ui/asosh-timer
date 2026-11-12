@@ -91,7 +91,7 @@ import { RetroFirstScreen } from './screens/RetroFirstScreen';
 import { BellsScreen } from './screens/BellsScreen';
 import { MaintenanceScreen } from './screens/MaintenanceScreen';
 import { Achievement } from './types';
-import { LIGHT_THEME_IDS } from './data/themes';
+import { LIGHT_THEME_IDS, HOLIDAY_THEME_EFFECTS } from './data/themes';
 import { BoardScreen } from './screens/BoardScreen';
 import { HumanCheckHost } from './components/HumanCheck';
 import { CalendarScreen } from './screens/CalendarScreen';
@@ -1564,10 +1564,10 @@ export default function App() {
         </div>
       )}
 
-      {/* Праздники: снег, салют, лепестки — поверх приложения, не мешают нажатиям */}
+      {/* Праздничные темы: снег, салют, лепестки — поверх приложения, не мешают нажатиям */}
       <HolidayLayer
         mode="effects"
-        enabled={settings.holidays !== false}
+        themeHoliday={HOLIDAY_THEME_EFFECTS[effectiveTheme] ?? null}
         quality={settings.quality ?? (settings.perfLow ? 'eco' : 'normal')}
         name={(account?.name || studentName || '').split(' ')[0]}
       />
@@ -1727,7 +1727,6 @@ export default function App() {
         {currentScreen === 'main' && (
           <HolidayLayer
             mode="banner"
-            enabled={settings.holidays !== false}
             quality={settings.quality ?? (settings.perfLow ? 'eco' : 'normal')}
             name={(account?.name || studentName || '').split(' ')[0]}
           />
