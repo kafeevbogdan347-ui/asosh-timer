@@ -92,6 +92,21 @@ await check('онлайн: больше недели секунд нельзя',
 await check('онлайн: время из будущего нельзя', assertFails(set(ref(stu1, `asosh_online/${cls}/stu1`), card({ last: Date.now() + 3600000 }))));
 await check('онлайн: длинное «о себе» отклоняется', assertFails(set(ref(stu1, `asosh_online/${cls}/stu1`), card({ bio: 'x'.repeat(201) }))));
 await check('онлайн: выключаю — запись удаляется', assertSucceeds(remove(ref(stu1, `asosh_online/${cls}/stu1`))));
+const anonDev = db('anon_device');
+await check('онлайн: без аккаунта в рейтинг не попасть', assertFails(set(ref(anonDev, `asosh_online/${cls}/anon_device`), card())));
+await check('онлайн: свою старую запись удалить можно', assertSucceeds(remove(ref(anonDev, `asosh_online/${cls}/anon_device`))));
+await check('онлайн: время прибавляется', assertSucceeds(set(ref(stu1, `asosh_online/${cls}/stu1`), card())));
+await check('онлайн: прибавка со второго устройства', assertSucceeds(update(ref(stu1, `asosh_online/${cls}/stu1`), { sec: 3700, last: 2 })));
+
+// --- Профиль аккаунта (ник, аватар, статус) — общий для всех устройств ---
+const prof = (extra = {}) => ({ nick: 'Ваня', avatar: '😎', status: 'Учусь', bio: 'Люблю футбол', t: 1, ...extra });
+await check('профиль: пишу свой', assertSucceeds(set(ref(stu1, 'asosh_profiles/stu1'), prof())));
+await check('профиль: читаю свой (другое устройство)', assertSucceeds(get(ref(stu1, 'asosh_profiles/stu1'))));
+await check('профиль: чужой не читается', assertFails(get(ref(stu2, 'asosh_profiles/stu1'))));
+await check('профиль: чужой не пишется', assertFails(set(ref(stu2, 'asosh_profiles/stu1'), prof())));
+await check('профиль: без аккаунта нельзя', assertFails(set(ref(anonDev, 'asosh_profiles/anon_device'), prof())));
+await check('профиль: длинный ник отклоняется', assertFails(set(ref(stu1, 'asosh_profiles/stu1'), prof({ nick: 'x'.repeat(31) }))));
+await check('профиль: лишнее поле отклоняется', assertFails(set(ref(stu1, 'asosh_profiles/stu1'), prof({ photo: 'data:...' }))));
 
 // --- Защита от спама: лимиты на сервере ---
 const msg = (extra = {}) => ({ username: 'ivan_p', content: 'Привет', created_at: '2026-11-11T08:00:00Z', ...extra });

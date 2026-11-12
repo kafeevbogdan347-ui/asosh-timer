@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { pushProfile } from '../services/profileSync';
+import { getLocalAccount } from '../services/accounts';
 import { getBirthday, setBirthday } from '../data/holidays';
 import { UserProfile, CertificateItem, LanguageType, SoundProfileType } from '../types';
 import {
@@ -160,6 +162,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     };
 
     saveMyProfile(updated);
+    // Вошёл в аккаунт — профиль сохраняется и в аккаунт, чтобы был таким же на других устройствах
+    pushProfile(getLocalAccount(), updated);
     setBirthday(editBirthday);
     setMyProfile(updated);
     setIsEditing(false);

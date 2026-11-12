@@ -83,6 +83,7 @@ import { UpdateRequired } from './components/UpdateRequired';
 import { HolidayLayer } from './components/HolidayLayer';
 import { OnlineScreen } from './screens/OnlineScreen';
 import { startPresence } from './services/online';
+import { pullProfile } from './services/profileSync';
 import { subscribeLockdown } from './services/lockdown';
 import { setAutoLanguage, tr as autoTr } from './i18n/auto';
 import { subscribeStudentGrades, newGrades } from './services/journal';
@@ -133,11 +134,12 @@ export default function App() {
   const [lockdown, setLockdown] = useState(false);
   useEffect(() => (registered ? subscribeLockdown(setLockdown) : undefined), [registered]);
 
-  // Онлайн класса: считаем время в приложении и отмечаемся «в сети» (выключается в Опциях → Приватность)
+  // Онлайн класса: считаем время в приложении и отмечаемся «в сети» (выключается в Опциях → Приватность).
+  // Только с аккаунтом ученика: так один человек — одна строка рейтинга на всех его устройствах
   useEffect(() => {
-    if (!cls || isGuest || isTeacher) return;
+    if (!cls || isGuest || isTeacher || account?.role !== 'student') return;
     return startPresence(cls);
-  }, [cls, isGuest, isTeacher]);
+  }, [cls, isGuest, isTeacher, account?.uid, account?.role]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Только для автотестов (сборка с VITE_E2E=1): переход на любой экран
   useEffect(() => {
@@ -1217,6 +1219,8 @@ export default function App() {
   const applyAccount = (res: AccountDone) => {
     const acc = res.account;
     setAccount(acc);
+    // Ник, аватар и статус берём из аккаунта — одинаковые на всех устройствах
+    pullProfile(acc);
     setIsGuest(false);
     localStorage.removeItem('asosh_guest');
     const accCls = res.child?.cls || acc.cls || '';
@@ -1249,7 +1253,11 @@ export default function App() {
   useEffect(() => {
     if (!account) return;
     verifyAccountSession(account).then((ok) => {
-      if (ok) return;
+      // Вход живой — подтягиваем профиль аккаунта (его могли поменять на другом устройстве)
+      if (ok) {
+        pullProfile(account);
+        return;
+      }
       setAccount(null);
       if (account.role === 'teacher') setTeacher(null);
       showToast('Войди в аккаунт заново: Опции → Аккаунт');
@@ -1529,7 +1537,10 @@ export default function App() {
     if (confirm('Сбросить ВСЕ сохранённые данные, настройки и домашние задания?')) {
       // Выходим и из аккаунта, иначе вход в базе остался бы без записи на телефоне
       logoutAccount().finally(() => {
+        const epoch = localStorage.getItem('asosh_data_epoch');
         localStorage.clear();
+        // Метку общего сброса оставляем, чтобы он не сработал повторно
+        if (epoch) localStorage.setItem('asosh_data_epoch', epoch);
         location.reload();
       });
     }

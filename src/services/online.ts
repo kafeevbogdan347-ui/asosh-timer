@@ -1,14 +1,17 @@
 // Рейтинг онлайна класса. Включён у всех по умолчанию, выключается в Опциях → Приватность.
 // Видят только одноклассники (путь в базе — по классу).
 // Хранится: ник, эмодзи-аватар, статус, «о себе», минуты в приложении за неделю и время последней активности.
+// Запись — по uid входа: у аккаунта он один на всех устройствах, поэтому телефон и компьютер
+// пишут в одну строку рейтинга, а время с разных устройств складывается.
 
-import { ref, set, remove, onValue, onDisconnect, serverTimestamp } from 'firebase/database';
+import { ref, set, get, update, remove, onValue, onDisconnect, serverTimestamp, increment } from 'firebase/database';
 import { initFirebase, ensureSignedIn } from './firebaseChat';
 import { classKey, myUid } from './classShared';
 import { getMyProfile } from './userService';
 
 const OPT_KEY = 'asosh_online_optin';
-const TIME_KEY = 'asosh_online_week'; // { week, sec } — время в приложении за текущую неделю
+const TIME_KEY = 'asosh_online_week'; // { week, sec } — время в приложении за текущую неделю на этом устройстве
+const PENDING_KEY = 'asosh_online_pending'; // { week, sec } — ещё не отправленные в базу секунды
 const HEARTBEAT_SEC = 60;
 export const ONLINE_WINDOW_MS = 150 * 1000; // «в сети», если был активен за последние 2,5 минуты
 
@@ -71,15 +74,57 @@ function publicCard() {
   };
 }
 
+function loadPending(): { week: string; sec: number } {
+  try {
+    const v = JSON.parse(localStorage.getItem(PENDING_KEY) || '{}');
+    if (v.week === weekKey()) return { week: v.week, sec: Number(v.sec) || 0 };
+  } catch {
+    // начнём с нуля
+  }
+  return { week: weekKey(), sec: 0 };
+}
+
+function savePending(v: { week: string; sec: number }) {
+  try {
+    localStorage.setItem(PENDING_KEY, JSON.stringify(v));
+  } catch {
+    // не запомнится — немного времени потеряется
+  }
+}
+
+// Отправляем карточку и прибавляем накопленные на этом устройстве секунды к общему времени аккаунта
 async function writeMe(cls: string): Promise<boolean> {
   const { db } = initFirebase();
   if (!db || !(await ensureSignedIn())) return false;
   const uid = myUid();
   if (!uid) return false;
-  const w = loadWeek();
+  const pending = loadPending();
+  const add = Math.round(pending.sec);
   const node = ref(db, path(cls, uid));
-  await set(node, { ...publicCard(), week: w.week, sec: Math.round(w.sec), last: serverTimestamp() });
+  const cur = (await get(node)).val() as { week?: string; sec?: number } | null;
+  if (cur && cur.week === pending.week) {
+    const total = (Number(cur.sec) || 0) + add;
+    await update(node, { ...publicCard(), sec: total > 604800 ? 604800 : increment(add), last: serverTimestamp() });
+  } else {
+    await set(node, { ...publicCard(), week: pending.week, sec: Math.min(add, 604800), last: serverTimestamp() });
+  }
+  // Отправленное вычитаем: пока шёл запрос, могли набежать новые секунды
+  const after = loadPending();
+  savePending({ week: after.week, sec: after.week === pending.week ? Math.max(0, after.sec - add) : after.sec });
   return true;
+}
+
+// Убрать себя из рейтинга класса (перед входом в аккаунт или выходом из него,
+// чтобы старая анонимная запись не осталась вторым «я» в рейтинге)
+export async function removeMyPresence(cls: string): Promise<void> {
+  const { db } = initFirebase();
+  const uid = myUid();
+  if (!db || !uid || !cls) return;
+  try {
+    await remove(ref(db, path(cls, uid)));
+  } catch {
+    // нет сети — запись сама станет «давно»
+  }
 }
 
 export async function setOptIn(cls: string, on: boolean): Promise<boolean> {
@@ -111,7 +156,12 @@ export function startPresence(cls: string): () => void {
     const visible = document.visibilityState === 'visible';
     const w = loadWeek();
     // Засчитываем не больше интервала: если телефон спал, время не растёт
-    if (visible) w.sec += Math.min((now - lastTick) / 1000, HEARTBEAT_SEC * 1.5);
+    if (visible) {
+      const add = Math.min((now - lastTick) / 1000, HEARTBEAT_SEC * 1.5);
+      w.sec += add;
+      const pending = loadPending();
+      savePending({ week: pending.week, sec: pending.sec + add });
+    }
     lastTick = now;
     saveWeek(w);
     if (stopped || !visible || !isOptedIn() || !navigator.onLine) return;
