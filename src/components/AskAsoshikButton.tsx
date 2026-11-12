@@ -1,4 +1,5 @@
 import React from 'react';
+import { AsoshikAvatar } from '../screens/AssistantScreen';
 
 interface Props {
   onClick: () => void;
@@ -6,7 +7,7 @@ interface Props {
   className?: string;
 }
 
-// Маленькая кнопка «🫧 Асошик» для карточек в разных разделах
+// Маленькая кнопка «Асошик» с SVG-логотипом для карточек в разных разделах
 export const AskAsoshikButton: React.FC<Props> = ({ onClick, label = 'Асошик', className = '' }) => (
   <button
     type="button"
@@ -17,6 +18,6 @@ export const AskAsoshikButton: React.FC<Props> = ({ onClick, label = 'Асоши
     className={`asoshik-mini ${className}`}
     title="Спросить Асошика"
   >
-    🫧 {label}
+    <AsoshikAvatar size={15} /> {label}
   </button>
 );

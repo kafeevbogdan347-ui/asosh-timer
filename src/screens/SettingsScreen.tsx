@@ -1412,7 +1412,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       <button
         type="button"
         className="btn darkBtn w-full text-xs justify-center py-2.5 rounded-2xl cursor-pointer"
-        onClick={() => onNavigate('about')}
+        onClick={() => onNavigate?.('about')}
       >
         ℹ️ О приложении
       </button>

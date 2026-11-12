@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
-    "resolveJsonModule": true,
     "target": "ES2022",
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "module": "ESNext",
+    "types": ["vite/client"],
     "lib": [
       "ES2022",
       "DOM",
@@ -23,5 +23,6 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": ["dist", "capacitor.config.ts"]
 }

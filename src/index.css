@@ -1122,6 +1122,10 @@ input:focus, select:focus, textarea:focus {
 .nav-bar span {
   font-size: 20px;
   line-height: 1.2;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ПЛАВНЫЕ АНИМАЦИИ */

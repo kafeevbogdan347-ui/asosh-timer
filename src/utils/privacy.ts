@@ -146,12 +146,14 @@ export function checkClassCodeLockout(): { locked: boolean; remainingSec: number
 export function recordFailedClassCodeAttempt(): { locked: boolean; remainingSec: number } {
   try {
     const currentFails = Number(localStorage.getItem(CLASS_CODE_FAILS_KEY) || '0') + 1;
-    localStorage.setItem(CLASS_CODE_FAILS_KEY, String(currentFails));
 
     if (currentFails >= MAX_FAILED_ATTEMPTS) {
       const lockUntil = Date.now() + LOCKOUT_DURATION_MS;
       localStorage.setItem(CLASS_CODE_LOCK_UNTIL_KEY, String(lockUntil));
+      localStorage.setItem(CLASS_CODE_FAILS_KEY, '0');
       return { locked: true, remainingSec: 30 };
+    } else {
+      localStorage.setItem(CLASS_CODE_FAILS_KEY, String(currentFails));
     }
   } catch {
     // Ignore
@@ -169,7 +171,7 @@ export function resetFailedClassCodeAttempts(): void {
 }
 
 // ==========================================
-// 4. ЭКСТРЕННАЯ ОЧИСТКА КОНФИДЕНЦИАЛЬНЫХ ДАННЫХ
+// 4. ЭКСТРЕННАЯ ОЧИСТНАЯ КОНФИДЕНЦИАЛЬНЫХ ДАННЫХ
 // ==========================================
 
 // Ключи с данными, которые приложение само восстановит из сети или которые не жалко потерять:
@@ -215,13 +217,19 @@ const DEV_LOCK_DURATION_MS = 30 * 1000; // 30 секунд блокировки 
 
 export function checkDevLockout(): { locked: boolean; remainingSec: number } {
   try {
-    const lockUntil = Number(localStorage.getItem(DEV_LOCK_UNTIL_KEY) || '0');
-    const now = Date.now();
-    if (lockUntil > now) {
-      return {
-        locked: true,
-        remainingSec: Math.ceil((lockUntil - now) / 1000),
-      };
+    const lockUntilStr = localStorage.getItem(DEV_LOCK_UNTIL_KEY);
+    if (lockUntilStr) {
+      const lockUntil = Number(lockUntilStr);
+      const now = Date.now();
+      if (lockUntil > now) {
+        return {
+          locked: true,
+          remainingSec: Math.ceil((lockUntil - now) / 1000),
+        };
+      } else {
+        localStorage.removeItem(DEV_LOCK_UNTIL_KEY);
+        localStorage.removeItem(DEV_FAILS_KEY);
+      }
     }
   } catch {
     // Ignore
@@ -232,12 +240,14 @@ export function checkDevLockout(): { locked: boolean; remainingSec: number } {
 export function recordFailedDevAttempt(): { locked: boolean; remainingSec: number } {
   try {
     const currentFails = Number(localStorage.getItem(DEV_FAILS_KEY) || '0') + 1;
-    localStorage.setItem(DEV_FAILS_KEY, String(currentFails));
 
     if (currentFails >= MAX_DEV_FAILS) {
       const lockUntil = Date.now() + DEV_LOCK_DURATION_MS;
       localStorage.setItem(DEV_LOCK_UNTIL_KEY, String(lockUntil));
+      localStorage.setItem(DEV_FAILS_KEY, '0');
       return { locked: true, remainingSec: 30 };
+    } else {
+      localStorage.setItem(DEV_FAILS_KEY, String(currentFails));
     }
   } catch {
     // Ignore

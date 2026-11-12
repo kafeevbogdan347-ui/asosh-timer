@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { WHATS_NEW } from '../data/whatsNew';
+import { AsoshikAvatar } from '../screens/AssistantScreen';
 
 interface WhatsNewModalProps {
   onClose: () => void;
@@ -37,7 +38,9 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ onClose }) => {
             <div className="space-y-2">
               {r.items.map((it) => (
                 <div key={it.title} className="flex gap-3 p-3 rounded-2xl bg-white/5 border border-white/10">
-                  <div className="text-2xl leading-none shrink-0 w-8 text-center">{it.icon}</div>
+                  <div className="text-2xl leading-none shrink-0 w-8 text-center flex items-center justify-center">
+                    {it.icon === '🫧' ? <AsoshikAvatar size={28} /> : it.icon}
+                  </div>
                   <div className="min-w-0">
                     <div className="text-sm font-black">{it.title}</div>
                     <div className="text-xs text-white/70 leading-relaxed mt-0.5">{it.text}</div>

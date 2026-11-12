@@ -10,18 +10,25 @@ export function evaluateSafe(expr: string): { success: boolean; result: string; 
       .replace(/×/g, '*')
       .replace(/÷/g, '/')
       .replace(/,/g, '.')
-      .replace(/π/g, `${Math.PI}`)
-      .replace(/e/g, `${Math.E}`)
       .replace(/\^/g, '**');
 
-    // Replace square roots: √(number or expr) -> Math.sqrt(...)
-    clean = clean.replace(/√(\d+(?:\.\d+)?)/g, 'Math.sqrt($1)');
+    // Implicit multiplication before π, √, (
+    clean = clean
+      .replace(/(\d|\))(?=π|√|\()/g, '$1*')
+      .replace(/π(?=\d|\(|√)/g, 'π*')
+      .replace(/π/g, `(${Math.PI})`)
+      .replace(/(?<![0-9.a-zA-Z])e(?![0-9a-zA-Z+-])/g, `(${Math.E})`);
+
+    // Replace square roots: √(expr) or √number -> Math.sqrt(...)
+    clean = clean
+      .replace(/√\(([^()]+)\)/g, 'Math.sqrt($1)')
+      .replace(/√(\d+(?:\.\d+)?)/g, 'Math.sqrt($1)');
 
     // Replace percentages: e.g. 50% -> (50/100)
     clean = clean.replace(/(\d+(?:\.\d+)?)%/g, '($1/100)');
 
     // Validate safe characters only
-    if (!/^[0-9+\-*/().\s*MathsqrtPIE]+$/.test(clean)) {
+    if (!/^[0-9+\-*/().\sMathsqrtPIE]+$/.test(clean)) {
       return { success: false, result: '0', error: 'Неверные символы' };
     }
 

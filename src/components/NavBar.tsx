@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { ScreenId, LanguageType, SoundProfileType } from '../types';
 import { DICT } from '../data/constants';
 import { playSound, doVibro } from '../utils/audio';
+import { AsoshikAvatar } from '../screens/AssistantScreen';
 
 interface NavBarProps {
   currentScreen: ScreenId;
@@ -26,14 +27,14 @@ export const NavBar: React.FC<NavBarProps> = ({
   const hideOnScreens: ScreenId[] = ['onboarding', 'select', 'letters', 'about', 'maintenance', 'board'];
   if (hideOnScreens.includes(currentScreen)) return null;
 
-  const navItems: { id: ScreenId; icon: string; label: string; badge?: number }[] = [
+  const navItems: { id: ScreenId; icon: React.ReactNode; label: string; badge?: number }[] = [
     { id: 'main', icon: '🏠', label: d.main },
     { id: 'today', icon: '⏱', label: d.now },
     { id: 'schedule', icon: '📅', label: d.schedule },
     { id: 'homework', icon: '📘', label: d.hw, badge: activeHwCount },
     { id: 'games', icon: '🎮', label: d.games },
     { id: 'settings', icon: '⚙️', label: d.settings },
-    { id: 'assistant', icon: '🫧', label: 'Асошик' },
+    { id: 'assistant', icon: <AsoshikAvatar size={22} />, label: 'Асошик' },
   ];
 
   const handleClick = (id: ScreenId) => {

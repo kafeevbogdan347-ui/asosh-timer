@@ -23,7 +23,7 @@ const b64url = (bytes: Uint8Array) => b64(bytes).replace(/\+/g, '-').replace(/\/
 const unb64url = (s: string) => unb64(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4));
 
 async function streamBytes(data: Uint8Array, stream: CompressionStream | DecompressionStream): Promise<Uint8Array> {
-  const out = new Response(new Blob([data]).stream().pipeThrough(stream));
+  const out = new Response(new Blob([data as unknown as BlobPart]).stream().pipeThrough(stream));
   return new Uint8Array(await out.arrayBuffer());
 }
 
@@ -55,7 +55,7 @@ export async function createTransfer(): Promise<TransferResult> {
   const keyBytes = crypto.getRandomValues(new Uint8Array(32));
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const key = await crypto.subtle.importKey('raw', keyBytes, 'AES-GCM', false, ['encrypt']);
-  const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, packed));
+  const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, packed as unknown as BufferSource));
   const payload = b64(iv) + '.' + b64(cipher);
   if (payload.length > MAX_PAYLOAD) {
     return { ok: false, error: 'Слишком много данных (фото). Перенеси через файл резервной копии.' };
