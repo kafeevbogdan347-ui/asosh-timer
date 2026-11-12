@@ -60,6 +60,8 @@ interface DeveloperModalProps {
   onSeedHomeworks?: () => void;
   fpsOverlayActive?: boolean;
   onToggleFpsOverlay?: () => void;
+  siteClosed?: boolean;
+  onToggleSiteClosed?: (closed: boolean) => void;
 }
 
 export const DeveloperModal: React.FC<DeveloperModalProps> = ({
@@ -72,8 +74,11 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
   onSeedHomeworks,
   fpsOverlayActive,
   onToggleFpsOverlay,
+  siteClosed = false,
+  onToggleSiteClosed,
 }) => {
   const [tab, setTab] = useState<'security' | 'stats' | 'presentation' | 'apk' | 'mobile' | 'time' | 'data' | 'audio' | 'system'>('security');
+  const [togglingSiteClosed, setTogglingSiteClosed] = useState(false);
   const [stressResult, setStressResult] = useState<string | null>(null);
   const [simBattery, setSimBattery] = useState(88);
   const [simNetwork, setSimNetwork] = useState<'online' | 'offline' | 'slow3g'>('online');
@@ -281,6 +286,102 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
           {/* 0.1 SECURITY TAB */}
           {tab === 'security' && (
             <div className="space-y-3">
+              {/* Global App & Site Access Control (Maintenance Stub) */}
+              <div
+                className={`p-4 rounded-2xl border-2 space-y-3 shadow-xl transition-colors ${
+                  siteClosed
+                    ? 'bg-gradient-to-r from-red-950/90 via-slate-900 to-rose-950/80 border-red-500/60'
+                    : 'bg-gradient-to-r from-emerald-950/80 via-slate-900 to-teal-950/70 border-emerald-500/40'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className={`p-2 rounded-xl border ${
+                        siteClosed
+                          ? 'bg-red-500/20 border-red-400/50 text-red-300'
+                          : 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300'
+                      }`}
+                    >
+                      <Shield className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <b className="text-sm font-black text-white block">
+                        Доступ к приложению и сайту (Заглушка)
+                      </b>
+                      <span className="text-[11px] text-white/75 block">
+                        {siteClosed
+                          ? 'Сервера остановлены • Включена заглушка для всех пользователей'
+                          : 'Приложение и сайт работают в штатном режиме для всех'}
+                      </span>
+                    </div>
+                  </div>
+                  <span
+                    className={`text-[10px] font-mono px-2.5 py-1 rounded-lg font-bold border shrink-0 ${
+                      siteClosed
+                        ? 'bg-red-500/25 text-red-200 border-red-400/40 animate-pulse'
+                        : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30'
+                    }`}
+                  >
+                    {siteClosed ? 'ЗАКРЫТО' : 'ОТКРЫТО'}
+                  </span>
+                </div>
+
+                <div className="p-3 bg-black/40 border border-white/10 rounded-xl text-xs text-white/80 leading-relaxed">
+                  {siteClosed ? (
+                    <>
+                      Сейчас у всех пользователей приложения и сайта отображается экран-заглушка:{' '}
+                      <b className="text-red-300">«АСОШ Таймер временно недоступен. Попробуйте позже.»</b>
+                    </>
+                  ) : (
+                    <>
+                      Нажмите кнопку ниже, чтобы временно закрыть доступ к приложению и сайту для всех пользователей. На время остановки появится экран-заглушка:{' '}
+                      <b className="text-cyan-300">«АСОШ Таймер временно недоступен. Попробуйте позже.»</b>
+                    </>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  disabled={togglingSiteClosed}
+                  onClick={async () => {
+                    if (!onToggleSiteClosed) return;
+                    setTogglingSiteClosed(true);
+                    playSound(siteClosed ? 'levelup' : 'click', soundProfile);
+                    try {
+                      await onToggleSiteClosed(!siteClosed);
+                    } finally {
+                      setTogglingSiteClosed(false);
+                    }
+                  }}
+                  className={`w-full py-3 px-4 rounded-xl text-xs font-black flex items-center justify-center gap-2 cursor-pointer transition-all shadow-lg active:scale-95 disabled:opacity-60 ${
+                    siteClosed
+                      ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/25'
+                      : 'bg-red-500 hover:bg-red-400 text-white shadow-red-500/25'
+                  }`}
+                >
+                  {siteClosed ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>
+                        {togglingSiteClosed
+                          ? 'Разблокировка...'
+                          : '🟢 Разблокировать доступ к приложению и сайту'}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Ban className="w-4 h-4" />
+                      <span>
+                        {togglingSiteClosed
+                          ? 'Закрываем доступ...'
+                          : '🔴 Временно закрыть доступ к приложению и сайту'}
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
+
               <div className="p-4 bg-gradient-to-r from-red-950/80 via-slate-900 to-amber-950/70 rounded-2xl border-2 border-red-500/40 space-y-3 shadow-xl">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">

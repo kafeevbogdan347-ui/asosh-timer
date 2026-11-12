@@ -16,7 +16,7 @@ export interface WhatsNewRelease {
 
 export const WHATS_NEW: WhatsNewRelease[] = [
   {
-    version: 'v16.14',
+    version: 'v16.15',
     date: '12 ноября 2026',
     items: [
       { icon: '💻', title: 'Быстрое обновление на ПК и в браузере', text: 'Кнопка «Обновить» теперь сразу загружает свежую версию без зависания окна и лишних перезагрузок.' },

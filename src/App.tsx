@@ -84,7 +84,7 @@ import { HolidayLayer } from './components/HolidayLayer';
 import { OnlineScreen } from './screens/OnlineScreen';
 import { startPresence } from './services/online';
 import { pullProfile } from './services/profileSync';
-import { subscribeLockdown } from './services/lockdown';
+import { subscribeLockdown, subscribeSiteClosed, setGlobalSiteClosed, getLocalSiteClosed } from './services/lockdown';
 import { setAutoLanguage, tr as autoTr } from './i18n/auto';
 import { subscribeStudentGrades, newGrades } from './services/journal';
 import { ProfileScreen } from './screens/ProfileScreen';
@@ -133,6 +133,10 @@ export default function App() {
   // Защитный режим: администратор остановил запись на сервере
   const [lockdown, setLockdown] = useState(false);
   useEffect(() => (registered ? subscribeLockdown(setLockdown) : undefined), [registered]);
+
+  // Глобальное закрытие доступа к приложению и сайту (экран-заглушка из Панели разработчика)
+  const [siteClosed, setSiteClosed] = useState<boolean>(() => getLocalSiteClosed());
+  useEffect(() => subscribeSiteClosed(setSiteClosed), []);
 
   // Онлайн класса: считаем время в приложении и отмечаемся «в сети» (выключается в Опциях → Приватность).
   // Только с аккаунтом ученика: так один человек — одна строка рейтинга на всех его устройствах
@@ -355,6 +359,24 @@ export default function App() {
       showToast('⚠️ Режим техработ включён: при входе пишется «Что-то сломалось, чиним»');
     } else {
       showToast('🟢 Серверы включены! Все службы работают в штатном режиме (100% ONLINE)');
+    }
+  };
+
+  const handleToggleSiteClosed = async (closed: boolean) => {
+    setSiteClosed(closed);
+    const synced = await setGlobalSiteClosed(closed);
+    if (closed) {
+      showToast(
+        synced
+          ? '🔴 Доступ к приложению и сайту закрыт для всех пользователей (включена заглушка)'
+          : '🔴 Доступ закрыт (включена заглушка)'
+      );
+    } else {
+      showToast(
+        synced
+          ? '🟢 Доступ к приложению и сайту снова открыт для всех пользователей!'
+          : '🟢 Доступ к приложению разблокирован!'
+      );
     }
   };
 
@@ -1631,6 +1653,8 @@ export default function App() {
         onSeedHomeworks={seedSampleHomeworks}
         fpsOverlayActive={fpsOverlayActive}
         onToggleFpsOverlay={() => setFpsOverlayActive((v) => !v)}
+        siteClosed={siteClosed}
+        onToggleSiteClosed={handleToggleSiteClosed}
       />
 
       {/* Dev Suite Master Password Authentication Modal */}
@@ -1645,6 +1669,32 @@ export default function App() {
         vibro={settings.vibro}
         onShowToast={showToast}
       />
+
+      {/* Глобальный экран-заглушка, когда доступ к приложению и сайту временно закрыт из Панели разработчика */}
+      {siteClosed && (
+        <div className="fixed inset-0 z-[9000] bg-slate-950 flex flex-col items-center justify-center p-6 text-center select-none">
+          <div className="max-w-md w-full bg-slate-900/95 border border-red-500/40 rounded-3xl p-8 shadow-2xl space-y-5 backdrop-blur-xl">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-red-500/15 border border-red-400/40 flex items-center justify-center text-3xl shadow-lg">
+              🛠️
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black text-white leading-snug">
+              АСОШ Таймер временно недоступен. Попробуйте позже.
+            </h1>
+            <p className="text-xs sm:text-sm text-white/60 leading-relaxed">
+              На серверах проводятся технические работы. Скоро всё снова заработает.
+            </p>
+            <div className="pt-3 border-t border-white/10">
+              <button
+                type="button"
+                onClick={handleRequestOpenDev}
+                className="text-[11px] font-bold text-white/40 hover:text-cyan-300 transition-colors px-3 py-1.5 rounded-xl hover:bg-white/5 cursor-pointer"
+              >
+                🔒 Панель разработчика
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Top Header Bar */}
       {currentScreen !== 'retroFirst' && currentScreen !== 'maintenance' && currentScreen !== 'board' && (
