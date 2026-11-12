@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Holiday, HolidayEffect, HOLIDAY_PREVIEW_EVENT, activeHoliday, holidayById } from '../data/holidays';
+import { Holiday, HolidayEffect, activeHoliday, holidayById } from '../data/holidays';
 
 interface Props {
-  enabled: boolean; // Опции → «Праздничное оформление»
+  // Праздничная тема (Опции → Тема): какой праздник рисовать эффектами — снег, салют, лепестки
+  themeHoliday?: string | null;
   quality: 'eco' | 'normal' | 'ultra';
   name: string; // для поздравления с днём рождения
-  mode: 'effects' | 'banner'; // эффекты — поверх всего приложения, баннер — на главном экране
+  mode: 'effects' | 'banner'; // эффекты — от праздничной темы, баннер — поздравление в сам праздник
 }
 
 const PARTICLES: Record<HolidayEffect, string[]> = {
@@ -104,43 +105,27 @@ const Garland: React.FC = () => (
 
 const dismissKey = (h: Holiday) => `asosh_holiday_seen_${h.id}_${new Date().getFullYear()}_${new Date().toDateString()}`;
 
-export const HolidayLayer: React.FC<Props> = ({ enabled, quality, name, mode }) => {
-  const [preview, setPreview] = useState<string | null>(null);
+export const HolidayLayer: React.FC<Props> = ({ themeHoliday, quality, name, mode }) => {
   const [now, setNow] = useState(() => new Date());
   const [closed, setClosed] = useState(false);
 
   // Праздник может начаться, пока приложение открыто (полночь)
   useEffect(() => {
+    if (mode !== 'banner') return;
     const t = setInterval(() => setNow(new Date()), 10 * 60 * 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [mode]);
+
+  const holiday = mode === 'effects' ? (themeHoliday ? holidayById(themeHoliday, name) : null) : activeHoliday(now, name);
 
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const on = (e: Event) => {
-      const id = (e as CustomEvent<string | null>).detail;
-      setPreview(id);
-      setClosed(false);
-      clearTimeout(timer);
-      if (id) timer = setTimeout(() => setPreview(null), 15000);
-    };
-    window.addEventListener(HOLIDAY_PREVIEW_EVENT, on);
-    return () => {
-      window.removeEventListener(HOLIDAY_PREVIEW_EVENT, on);
-      clearTimeout(timer);
-    };
-  }, []);
-
-  const holiday = preview ? holidayById(preview, name) : enabled ? activeHoliday(now, name) : null;
-
-  useEffect(() => {
-    if (!holiday || preview) return;
+    if (!holiday || mode !== 'banner') return;
     try {
       setClosed(localStorage.getItem(dismissKey(holiday)) === '1');
     } catch {
       setClosed(false);
     }
-  }, [holiday?.id, preview]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [holiday?.id, mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!holiday) return null;
   const still = quality === 'eco' || reducedMotion();
@@ -177,12 +162,10 @@ export const HolidayLayer: React.FC<Props> = ({ enabled, quality, name, mode }) 
             aria-label="Скрыть поздравление"
             onClick={() => {
               setClosed(true);
-              if (!preview) {
-                try {
-                  localStorage.setItem(dismissKey(holiday), '1');
-                } catch {
-                  // не запомнится до перезапуска
-                }
+              try {
+                localStorage.setItem(dismissKey(holiday), '1');
+              } catch {
+                // не запомнится до перезапуска
               }
             }}
           >

@@ -223,6 +223,49 @@ export const THEMES: ThemeInfo[] = [
     light: false,
     preview: { background: '#000', card: '#000', border: '#2a2a2a', text: '#fff', accent: '#fff', radius: 12, font: 'system-ui' },
   },
+  // Праздничные темы: свой фон и цвета плюс эффект (снег, салют, лепестки) — см. HOLIDAY_THEME_EFFECTS
+  {
+    id: 'hol_newyear',
+    name: 'Новый год',
+    desc: 'Ёлочная зелень, золото, гирлянда и снег',
+    light: false,
+    preview: { background: 'radial-gradient(circle at 25% 30%,#fff 0 1.5px,transparent 2px) 0 0/12px 12px, linear-gradient(180deg,#0b3d2e,#062419 60%,#3b0a0a)', card: 'rgba(6,36,25,.7)', border: '#e5c158', text: '#fffbea', accent: '#ef4444', radius: 16, font: 'Georgia,serif' },
+  },
+  {
+    id: 'hol_feb23',
+    name: '23 февраля',
+    desc: 'Хаки и тёмно-синий, красные звёзды и строгие погоны',
+    light: false,
+    preview: { background: 'radial-gradient(circle at 70% 20%,rgba(220,38,38,.35),transparent 45%), linear-gradient(180deg,#1f2a1a,#2f3b22 60%,#0f172a)', card: 'rgba(31,42,26,.75)', border: '#c9a227', text: '#f1f5e9', accent: '#dc2626', radius: 4, font: '"Arial Black",system-ui' },
+  },
+  {
+    id: 'hol_mar8',
+    name: '8 Марта',
+    desc: 'Светлая весенняя: тюльпаны, мимоза и падающие лепестки',
+    light: true,
+    preview: { background: 'radial-gradient(circle at 30% 30%,#f9a8d4 0 2px,transparent 3px) 0 0/16px 16px, linear-gradient(180deg,#fff7fb,#fde4f0 60%,#fef9c3)', card: 'rgba(255,255,255,.88)', border: '#f9a8d4', text: '#831843', accent: '#e11d48', radius: 22, font: 'Georgia,serif' },
+  },
+  {
+    id: 'hol_may9',
+    name: 'День Победы',
+    desc: 'Георгиевская лента, вечерний салют и красные гвоздики',
+    light: false,
+    preview: { background: 'repeating-linear-gradient(135deg,#f97316 0 4px,#111 4px 8px) 0 100%/100% 8px no-repeat, radial-gradient(circle at 70% 25%,rgba(250,204,21,.35),transparent 40%), linear-gradient(180deg,#140707,#2a0b0b)', card: 'rgba(40,10,10,.7)', border: '#f59e0b', text: '#fff7ed', accent: '#f59e0b', radius: 8, font: 'Georgia,serif' },
+  },
+  {
+    id: 'hol_sep1',
+    name: '1 сентября',
+    desc: 'Светлая осенняя: тетрадный лист, кленовые листья и банты',
+    light: true,
+    preview: { background: 'radial-gradient(circle at 70% 30%,#f59e0b 0 2px,transparent 3px) 0 0/18px 18px, linear-gradient(180deg,#fffbeb,#fde7c4)', card: '#fffdf7', border: '#f0b46a', text: '#7c2d12', accent: '#c2410c', radius: 12, font: 'Georgia,serif' },
+  },
+  {
+    id: 'hol_birthday',
+    name: 'День рождения',
+    desc: 'Конфетти, шарики и праздничные яркие кнопки',
+    light: false,
+    preview: { background: 'radial-gradient(circle at 20% 30%,#facc15 0 2px,transparent 3px) 0 0/14px 14px, radial-gradient(circle at 70% 60%,#f472b6 0 2px,transparent 3px) 0 0/18px 18px, linear-gradient(160deg,#2e1065,#581c87 55%,#831843)', card: 'rgba(255,255,255,.1)', border: 'rgba(250,204,21,.6)', text: '#fff', accent: '#facc15', radius: 20, font: 'system-ui' },
+  },
   {
     id: 'first',
     name: 'Первый',
@@ -244,4 +287,14 @@ export const migrateTheme = (id: string): ThemeType => {
   if (/space|galaxy|nebula|void|graviton|pulsar|dark_matter|saturn/.test(id)) return 'space';
   if (/arctic|ice|winter/.test(id)) return 'winter';
   return 'dark';
+};
+
+// Какой праздничный эффект показывать поверх приложения при праздничной теме
+export const HOLIDAY_THEME_EFFECTS: Partial<Record<ThemeType, string>> = {
+  hol_newyear: 'newyear',
+  hol_feb23: 'feb23',
+  hol_mar8: 'mar8',
+  hol_may9: 'may9',
+  hol_sep1: 'sep1',
+  hol_birthday: 'birthday',
 };

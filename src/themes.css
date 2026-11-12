@@ -872,17 +872,17 @@ body.q-ultra.no-anim #root::before { animation: none; }
    ЦВЕТНЫЕ ТЁМНЫЕ ТЕМЫ: тёмно-синие панели из Tailwind (slate/indigo-950 и т.п.)
    делаем нейтрально-тёмными, чтобы сквозь них просвечивал цвет темы
    ============================================================ */
-body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint, .theme-mocha, .theme-sunset_city, .theme-midnight_gold, .theme-steel, .theme-terminal, .theme-berry)
+body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint, .theme-mocha, .theme-sunset_city, .theme-midnight_gold, .theme-steel, .theme-terminal, .theme-berry, .theme-hol_newyear, .theme-hol_feb23, .theme-hol_may9, .theme-hol_birthday)
   :is([class*="from-slate-9"], [class*="from-cyan-9"], [class*="from-blue-9"], [class*="from-indigo-9"], [class*="from-purple-9"], [class*="from-violet-9"], [class*="from-sky-9"]) {
   background: rgba(0, 0, 0, 0.28) !important;
   background-image: none !important;
 }
-body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint, .theme-mocha, .theme-sunset_city, .theme-midnight_gold, .theme-steel, .theme-terminal, .theme-berry)
+body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint, .theme-mocha, .theme-sunset_city, .theme-midnight_gold, .theme-steel, .theme-terminal, .theme-berry, .theme-hol_newyear, .theme-hol_feb23, .theme-hol_may9, .theme-hol_birthday)
   :is([class*="bg-slate-9"], [class*="bg-indigo-9"], [class*="bg-blue-9"]) {
   background-color: rgba(0, 0, 0, 0.32) !important;
 }
 /* Активные кнопки и вкладки (bg-cyan-400/500) — в акцентный цвет темы; акценты у этих тем светлые, поэтому текст тёмный */
-body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint, .theme-mocha, .theme-sunset_city, .theme-midnight_gold, .theme-steel, .theme-terminal, .theme-berry)
+body:is(.theme-dark, .theme-pixel, .theme-space, .theme-winter, .theme-neon_grid, .theme-chalk, .theme-deep_sea, .theme-taiga, .theme-lava, .theme-northern, .theme-blueprint, .theme-mocha, .theme-sunset_city, .theme-midnight_gold, .theme-steel, .theme-terminal, .theme-berry, .theme-hol_newyear, .theme-hol_feb23, .theme-hol_may9, .theme-hol_birthday)
   :is([class~="bg-cyan-400"], [class~="bg-cyan-500"]) {
   background-color: var(--accent) !important;
   color: #0b1020 !important;
@@ -1226,3 +1226,149 @@ body.theme-ocean_morning .btn.darkBtn { background: #f0f9ff; color: #0c4a6e; }
 body.theme-ocean_morning .num { border-radius: 50%; background: #e0f2fe; color: #0369a1; }
 body.theme-ocean_morning .bellWidget { background: #ffffff; border-color: #7dd3fc; }
 body.theme-ocean_morning .nav-bar { border-radius: 999px; background: rgba(255, 255, 255, 0.95); border-color: #bae6fd; }
+
+
+/* ============================================================
+   ПРАЗДНИЧНЫЕ ТЕМЫ
+   Цвета и форма — здесь, а падающие снежинки, лепестки, салют
+   и гирлянду рисует HolidayLayer (src/components/HolidayLayer.tsx)
+   ============================================================ */
+
+/* ---------- НОВЫЙ ГОД ---------- */
+body.theme-hol_newyear {
+  --b1: #062419; --b2: #0b3d2e; --b3: #3b0a0a;
+  --card: rgba(6, 36, 25, 0.62); --card-hover: rgba(10, 52, 37, 0.75);
+  --line: rgba(229, 193, 88, 0.45); --muted: #d9e8c9; --ink: #fffbea; --txt: #fffbea;
+  --accent: #e5c158; --accent-rgb: 229, 193, 88;
+  --sh: 0 14px 34px rgba(0, 0, 0, 0.5);
+  background:
+    radial-gradient(ellipse at 50% 115%, rgba(255, 255, 255, 0.22), transparent 45%),
+    radial-gradient(circle at 85% 8%, rgba(239, 68, 68, 0.28), transparent 40%),
+    linear-gradient(180deg, #0b3d2e 0%, #062419 60%, #2a0909 100%) !important;
+}
+/* Сугроб внизу экрана */
+body.theme-hol_newyear::before {
+  content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: 90px; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 70px at 20% 100%, rgba(255, 255, 255, 0.22), transparent 70%),
+    radial-gradient(ellipse 55% 60px at 80% 100%, rgba(255, 255, 255, 0.18), transparent 70%);
+}
+body.theme-hol_newyear h1, body.theme-hol_newyear h2 { font-family: Georgia, "Times New Roman", serif !important; text-shadow: 0 2px 14px rgba(229, 193, 88, 0.45); }
+body.theme-hol_newyear .card { border-radius: 20px; border: 1px solid rgba(229, 193, 88, 0.4); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), var(--sh); }
+body.theme-hol_newyear .btn { border-radius: 14px; background: linear-gradient(135deg, #b91c1c, #ef4444); color: #fff; box-shadow: 0 0 0 1px rgba(229, 193, 88, 0.6); }
+body.theme-hol_newyear .btn.darkBtn { background: rgba(6, 36, 25, 0.8); color: #fde68a; }
+body.theme-hol_newyear .num { border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fca5a5, #b91c1c 70%); color: #fff; }
+body.theme-hol_newyear .bellWidget { border-color: #e5c158; background: rgba(6, 36, 25, 0.6); }
+body.theme-hol_newyear .nav-bar { border-radius: 22px; background: rgba(6, 36, 25, 0.92); border-color: rgba(229, 193, 88, 0.45); }
+body.theme-hol_newyear .nav-bar button.active { color: #e5c158; }
+
+/* ---------- 23 ФЕВРАЛЯ ---------- */
+body.theme-hol_feb23 {
+  --b1: #1f2a1a; --b2: #2f3b22; --b3: #0f172a;
+  --card: rgba(31, 42, 26, 0.72); --card-hover: rgba(42, 56, 35, 0.82);
+  --line: rgba(201, 162, 39, 0.45); --muted: #c9d1b6; --ink: #f1f5e9; --txt: #f1f5e9;
+  --accent: #c9a227; --accent-rgb: 201, 162, 39;
+  --sh: 0 12px 28px rgba(0, 0, 0, 0.55);
+  background:
+    radial-gradient(circle at 80% 10%, rgba(220, 38, 38, 0.25), transparent 40%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.025) 0 2px, transparent 2px 12px),
+    linear-gradient(180deg, #2f3b22 0%, #1f2a1a 55%, #0f172a 100%) !important;
+}
+body.theme-hol_feb23 h1, body.theme-hol_feb23 h2 { text-transform: uppercase; letter-spacing: 0.06em; }
+body.theme-hol_feb23 .card { border-radius: 6px; border: 1px solid rgba(201, 162, 39, 0.4); border-top: 3px solid #c9a227; }
+body.theme-hol_feb23 .btn { border-radius: 4px; background: linear-gradient(180deg, #dc2626, #991b1b); color: #fff; text-transform: uppercase; letter-spacing: 0.04em; }
+body.theme-hol_feb23 .btn.darkBtn { background: rgba(15, 23, 42, 0.8); color: #fde68a; border: 1px solid rgba(201, 162, 39, 0.5); }
+body.theme-hol_feb23 .num { border-radius: 4px; background: #c9a227; color: #1f2a1a; }
+body.theme-hol_feb23 .bellWidget { border-radius: 6px; border-color: #c9a227; background: rgba(31, 42, 26, 0.6); }
+body.theme-hol_feb23 .nav-bar { border-radius: 8px; background: rgba(20, 28, 17, 0.95); border-color: rgba(201, 162, 39, 0.45); }
+body.theme-hol_feb23 .nav-bar button.active { color: #c9a227; }
+
+/* ---------- 8 МАРТА (светлая) ---------- */
+body.theme-hol_mar8 {
+  --b1: #fff7fb; --b2: #fde4f0; --b3: #fef9c3;
+  --card: rgba(255, 255, 255, 0.86); --card-hover: rgba(255, 255, 255, 0.96);
+  --line: rgba(225, 29, 72, 0.2); --muted: #9f3a5f; --ink: #831843; --txt: #5b1030;
+  --accent: #e11d48; --accent-rgb: 225, 29, 72;
+  --sh: 0 10px 26px rgba(225, 29, 72, 0.12);
+  background:
+    radial-gradient(circle at 90% 5%, rgba(250, 204, 21, 0.35), transparent 35%),
+    linear-gradient(180deg, #fff7fb 0%, #fde4f0 65%, #fef3c7 100%) !important;
+}
+body.theme-hol_mar8 h1, body.theme-hol_mar8 h2 { font-family: Georgia, "Times New Roman", serif !important; font-style: italic; }
+body.theme-hol_mar8 .card { border-radius: 24px; border: 1px solid #f9a8d4; backdrop-filter: blur(6px); }
+body.theme-hol_mar8 .btn { border-radius: 999px; background: linear-gradient(135deg, #e11d48, #f472b6); color: #fff; }
+body.theme-hol_mar8 .btn.darkBtn { background: #fef9c3; color: #831843; }
+body.theme-hol_mar8 .num { border-radius: 50%; background: #fde047; color: #831843; }
+body.theme-hol_mar8 .bellWidget { border-color: #f9a8d4; background: rgba(255, 255, 255, 0.8); }
+body.theme-hol_mar8 .nav-bar { border-radius: 999px; background: rgba(255, 255, 255, 0.94); }
+
+/* ---------- ДЕНЬ ПОБЕДЫ ---------- */
+body.theme-hol_may9 {
+  --b1: #140707; --b2: #2a0b0b; --b3: #0c0404;
+  --card: rgba(40, 10, 10, 0.66); --card-hover: rgba(58, 16, 16, 0.78);
+  --line: rgba(245, 158, 11, 0.4); --muted: #f3d3b0; --ink: #fff7ed; --txt: #fff7ed;
+  --accent: #f59e0b; --accent-rgb: 245, 158, 11;
+  --sh: 0 14px 34px rgba(0, 0, 0, 0.6);
+  background:
+    radial-gradient(circle at 75% 15%, rgba(250, 204, 21, 0.2), transparent 40%),
+    radial-gradient(circle at 15% 25%, rgba(244, 63, 94, 0.18), transparent 40%),
+    linear-gradient(180deg, #1a0808 0%, #2a0b0b 60%, #0c0404 100%) !important;
+}
+/* Георгиевская лента внизу экрана */
+body.theme-hol_may9::before {
+  content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: 10px; z-index: 0; pointer-events: none;
+  background: repeating-linear-gradient(90deg, #111 0 6px, #f97316 6px 12px, #111 12px 18px, #f97316 18px 24px, #111 24px 30px);
+  opacity: 0.9;
+}
+body.theme-hol_may9 h1, body.theme-hol_may9 h2 { font-family: Georgia, "Times New Roman", serif !important; }
+body.theme-hol_may9 .card { border-radius: 10px; border: 1px solid rgba(245, 158, 11, 0.35); border-left: 4px solid; border-image: repeating-linear-gradient(180deg, #111 0 5px, #f97316 5px 10px) 1; }
+body.theme-hol_may9 .btn { border-radius: 8px; background: linear-gradient(135deg, #b91c1c, #dc2626); color: #fff; }
+body.theme-hol_may9 .btn.darkBtn { background: rgba(20, 7, 7, 0.85); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.45); }
+body.theme-hol_may9 .num { border-radius: 6px; background: #f59e0b; color: #140707; }
+body.theme-hol_may9 .bellWidget { border-radius: 10px; border-color: #f59e0b; background: rgba(40, 10, 10, 0.55); }
+body.theme-hol_may9 .nav-bar { border-radius: 12px; background: rgba(20, 7, 7, 0.95); border-color: rgba(245, 158, 11, 0.4); }
+body.theme-hol_may9 .nav-bar button.active { color: #f59e0b; }
+
+/* ---------- 1 СЕНТЯБРЯ (светлая) ---------- */
+body.theme-hol_sep1 {
+  --b1: #fffbeb; --b2: #fde7c4; --b3: #fcd9a4;
+  --card: #fffdf7; --card-hover: #ffffff;
+  --line: #f0b46a; --muted: #92400e; --ink: #7c2d12; --txt: #5a2209;
+  --accent: #c2410c; --accent-rgb: 194, 65, 12;
+  --sh: 0 8px 20px rgba(194, 65, 12, 0.12);
+  background:
+    linear-gradient(90deg, transparent 38px, rgba(239, 68, 68, 0.35) 38px 40px, transparent 40px),
+    repeating-linear-gradient(180deg, transparent 0 27px, rgba(59, 130, 246, 0.14) 27px 28px),
+    linear-gradient(180deg, #fffbeb 0%, #fde7c4 100%) !important;
+}
+body.theme-hol_sep1 h1, body.theme-hol_sep1 h2 { font-family: Georgia, "Times New Roman", serif !important; }
+body.theme-hol_sep1 .card { border-radius: 12px; border: 1px solid #f0b46a; box-shadow: 2px 3px 0 rgba(194, 65, 12, 0.18); }
+body.theme-hol_sep1 .btn { border-radius: 12px; background: linear-gradient(135deg, #c2410c, #f59e0b); color: #fff; }
+body.theme-hol_sep1 .btn.darkBtn { background: #fff7ed; color: #7c2d12; border: 1px solid #f0b46a; }
+body.theme-hol_sep1 .num { border-radius: 50%; background: #fff; color: #c2410c; border: 2px solid #c2410c; }
+body.theme-hol_sep1 .bellWidget { border-color: #f0b46a; background: #fffdf7; }
+body.theme-hol_sep1 .nav-bar { border-radius: 16px; background: rgba(255, 253, 247, 0.96); border-color: #f0b46a; }
+
+/* ---------- ДЕНЬ РОЖДЕНИЯ ---------- */
+body.theme-hol_birthday {
+  --b1: #2e1065; --b2: #581c87; --b3: #831843;
+  --card: rgba(255, 255, 255, 0.09); --card-hover: rgba(255, 255, 255, 0.14);
+  --line: rgba(250, 204, 21, 0.45); --muted: #f5d0fe; --ink: #ffffff; --txt: #ffffff;
+  --accent: #facc15; --accent-rgb: 250, 204, 21;
+  --sh: 0 14px 34px rgba(30, 5, 60, 0.55);
+  background:
+    radial-gradient(circle at 15% 10%, rgba(56, 189, 248, 0.3), transparent 40%),
+    radial-gradient(circle at 90% 90%, rgba(244, 114, 182, 0.35), transparent 45%),
+    linear-gradient(160deg, #2e1065 0%, #581c87 55%, #831843 100%) !important;
+}
+body.theme-hol_birthday h1, body.theme-hol_birthday h2 {
+  background: linear-gradient(90deg, #facc15, #f472b6, #38bdf8);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+body.theme-hol_birthday .card { border-radius: 22px; border: 1.5px dashed rgba(250, 204, 21, 0.5); backdrop-filter: blur(4px); }
+body.theme-hol_birthday .btn { border-radius: 999px; background: linear-gradient(135deg, #f472b6, #facc15); color: #2e1065; font-weight: 900; }
+body.theme-hol_birthday .btn.darkBtn { background: rgba(46, 16, 101, 0.7); color: #fde68a; }
+body.theme-hol_birthday .num { border-radius: 50%; background: linear-gradient(135deg, #38bdf8, #a78bfa); color: #fff; }
+body.theme-hol_birthday .bellWidget { border-color: #facc15; background: rgba(255, 255, 255, 0.08); }
+body.theme-hol_birthday .nav-bar { border-radius: 999px; background: rgba(46, 16, 101, 0.9); border-color: rgba(250, 204, 21, 0.45); }
+body.theme-hol_birthday .nav-bar button.active { color: #facc15; }
