@@ -2,28 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { APP_VERSION } from '../data/constants';
 import { isNativeApp } from '../services/bellNotifications';
 
-// Проверка обновлений: сайт публикует version.json, приложение сравнивает со своей версией.
-// Если вышла новая — большое окно «ОБНОВИТЕ ДО ПОСЛЕДНЕЙ ВЕРСИИ».
-const REMOTE_VERSION_URL = 'https://kafeevbogdan347-ui.github.io/asosh-timer/version.json';
+// Автоматическое обновление без скачивания файлов:
+// Приложение проверяет version.json и само подтягивает свежую сборку в браузере, на ПК и в APK,
+// после чего автоматически открывается окно «Что нового».
+const REMOTE_BASE = 'https://kafeevbogdan347-ui.github.io/asosh-timer';
+const REMOTE_VERSION_URL = `${REMOTE_BASE}/version.json`;
 export const APK_URL = 'https://github.com/kafeevbogdan347-ui/asosh-timer/releases/download/apk-latest/asosh-timer.apk';
-const WIN_URL = 'https://github.com/kafeevbogdan347-ui/asosh-timer/releases/download/desktop-latest/asosh-timer-win-x64.exe';
-const MAC_URL = 'https://github.com/kafeevbogdan347-ui/asosh-timer/releases/download/desktop-latest/asosh-timer-mac-arm64.dmg';
-const LINUX_URL = 'https://github.com/kafeevbogdan347-ui/asosh-timer/releases/download/desktop-latest/asosh-timer-linux-x86_64.AppImage';
 
-const TRIED_UPDATE_KEY = 'asosh_update_tried_version';
+const TRIED_RELOAD_KEY = 'asosh_update_tried_reload';
+const TRIED_HOTSWAP_KEY = 'asosh_update_tried_hotswap';
 
 const isDesktopApp = () =>
   typeof window !== 'undefined' &&
   (window.location.protocol === 'app:' || /Electron/i.test(navigator.userAgent || ''));
 
-const getDesktopDownloadUrl = () => {
-  const ua = typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
-  if (/Mac/i.test(ua)) return MAC_URL;
-  if (/Linux/i.test(ua)) return LINUX_URL;
-  return WIN_URL;
-};
-
-// На дев-сервере и превью проверяем свой собственный version.json, а в APK/EXE и на github.io — боевой сервер
 const getVersionUrl = () => {
   if (typeof window === 'undefined') return REMOTE_VERSION_URL;
   if (isNativeApp() || isDesktopApp() || window.location.hostname.endsWith('github.io')) {
@@ -43,32 +35,130 @@ export function isNewer(remote: string, local: string): boolean {
   return false;
 }
 
+async function clearWebCaches() {
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+  } catch {
+    // ignore
+  }
+}
+
+// Горячая подгрузка новой сборки напрямую с GitHub Pages (для APK и старых .exe без переустановки)
+async function hotSwapFromRemote(targetVersion: string): Promise<boolean> {
+  try {
+    sessionStorage.setItem(TRIED_HOTSWAP_KEY, targetVersion);
+  } catch {}
+
+  try {
+    const res = await fetch(`${REMOTE_BASE}/index.html?v=${encodeURIComponent(targetVersion)}&t=${Date.now()}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return false;
+    const html = await res.text();
+
+    const toAbs = (rawPath: string) => {
+      if (/^https?:\/\//i.test(rawPath)) return rawPath;
+      const clean = rawPath.replace(/^\/asosh-timer\//, '/').replace(/^\.\//, '/');
+      return `${REMOTE_BASE}${clean.startsWith('/') ? '' : '/'}${clean}`;
+    };
+
+    const cssMatches = [...html.matchAll(/<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["']/gi)];
+    const jsMatch = html.match(/<script[^>]+type=["']module["'][^>]+src=["']([^"']+\.js)["']/i);
+    if (!jsMatch) return false;
+
+    for (const m of cssMatches) {
+      const cssUrl = toAbs(m[1]);
+      await new Promise<void>((resolve) => {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = `${cssUrl}?v=${encodeURIComponent(targetVersion)}`;
+        link.onload = () => resolve();
+        link.onerror = () => resolve();
+        document.head.appendChild(link);
+      });
+    }
+
+    const oldRoot = document.getElementById('root');
+    if (oldRoot) {
+      const freshRoot = document.createElement('div');
+      freshRoot.id = 'root';
+      freshRoot.className = oldRoot.className;
+      oldRoot.replaceWith(freshRoot);
+    }
+
+    const jsUrl = `${toAbs(jsMatch[1])}?v=${encodeURIComponent(targetVersion)}`;
+    await import(/* @vite-ignore */ jsUrl);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export const UpdateRequired: React.FC = () => {
-  const [latest, setLatest] = useState<string | null>(null);
-  const [later, setLater] = useState(false);
+  const [updatingTo, setUpdatingTo] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
-    const check = async () => {
+
+    const checkAndAutoUpdate = async () => {
       if (!navigator.onLine) return;
       try {
         const res = await fetch(`${getVersionUrl()}?t=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok) return;
         const { version } = (await res.json()) as { version?: string };
         if (!alive || !version || !isNewer(version, APP_VERSION)) return;
-        // Если пользователь уже нажал «Обновить» для этой версии в текущей сессии,
-        // но сервер/CDN или старый EXE ещё отдаёт прежнюю сборку — не зацикливаем окно
+
+        const alreadyTriedReload = sessionStorage.getItem(TRIED_RELOAD_KEY) === version;
+        const alreadyTriedHotSwap = sessionStorage.getItem(TRIED_HOTSWAP_KEY) === version;
+
+        // Если уже пробовали и перезагрузку, и горячую подгрузку в этой сессии — не зацикливаем
+        if (alreadyTriedReload && alreadyTriedHotSwap) return;
+
+        setUpdatingTo(version);
+        await clearWebCaches();
+
+        // В APK или если обычная перезагрузка уже была, но встроенный index.html остался старым —
+        // подтягиваем свежие JS/CSS модули напрямую с сервера без скачивания установочного файла
+        if (isNativeApp() || alreadyTriedReload) {
+          if (!alreadyTriedHotSwap) {
+            await hotSwapFromRemote(version);
+          }
+          if (alive) setUpdatingTo(null);
+          return;
+        }
+
         try {
-          if (sessionStorage.getItem(TRIED_UPDATE_KEY) === version) return;
+          sessionStorage.setItem(TRIED_RELOAD_KEY, version);
         } catch {}
-        setLatest(version);
+
+        setTimeout(() => {
+          if (isDesktopApp()) {
+            window.location.reload();
+            return;
+          }
+          try {
+            const url = new URL(window.location.href);
+            url.searchParams.set('v', version);
+            window.location.replace(url.toString());
+          } catch {
+            window.location.reload();
+          }
+        }, 600);
       } catch {
-        // нет интернета или сайт недоступен — проверим в следующий раз
+        // нет интернета или сервер недоступен — проверим позже
       }
     };
-    check();
-    const timer = setInterval(check, 30 * 60 * 1000);
-    const onVisible = () => document.visibilityState === 'visible' && check();
+
+    checkAndAutoUpdate();
+    const timer = setInterval(checkAndAutoUpdate, 10 * 60 * 1000);
+    const onVisible = () => document.visibilityState === 'visible' && checkAndAutoUpdate();
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       alive = false;
@@ -77,87 +167,12 @@ export const UpdateRequired: React.FC = () => {
     };
   }, []);
 
-  if (!latest || later) return null;
-  const native = isNativeApp();
-  const desktop = isDesktopApp();
-
-  const handleWebOrDesktopReload = async () => {
-    try {
-      sessionStorage.setItem(TRIED_UPDATE_KEY, latest);
-    } catch {}
-    try {
-      if ('caches' in window) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map((k) => caches.delete(k)));
-      }
-      if ('serviceWorker' in navigator) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map((r) => r.unregister()));
-      }
-    } catch {}
-    if (desktop) {
-      window.location.reload();
-      return;
-    }
-    // Добавляем параметр версии к адресу, чтобы обойти 10-минутный кэш GitHub Pages CDN для index.html
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.set('v', latest);
-      window.location.replace(url.toString());
-    } catch {
-      window.location.reload();
-    }
-  };
+  if (!updatingTo) return null;
 
   return (
-    <div className="fixed inset-0 z-[1000000] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="w-full max-w-sm rounded-3xl border-2 border-rose-400/60 bg-slate-900 p-5 text-center space-y-4 shadow-2xl">
-        <div className="text-5xl">⚠️</div>
-        <h2 className="text-2xl font-black text-rose-300 leading-tight">ОБНОВИТЕ ДО ПОСЛЕДНЕЙ ВЕРСИИ</h2>
-        <p className="text-sm text-white/80">
-          У тебя {APP_VERSION}, а уже вышла <b className="text-cyan-300">{latest}</b>. В старой версии могут быть ошибки в расписании и таймере.
-        </p>
-        {native ? (
-          <a href={APK_URL} target="_blank" rel="noopener noreferrer" className="btn green w-full block py-3 font-black text-base">
-            ⬇️ Скачать новую версию
-          </a>
-        ) : desktop ? (
-          <div className="space-y-2">
-            <a
-              href={getDesktopDownloadUrl()}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setLater(true)}
-              className="btn green w-full block py-3 font-black text-base"
-            >
-              ⬇️ Скачать обновление для ПК
-            </a>
-            <button
-              type="button"
-              onClick={handleWebOrDesktopReload}
-              className="btn darkBtn w-full py-2.5 font-bold text-xs cursor-pointer"
-            >
-              🔄 Обновить без переустановки
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={handleWebOrDesktopReload}
-            className="btn green w-full py-3 font-black text-base cursor-pointer"
-          >
-            🔄 Обновить
-          </button>
-        )}
-        {(native || desktop) && (
-          <p className="text-[11px] text-white/55">
-            Скачай файл и открой его — новая версия установится поверх, все данные сохранятся.
-          </p>
-        )}
-        <button type="button" onClick={() => setLater(true)} className="text-xs text-white/50 underline underline-offset-2 cursor-pointer">
-          Напомнить позже
-        </button>
-      </div>
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[1000000] bg-slate-900/95 border border-cyan-400/60 text-white px-4 py-2.5 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-2.5 text-xs font-black">
+      <span className="animate-spin text-sm">🔄</span>
+      <span>Обновляем АСОШ Таймер до {updatingTo}...</span>
     </div>
   );
 };

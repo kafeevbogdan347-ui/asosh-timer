@@ -12,7 +12,10 @@ interface NavBarProps {
   soundProfile: SoundProfileType;
   vibro: boolean;
   activeHwCount?: number;
+  siteClosed?: boolean;
 }
+
+const ONLINE_NAV_IDS = new Set<ScreenId>(['assistant', 'homework']);
 
 export const NavBar: React.FC<NavBarProps> = ({
   currentScreen,
@@ -21,6 +24,7 @@ export const NavBar: React.FC<NavBarProps> = ({
   soundProfile,
   vibro,
   activeHwCount = 0,
+  siteClosed = false,
 }) => {
   const d = DICT[lang] || DICT.ru;
 
@@ -48,6 +52,7 @@ export const NavBar: React.FC<NavBarProps> = ({
     <nav className="nav-bar">
       {navItems.map((item) => {
         const isActive = currentScreen === item.id;
+        const isLockedOnline = siteClosed && ONLINE_NAV_IDS.has(item.id);
         return (
           <button
             key={item.id}
@@ -55,9 +60,22 @@ export const NavBar: React.FC<NavBarProps> = ({
             className={`${isActive ? 'active' : ''} relative`}
             onClick={() => handleClick(item.id)}
           >
-            <span>{item.icon}</span>
-            <b className="truncate max-w-full px-1">{item.label}</b>
-            {item.badge && item.badge > 0 ? (
+            <span className={isLockedOnline ? 'opacity-55 grayscale-[40%]' : ''}>{item.icon}</span>
+            <b
+              className={`truncate max-w-full px-1 ${
+                isLockedOnline ? 'line-through decoration-rose-400 decoration-2 text-rose-300/80' : ''
+              }`}
+            >
+              {item.label}
+            </b>
+            {isLockedOnline ? (
+              <span
+                className="absolute top-0.5 right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white font-black text-[9px] flex items-center justify-center shadow"
+                title="Временно недоступно"
+              >
+                ✕
+              </span>
+            ) : item.badge && item.badge > 0 ? (
               <span className="absolute top-1 right-2 w-4 h-4 rounded-full bg-cyan-400 text-slate-950 font-black text-[9px] flex items-center justify-center">
                 {item.badge}
               </span>

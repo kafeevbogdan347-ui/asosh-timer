@@ -41,7 +41,10 @@ interface MainScreenProps {
   // Следующий урок: sub пустой — это был последний урок
   shortLessonsToday: number; // длина сокращённого урока сегодня, 0 — обычный день
   nextLesson: { sub: string; replaced: boolean; room: string; floor: number | null; time: string } | null;
+  siteClosed?: boolean;
 }
+
+const ONLINE_TILE_SCREENS = new Set<string>(['diary', 'chat', 'online', 'profile', 'updates', 'teacher']);
 
 // Разделы, которых нет в нижнем меню (Уроки, ДЗ, Игры и Опции открываются оттуда)
 const QUICK_GROUPS: { title: UIKey; items: { icon: string; label: UIKey; screen: ScreenId | 'calc' | 'whatsnew' }[] }[] = [
@@ -113,6 +116,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
   isTeacher,
   nextLesson,
   shortLessonsToday,
+  siteClosed = false,
 }) => {
   const d = DICT[lang] || DICT.ru;
   // Учителю — плитка кабинета в группе «Класс»
@@ -225,13 +229,35 @@ export const MainScreen: React.FC<MainScreenProps> = ({
       </div>
 
       {/* Асошик */}
-      <button type="button" onClick={() => onNavigate('assistant')} className="asoshik-header w-full text-left cursor-pointer !mb-3">
-        <AsoshikAvatar size={42} />
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-black text-white">{t('askA', lang)}</div>
-          <div className="text-[11px] font-bold text-white/70">{t('askASub', lang)}</div>
+      <button
+        type="button"
+        onClick={() => onNavigate('assistant')}
+        className={`asoshik-header w-full text-left cursor-pointer !mb-3 relative ${
+          siteClosed ? 'opacity-80 !border-rose-500/40' : ''
+        }`}
+      >
+        <div className={siteClosed ? 'grayscale-[40%] opacity-70' : ''}>
+          <AsoshikAvatar size={42} />
         </div>
-        <span className="text-lg text-white/70">›</span>
+        <div className="flex-1 min-w-0">
+          <div
+            className={`text-sm font-black ${
+              siteClosed ? 'line-through decoration-rose-400 decoration-2 text-rose-200' : 'text-white'
+            }`}
+          >
+            {t('askA', lang)}
+          </div>
+          <div className="text-[11px] font-bold text-white/70">
+            {siteClosed ? 'Временно недоступно • технические работы' : t('askASub', lang)}
+          </div>
+        </div>
+        {siteClosed ? (
+          <span className="w-6 h-6 rounded-full bg-rose-500 text-white font-black text-xs flex items-center justify-center shadow shrink-0">
+            ✕
+          </span>
+        ) : (
+          <span className="text-lg text-white/70">›</span>
+        )}
       </button>
 
       {/* Четверть */}
@@ -314,18 +340,40 @@ export const MainScreen: React.FC<MainScreenProps> = ({
         <div key={group.title} className="mt-4">
           <h2 className="text-xs font-black text-white/60 uppercase tracking-wide mb-2">{t(group.title, lang)}</h2>
           <div className="grid grid-cols-3 gap-2">
-            {group.items.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                onClick={() => (item.screen === 'calc' ? onOpenCalc() : item.screen === 'whatsnew' ? onOpenWhatsNew() : onNavigate(item.screen))}
-                className="relative flex flex-col items-center justify-center gap-1 p-3 min-h-[72px] rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-400/40 active:scale-95 transition-all cursor-pointer"
-              >
-                {item.screen === 'diary' && diaryBadge > 0 && <span className="tile-badge">{diaryBadge}</span>}
-                <span className="text-xl">{item.icon}</span>
-                <span className="text-[11px] font-bold text-white/90 text-center leading-tight">{t(item.label, lang)}</span>
-              </button>
-            ))}
+            {group.items.map((item) => {
+              const isLockedOnline = siteClosed && ONLINE_TILE_SCREENS.has(item.screen);
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => (item.screen === 'calc' ? onOpenCalc() : item.screen === 'whatsnew' ? onOpenWhatsNew() : onNavigate(item.screen))}
+                  className={`relative flex flex-col items-center justify-center gap-1 p-3 min-h-[72px] rounded-2xl border active:scale-95 transition-all cursor-pointer ${
+                    isLockedOnline
+                      ? 'bg-rose-950/15 border-rose-500/35 hover:bg-rose-950/25'
+                      : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-cyan-400/40'
+                  }`}
+                >
+                  {isLockedOnline ? (
+                    <span
+                      className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white font-black text-[9px] flex items-center justify-center shadow"
+                      title="Временно недоступно"
+                    >
+                      ✕
+                    </span>
+                  ) : (
+                    item.screen === 'diary' && diaryBadge > 0 && <span className="tile-badge">{diaryBadge}</span>
+                  )}
+                  <span className={`text-xl ${isLockedOnline ? 'opacity-55 grayscale-[35%]' : ''}`}>{item.icon}</span>
+                  <span
+                    className={`text-[11px] font-bold text-center leading-tight ${
+                      isLockedOnline ? 'line-through decoration-rose-400 decoration-2 text-rose-200/80' : 'text-white/90'
+                    }`}
+                  >
+                    {t(item.label, lang)}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       ))}

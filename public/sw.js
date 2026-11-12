@@ -50,7 +50,7 @@ self.addEventListener('fetch', (event) => {
   // При плохом Wi-Fi ждём сеть не дольше 4 с, потом показываем страницу из кэша.
   if (event.request.mode === 'navigate') {
     const fromCache = () => caches.match(event.request).then((r) => r || caches.match(BASE + 'index.html'));
-    const network = fetch(event.request).then(saveCopy);
+    const network = fetch(event.request, { cache: 'no-store' }).then(saveCopy);
     network.catch(() => {});
     const slow = new Promise((resolve) => setTimeout(resolve, 4000))
       .then(fromCache)
