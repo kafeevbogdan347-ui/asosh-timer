@@ -25,7 +25,7 @@ import {
   isVacationDay,
   isHolidayDay,
 } from './data/constants';
-import { getBaseLessonsForClass, hasOfficialSchedule, roomFloor, SECOND_SHIFT_CLASSES } from './data/schoolSchedule';
+import { getBaseLessonsForClass, hasOfficialSchedule, roomFloor, SECOND_SHIFT_CLASSES, OFFICIAL_SCHEDULE_2026 } from './data/schoolSchedule';
 import { migrateTheme } from './data/themes';
 import { reportVisit } from './services/stats';
 import { playSound, doVibro } from './utils/audio';
@@ -136,7 +136,12 @@ export default function App() {
 
   // Глобальное закрытие доступа к приложению и сайту (экран-заглушка из Панели разработчика)
   const [siteClosed, setSiteClosed] = useState<boolean>(() => getLocalSiteClosed());
+  const [lockdownOfflineMode, setLockdownOfflineMode] = useState<'schedule' | 'games' | null>(null);
+  const [lockdownClass, setLockdownClass] = useState<string>(() => accountVault.cls || '5А');
   useEffect(() => subscribeSiteClosed(setSiteClosed), []);
+  useEffect(() => {
+    if (!siteClosed) setLockdownOfflineMode(null);
+  }, [siteClosed]);
 
   // Онлайн класса: считаем время в приложении и отмечаемся «в сети» (выключается в Опциях → Приватность).
   // Только с аккаунтом ученика: так один человек — одна строка рейтинга на всех его устройствах
@@ -1671,27 +1676,174 @@ export default function App() {
       />
 
       {/* Глобальный экран-заглушка, когда доступ к приложению и сайту временно закрыт из Панели разработчика */}
-      {siteClosed && (
-        <div className="fixed inset-0 z-[9000] bg-slate-950 flex flex-col items-center justify-center p-6 text-center select-none">
-          <div className="max-w-md w-full bg-slate-900/95 border border-red-500/40 rounded-3xl p-8 shadow-2xl space-y-5 backdrop-blur-xl">
+      {siteClosed && !lockdownOfflineMode && (
+        <div className="fixed inset-0 z-[9000] bg-slate-950 flex flex-col items-center justify-center p-4 sm:p-6 text-center select-none overflow-y-auto">
+          <div className="max-w-md w-full bg-slate-900/95 border border-red-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 backdrop-blur-xl">
             <div className="w-16 h-16 mx-auto rounded-2xl bg-red-500/15 border border-red-400/40 flex items-center justify-center text-3xl shadow-lg">
               🛠️
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-white leading-snug">
               АСОШ Таймер временно недоступен. Попробуйте позже.
             </h1>
-            <p className="text-xs sm:text-sm text-white/60 leading-relaxed">
-              На серверах проводятся технические работы. Скоро всё снова заработает.
+            <p className="text-xs sm:text-sm text-white/65 leading-relaxed">
+              На серверах проводятся технические работы. Пока сервера стоят, вы можете пользоваться оффлайн-функциями: расписанием и играми.
             </p>
+
+            {/* Оффлайн-функции при локдауне (только Расписание и Игры) */}
+            <div className="grid grid-cols-2 gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  if (cls) setLockdownClass(cls);
+                  setLockdownOfflineMode('schedule');
+                }}
+                className="py-3 px-3 rounded-2xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 font-black text-xs flex flex-col items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-md"
+              >
+                <span className="text-xl">📅</span>
+                <span>Расписание (оффлайн)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setLockdownOfflineMode('games')}
+                className="py-3 px-3 rounded-2xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/40 text-purple-200 font-black text-xs flex flex-col items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-md"
+              >
+                <span className="text-xl">🎮</span>
+                <span>Игры (оффлайн)</span>
+              </button>
+            </div>
+
             <div className="pt-3 border-t border-white/10">
               <button
                 type="button"
                 onClick={handleRequestOpenDev}
-                className="text-[11px] font-bold text-white/40 hover:text-cyan-300 transition-colors px-3 py-1.5 rounded-xl hover:bg-white/5 cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white/70 hover:text-cyan-300 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
               >
-                🔒 Панель разработчика
+                <span>🔒</span>
+                <span>Панель разработчика</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Оффлайн-режим при закрытом доступе: доступны ТОЛЬКО Расписание и Игры */}
+      {siteClosed && lockdownOfflineMode && (
+        <div className="fixed inset-0 z-[9000] bg-slate-950 overflow-y-auto p-3 sm:p-5">
+          <div className="max-w-xl mx-auto space-y-3 pb-8">
+            {/* Верхняя плашка оффлайн-режима при локдауне */}
+            <div className="p-3 rounded-2xl bg-slate-900/95 border border-red-500/40 shadow-xl space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-base shrink-0">🛠️</span>
+                  <div className="min-w-0">
+                    <b className="text-xs font-black text-white block truncate">
+                      АСОШ Таймер временно недоступен. Попробуйте позже.
+                    </b>
+                    <span className="text-[10px] text-red-300/90 block truncate">
+                      Оффлайн-режим: доступны только расписание и игры
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRequestOpenDev}
+                  className="shrink-0 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-[11px] font-bold text-cyan-200 cursor-pointer transition-colors"
+                >
+                  🔒 Dev
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setLockdownOfflineMode('schedule')}
+                  className={`py-2 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 border ${
+                    lockdownOfflineMode === 'schedule'
+                      ? 'bg-cyan-500 text-slate-950 border-cyan-300 shadow-md'
+                      : 'bg-white/5 text-white/75 border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  <span>📅</span>
+                  <span>Расписание</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLockdownOfflineMode('games')}
+                  className={`py-2 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 border ${
+                    lockdownOfflineMode === 'games'
+                      ? 'bg-purple-500 text-white border-purple-300 shadow-md'
+                      : 'bg-white/5 text-white/75 border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  <span>🎮</span>
+                  <span>Игры</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLockdownOfflineMode(null)}
+                  className="py-2 px-2 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-white/70 border border-white/10 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <span>🔙</span>
+                  <span>Назад</span>
+                </button>
+              </div>
+            </div>
+
+            {lockdownOfflineMode === 'schedule' && (() => {
+              const activeCls = lockdownClass || cls || '5А';
+              const activeShift = SECOND_SHIFT_CLASSES.includes(activeCls) ? '2' : '1';
+              const offlineBells = activeShift === '1' ? B1 : selectedDaySchedule === 'Пятница' ? B2F : B2;
+              const offlineLessons = getBaseLessonsForClass(activeCls, selectedDaySchedule).map(
+                ([sub, rm]): [string, string] => [sub, parseRoom(rm)]
+              );
+              return (
+                <>
+                  {/* Выбор класса для оффлайн-расписания */}
+                  <div className="p-3 rounded-2xl bg-slate-900/90 border border-white/10 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white/70 font-bold">Класс: <b className="text-cyan-300">{activeCls}</b> ({activeShift} смена)</span>
+                    </div>
+                    <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                      {Object.keys(OFFICIAL_SCHEDULE_2026).map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setLockdownClass(c)}
+                          className={`px-2.5 py-1 rounded-xl text-xs font-bold shrink-0 cursor-pointer border transition-all ${
+                            activeCls === c
+                              ? 'bg-cyan-500 text-slate-950 border-cyan-300 font-black'
+                              : 'bg-white/5 text-white/70 border-white/10 hover:bg-white/10'
+                          }`}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <ScheduleScreen
+                    shift={activeShift}
+                    selectedDay={selectedDaySchedule}
+                    currentDayName={currentDayName}
+                    onSelectDay={(d) => setSelectedDaySchedule(d)}
+                    lessons={offlineLessons}
+                    bells={offlineBells}
+                    currentLessonIdx={-1}
+                    lang={lang}
+                  />
+                </>
+              );
+            })()}
+
+            {lockdownOfflineMode === 'games' && (
+              <GamesScreen
+                lang={lang}
+                soundProfile={settings.soundProfile}
+                vibro={settings.vibro}
+                onShowToast={showToast}
+                onUnlockAchievement={handleUnlockAchievement}
+              />
+            )}
           </div>
         </div>
       )}

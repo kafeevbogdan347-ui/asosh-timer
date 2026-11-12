@@ -14,7 +14,7 @@ interface ScheduleScreenProps {
   bells: [string, string][];
   currentLessonIdx: number;
   lang: LanguageType;
-  onGoAddUpdates: () => void;
+  onGoAddUpdates?: () => void;
   smartDayAdvice?: SmartDayData | null;
   onAskAsoshik?: (text: string) => void;
   shift: string;
@@ -53,13 +53,15 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
               : `${selectedDay} · сегодня ${currentDayName.toLowerCase()}`}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onGoAddUpdates}
-          className="text-xs bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-bold px-2.5 py-1.5 rounded-xl hover:bg-cyan-500/30 transition-all shrink-0 cursor-pointer shadow-sm"
-        >
-          ✏️ Изменить
-        </button>
+        {onGoAddUpdates && (
+          <button
+            type="button"
+            onClick={onGoAddUpdates}
+            className="text-xs bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-bold px-2.5 py-1.5 rounded-xl hover:bg-cyan-500/30 transition-all shrink-0 cursor-pointer shadow-sm"
+          >
+            ✏️ Изменить
+          </button>
+        )}
       </div>
 
       {/* Day Tabs Chips (Пн..Вс) with "Сегодня" Badge */}
@@ -121,16 +123,20 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
             <div className="text-3xl mb-2">📅</div>
             <b className="text-cyan-300 block mb-1">Скоро будет расписание!</b>
             <p className="text-xs text-white/70 max-w-sm mx-auto mb-4">
-              Для дня «{selectedDay}» ещё не внесены уроки. Вы можете добавить их прямо сейчас через кнопку ниже.
+              {onGoAddUpdates
+                ? `Для дня «${selectedDay}» ещё не внесены уроки. Вы можете добавить их прямо сейчас через кнопку ниже.`
+                : `Для дня «${selectedDay}» уроков нет.`}
             </p>
-            <button
-              type="button"
-              className="btn green justify-center text-sm py-2.5 mx-auto"
-              onClick={onGoAddUpdates}
-            >
-              <span>🛠</span>
-              <span>Добавить уроки на этот день</span>
-            </button>
+            {onGoAddUpdates && (
+              <button
+                type="button"
+                className="btn green justify-center text-sm py-2.5 mx-auto"
+                onClick={onGoAddUpdates}
+              >
+                <span>🛠</span>
+                <span>Добавить уроки на этот день</span>
+              </button>
+            )}
           </div>
         )}
       </div>
