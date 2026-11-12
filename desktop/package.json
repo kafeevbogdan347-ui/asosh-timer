@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "АСОШ №2 — Умный дневник для компьютера",
   "author": "АСОШ №2",
+  "homepage": "https://kafeevbogdan347-ui.github.io/asosh-timer-site/",
   "main": "main.cjs",
   "private": true,
   "scripts": {
