@@ -1,0 +1,42 @@
+{
+  "name": "asosh-timer-desktop",
+  "productName": "АСОШ Таймер",
+  "version": "1.0.0",
+  "description": "АСОШ №2 — Умный дневник для компьютера",
+  "author": "АСОШ №2",
+  "main": "main.cjs",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "ru.asosh2.timer.desktop",
+    "productName": "АСОШ Таймер",
+    "artifactName": "asosh-timer-${os}-${arch}.${ext}",
+    "directories": { "output": "release" },
+    "files": ["main.cjs", "package.json"],
+    "extraResources": [{ "from": "../dist", "to": "app-dist" }],
+    "icon": "assets/icon.png",
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
+      "category": "public.app-category.education"
+    },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Education",
+      "maintainer": "АСОШ №2 <noreply@example.com>"
+    }
+  }
+}
