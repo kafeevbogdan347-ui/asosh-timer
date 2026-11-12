@@ -4,8 +4,33 @@ import { isNativeApp } from '../services/bellNotifications';
 
 // Проверка обновлений: сайт публикует version.json, приложение сравнивает со своей версией.
 // Если вышла новая — большое окно «ОБНОВИТЕ ДО ПОСЛЕДНЕЙ ВЕРСИИ».
-const VERSION_URL = 'https://kafeevbogdan347-ui.github.io/asosh-timer/version.json';
+const REMOTE_VERSION_URL = 'https://kafeevbogdan347-ui.github.io/asosh-timer/version.json';
 export const APK_URL = 'https://github.com/kafeevbogdan347-ui/asosh-timer/releases/download/apk-latest/asosh-timer.apk';
+const WIN_URL = 'https://github.com/kafeevbogdan347-ui/asosh-timer/releases/download/desktop-latest/asosh-timer-win-x64.exe';
+const MAC_URL = 'https://github.com/kafeevbogdan347-ui/asosh-timer/releases/download/desktop-latest/asosh-timer-mac-arm64.dmg';
+const LINUX_URL = 'https://github.com/kafeevbogdan347-ui/asosh-timer/releases/download/desktop-latest/asosh-timer-linux-x86_64.AppImage';
+
+const TRIED_UPDATE_KEY = 'asosh_update_tried_version';
+
+const isDesktopApp = () =>
+  typeof window !== 'undefined' &&
+  (window.location.protocol === 'app:' || /Electron/i.test(navigator.userAgent || ''));
+
+const getDesktopDownloadUrl = () => {
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
+  if (/Mac/i.test(ua)) return MAC_URL;
+  if (/Linux/i.test(ua)) return LINUX_URL;
+  return WIN_URL;
+};
+
+// На дев-сервере и превью проверяем свой собственный version.json, а в APK/EXE и на github.io — боевой сервер
+const getVersionUrl = () => {
+  if (typeof window === 'undefined') return REMOTE_VERSION_URL;
+  if (isNativeApp() || isDesktopApp() || window.location.hostname.endsWith('github.io')) {
+    return REMOTE_VERSION_URL;
+  }
+  return `${import.meta.env.BASE_URL || '/'}version.json`;
+};
 
 // «v16.1» → [16, 1]
 const parts = (v: string) => v.replace(/^v/i, '').split('.').map((n) => parseInt(n, 10) || 0);
@@ -27,10 +52,16 @@ export const UpdateRequired: React.FC = () => {
     const check = async () => {
       if (!navigator.onLine) return;
       try {
-        const res = await fetch(`${VERSION_URL}?t=${Date.now()}`, { cache: 'no-store' });
+        const res = await fetch(`${getVersionUrl()}?t=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok) return;
         const { version } = (await res.json()) as { version?: string };
-        if (alive && version && isNewer(version, APP_VERSION)) setLatest(version);
+        if (!alive || !version || !isNewer(version, APP_VERSION)) return;
+        // Если пользователь уже нажал «Обновить» для этой версии в текущей сессии,
+        // но сервер/CDN или старый EXE ещё отдаёт прежнюю сборку — не зацикливаем окно
+        try {
+          if (sessionStorage.getItem(TRIED_UPDATE_KEY) === version) return;
+        } catch {}
+        setLatest(version);
       } catch {
         // нет интернета или сайт недоступен — проверим в следующий раз
       }
@@ -48,6 +79,35 @@ export const UpdateRequired: React.FC = () => {
 
   if (!latest || later) return null;
   const native = isNativeApp();
+  const desktop = isDesktopApp();
+
+  const handleWebOrDesktopReload = async () => {
+    try {
+      sessionStorage.setItem(TRIED_UPDATE_KEY, latest);
+    } catch {}
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+    } catch {}
+    if (desktop) {
+      window.location.reload();
+      return;
+    }
+    // Добавляем параметр версии к адресу, чтобы обойти 10-минутный кэш GitHub Pages CDN для index.html
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('v', latest);
+      window.location.replace(url.toString());
+    } catch {
+      window.location.reload();
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[1000000] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
@@ -61,28 +121,39 @@ export const UpdateRequired: React.FC = () => {
           <a href={APK_URL} target="_blank" rel="noopener noreferrer" className="btn green w-full block py-3 font-black text-base">
             ⬇️ Скачать новую версию
           </a>
+        ) : desktop ? (
+          <div className="space-y-2">
+            <a
+              href={getDesktopDownloadUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setLater(true)}
+              className="btn green w-full block py-3 font-black text-base"
+            >
+              ⬇️ Скачать обновление для ПК
+            </a>
+            <button
+              type="button"
+              onClick={handleWebOrDesktopReload}
+              className="btn darkBtn w-full py-2.5 font-bold text-xs cursor-pointer"
+            >
+              🔄 Обновить без переустановки
+            </button>
+          </div>
         ) : (
           <button
             type="button"
-            onClick={async () => {
-              try {
-                if ('caches' in window) {
-                  const keys = await caches.keys();
-                  await Promise.all(keys.map((k) => caches.delete(k)));
-                }
-                if ('serviceWorker' in navigator) {
-                  const regs = await navigator.serviceWorker.getRegistrations();
-                  await Promise.all(regs.map((r) => r.update()));
-                }
-              } catch {}
-              window.location.reload();
-            }}
+            onClick={handleWebOrDesktopReload}
             className="btn green w-full py-3 font-black text-base cursor-pointer"
           >
             🔄 Обновить
           </button>
         )}
-        {native && <p className="text-[11px] text-white/55">Скачай файл и открой его — новая версия установится поверх, все данные сохранятся.</p>}
+        {(native || desktop) && (
+          <p className="text-[11px] text-white/55">
+            Скачай файл и открой его — новая версия установится поверх, все данные сохранятся.
+          </p>
+        )}
         <button type="button" onClick={() => setLater(true)} className="text-xs text-white/50 underline underline-offset-2 cursor-pointer">
           Напомнить позже
         </button>
