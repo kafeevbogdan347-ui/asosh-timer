@@ -1,3 +1,5 @@
+// Самым первым: одноразовый общий сброс данных (src/services/dataReset.ts)
+import './services/dataReset';
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';

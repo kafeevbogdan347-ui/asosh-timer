@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { OnlineEntry, formatDuration, isOptedIn, myWeekSec, presenceLabel, subscribeOnline } from '../services/online';
 import { myUid } from '../services/classShared';
+import { getLocalAccount } from '../services/accounts';
 
 interface Props {
   cls: string;
@@ -26,6 +27,8 @@ export const OnlineScreen: React.FC<Props> = ({ cls, isGuest, onShowToast }) => 
   }, []);
 
   const me = myUid();
+  // Время аккаунта со всех устройств — из рейтинга; пока он не загрузился — с этого устройства
+  const mySec = list?.find((e) => e.uid === me)?.sec ?? myWeekSec();
   const onlineCount = (list || []).filter((e) => presenceLabel(e.last, now).online).length;
 
   if (isGuest) {
@@ -45,9 +48,11 @@ export const OnlineScreen: React.FC<Props> = ({ cls, isGuest, onShowToast }) => 
       </div>
 
       <div className="p-3 rounded-2xl bg-white/5 border border-white/15 space-y-1">
-        <div className="text-[11px] text-white/60">Твоё время на этой неделе: <b className="text-cyan-300">{formatDuration(myWeekSec())}</b></div>
+        <div className="text-[11px] text-white/60">Твоё время на этой неделе: <b className="text-cyan-300">{formatDuration(mySec)}</b></div>
         <div className="text-[11px] text-white/50">
-          {isOptedIn() ? 'Одноклассники видят твой ник, аватар, статус и время в приложении.' : 'Ты скрыт из рейтинга.'} Скрыть или показать себя — в Опциях → Приватность.
+          {getLocalAccount()?.role !== 'student'
+            ? 'Чтобы попасть в рейтинг, войди в аккаунт ученика: Опции → Аккаунт.'
+            : `${isOptedIn() ? 'Одноклассники видят твой ник, аватар, статус и время в приложении.' : 'Ты скрыт из рейтинга.'} Скрыть или показать себя — в Опциях → Приватность.`}
         </div>
       </div>
 

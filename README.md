@@ -28,6 +28,18 @@ npm run dev            # http://localhost:3000
 
 Локальный запуск: `npm run build && cd desktop && npm install && npm start`.
 
+## Профиль и рейтинг привязаны к аккаунту (v16.13)
+
+- Ник, эмодзи-аватар, статус и «о себе» хранятся в аккаунте: `asosh_profiles/<uid>` (`src/services/profileSync.ts`). При входе на любом устройстве профиль подтягивается из аккаунта, при сохранении отправляется обратно.
+- Рейтинг онлайна пишется по uid аккаунта: у одного человека одна строка на всех устройствах, время с телефона и компьютера складывается. Без аккаунта ученика в рейтинг попасть нельзя (это проверяют и приложение, и правила базы).
+- `src/services/dataReset.ts` — одноразовый общий сброс: при первом запуске новой версии стирает с устройства все старые данные и выходит из аккаунта. Чтобы сбросить всех ещё раз, поменяй `RESET_EPOCH`.
+
+### Полная очистка базы (сделать один раз, вручную в консоли Firebase)
+
+1. **Realtime Database → Rules**: вставь новый `database.rules.json` и нажми **Publish**. Без этого профили не будут сохраняться в аккаунт.
+2. **Realtime Database → Data**: удали разделы `asosh_users`, `asosh_profiles`, `asosh_private`, `asosh_roster`, `asosh_journal`, `asosh_parent_codes`, `asosh_family`, `asosh_parent_links`, `asosh_teachers`, `asosh_teacher_claims`, `asosh_online`, `asosh_rate`, `asosh_transfer`, а если нужно начать совсем с нуля — ещё `asosh_rooms` (чат) и `asosh_class` (общие ДЗ и замены). `asosh_config`, `asosh_timer`, `asosh_board` и `asosh_stats` не трогай.
+3. **Authentication → Users**: выдели всех пользователей и удали. Тогда логины освободятся и их можно занять заново.
+
 ## Настройки (.env)
 
 | Переменная | Зачем |

@@ -56,7 +56,7 @@
       "$cls": {
         ".read": "auth != null",
         "$uid": {
-          ".write": "auth != null && auth.uid === $uid && root.child('asosh_config').child('lockdown').val() !== true",
+          ".write": "auth != null && auth.uid === $uid && root.child('asosh_config').child('lockdown').val() !== true && (!newData.exists() || root.child('asosh_users').child($uid).exists())",
           ".validate": "newData.hasChildren(['nick', 'avatar', 'week', 'sec', 'last'])",
           "nick": {
             ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
@@ -186,6 +186,31 @@
         },
         "subjects": {
           ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 300"
+        },
+        "t": {
+          ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "asosh_profiles": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && root.child('asosh_users').child($uid).exists() && root.child('asosh_config').child('lockdown').val() !== true",
+        ".validate": "newData.hasChildren(['nick', 'avatar', 't'])",
+        "nick": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+        },
+        "avatar": {
+          ".validate": "newData.isString() && newData.val().length <= 12"
+        },
+        "status": {
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
+        "bio": {
+          ".validate": "newData.isString() && newData.val().length <= 200"
         },
         "t": {
           ".validate": "newData.isNumber()"

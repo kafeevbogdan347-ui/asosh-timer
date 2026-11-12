@@ -27,6 +27,16 @@ import { initFirebase } from './firebaseChat';
 import { classKey } from './classShared';
 import { hashTeacherCode, normalizeTeacherCode } from './teacher';
 import { sha256Hex } from '../utils/sha256';
+import { removeMyPresence } from './online';
+
+// Класс, в рейтинге которого может висеть запись этого устройства
+const localClass = () => {
+  try {
+    return localStorage.getItem('asosh_class_v105') || localStorage.getItem('class') || '';
+  } catch {
+    return '';
+  }
+};
 
 export type Role = 'student' | 'teacher' | 'parent';
 
@@ -145,7 +155,10 @@ async function createCredentialUser(login: string, password: string): Promise<{ 
     const res = await linkWithCredential(cur, credential);
     return { user: res.user, linked: true };
   }
-  if (cur) await signOut(ctx.auth);
+  if (cur) {
+    await removeMyPresence(localClass());
+    await signOut(ctx.auth);
+  }
   const res = await createUserWithEmailAndPassword(ctx.auth, loginToEmail(login), password);
   return { user: res.user, linked: false };
 }
@@ -331,6 +344,11 @@ export async function loginAccount(login: string, password: string): Promise<{ o
   if (!ctx) return { ok: false, error: 'Сервер недоступен' };
   if (!navigator.onLine) return { ok: false, error: 'Для входа нужен интернет' };
   try {
+    // Анонимная запись этого устройства в рейтинге больше не нужна: дальше пишем от имени аккаунта.
+    // Без этого один человек виден в рейтинге дважды
+    await ctx.auth.authStateReady().catch(() => {});
+    const before = ctx.auth.currentUser;
+    if (before && before.isAnonymous) await removeMyPresence(localClass());
     const res = await signInWithEmailAndPassword(ctx.auth, loginToEmail(login), password);
     const snap = await get(ref(ctx.db, `asosh_users/${res.user.uid}`));
     const v = snap.val() as { role: Role; name: string; login: string; cls?: string; subjects?: string } | null;
@@ -405,8 +423,13 @@ export async function logoutAccount(): Promise<void> {
   saveLocalAccount(null);
   clearGradeCaches();
   localStorage.removeItem('asosh_teacher');
+  localStorage.removeItem('asosh_profile_pushed');
   const ctx = authOrNull();
-  if (ctx) await signOut(ctx.auth).catch(() => {});
+  if (ctx) {
+    // Строка аккаунта в рейтинге остаётся (на других устройствах он ещё вошёл),
+    // а это устройство после выхода станет анонимным и запишется отдельно, только если снова выберет класс
+    await signOut(ctx.auth).catch(() => {});
+  }
 }
 
 // ---------- Ученик ----------
