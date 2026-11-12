@@ -16,6 +16,18 @@ cp .env.example .env   # заполните значения в .env
 npm run dev            # http://localhost:3000
 ```
 
+## Приложение для Windows, macOS и Linux
+
+Папка `desktop/` — оболочка на Electron: то же приложение в отдельном окне, работает офлайн. Установщики собирает `.github/workflows/desktop.yml` при каждом коммите в `main` и кладёт в релиз `desktop-latest`:
+
+- Windows: `asosh-timer-win-x64.exe`
+- macOS: `asosh-timer-mac-arm64.dmg` (M1 и новее), `asosh-timer-mac-x64.dmg` (Intel)
+- Linux: `asosh-timer-linux-x86_64.AppImage`, `asosh-timer-linux-amd64.deb`
+
+Установщики не подписаны: Windows покажет «Защитник SmartScreen» (Подробнее → Выполнить в любом случае), а на macOS открывать через правый клик → «Открыть».
+
+Локальный запуск: `npm run build && cd desktop && npm install && npm start`.
+
 ## Настройки (.env)
 
 | Переменная | Зачем |

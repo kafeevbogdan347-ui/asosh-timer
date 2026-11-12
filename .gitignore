@@ -7,3 +7,5 @@ coverage/
 .env*
 !.env.example
 android/
+desktop/node_modules/
+desktop/release/

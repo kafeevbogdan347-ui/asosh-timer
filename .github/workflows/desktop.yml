@@ -1,0 +1,78 @@
+name: Build Desktop (Windows, macOS, Linux)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+          - os: macos-latest
+          - os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Секрет APP_ENV — содержимое .env: CLASS_CODES, DEV_PASSWORD, VITE_FIREBASE_*
+      - name: Write .env from secret
+        shell: bash
+        run: |
+          printf '%s\n' "$APP_ENV" > .env
+          if [ -n "$GEMINI_API_KEY" ]; then printf 'VITE_GEMINI_API_KEY=%s\n' "$GEMINI_API_KEY" >> .env; fi
+          if [ -n "$CLASS_CODES" ]; then printf 'CLASS_CODES="%s"\n' "$CLASS_CODES" >> .env; fi
+        env:
+          APP_ENV: ${{ secrets.APP_ENV }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CLASS_CODES: ${{ secrets.CLASS_CODES }}
+      # Как и в APK, приложение открывается с корня, BASE_PATH не нужен
+      - run: npm run build
+      - name: Build installers
+        working-directory: desktop
+        run: |
+          npm install --no-audit --no-fund
+          npx electron-builder --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.os }}
+          path: |
+            desktop/release/*.exe
+            desktop/release/*.dmg
+            desktop/release/*.AppImage
+            desktop/release/*.deb
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: files
+          merge-multiple: true
+      - run: ls -la files
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desktop-latest
+          name: АСОШ Таймер для компьютера
+          body: |
+            Последняя сборка для компьютера. Обновляется автоматически при каждом изменении.
+            Windows: asosh-timer-win-x64.exe. macOS: asosh-timer-mac-arm64.dmg (Apple M1 и новее) или asosh-timer-mac-x64.dmg (Intel). Linux: asosh-timer-linux-x86_64.AppImage или .deb.
+          files: files/*
+          make_latest: false
