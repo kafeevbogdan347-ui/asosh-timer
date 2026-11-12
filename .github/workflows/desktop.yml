@@ -44,9 +44,16 @@ jobs:
       - run: npm run build
       - name: Build installers
         working-directory: desktop
+        shell: bash
         run: |
           npm install --no-audit --no-fund
-          npx electron-builder --publish never
+          # На macOS русские буквы в названиях внутренних файлов роняют программу при запуске,
+          # поэтому внутри латиница, а в системе показывается «АСОШ Таймер»
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            npx electron-builder --publish never -c.productName="ASOSH Timer" -c.mac.extendInfo.CFBundleDisplayName="АСОШ Таймер"
+          else
+            npx electron-builder --publish never
+          fi
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
       - uses: actions/upload-artifact@v4
