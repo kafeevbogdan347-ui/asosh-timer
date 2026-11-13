@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { WHATS_NEW } from '../data/whatsNew';
+import { WHATS_NEW, updatesLink } from '../data/whatsNew';
 import { AsoshikAvatar } from '../screens/AssistantScreen';
 
 interface WhatsNewModalProps {
@@ -55,6 +55,16 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ onClose }) => {
           <button type="button" onClick={() => setShowOld(!showOld)} className="w-full mt-3 text-xs font-bold text-white/60 hover:text-white/90 py-2 cursor-pointer">
             {showOld ? 'Скрыть прошлые обновления' : 'Прошлые обновления'}
           </button>
+        )}
+        {WHATS_NEW[0].version && (
+          <a
+            href={updatesLink(WHATS_NEW[0].version)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn darkBtn w-full mt-2 cursor-pointer"
+          >
+            📰 Подробнее об обновлении
+          </a>
         )}
         <button type="button" onClick={onClose} className="btn w-full mt-2 cursor-pointer">
           Круто, понятно!
