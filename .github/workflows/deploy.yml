@@ -32,13 +32,10 @@ jobs:
           if [ -n "$GEMINI_API_KEY" ]; then printf 'VITE_GEMINI_API_KEY=%s\n' "$GEMINI_API_KEY" >> .env; fi
           # Коды классов отдельным секретом: строка ниже важнее CLASS_CODES из APP_ENV
           if [ -n "$CLASS_CODES" ]; then printf 'CLASS_CODES="%s"\n' "$CLASS_CODES" >> .env; fi
-          # Настройки Firebase отдельным секретом: строки ниже важнее VITE_FIREBASE_* из APP_ENV
-          if [ -n "$FIREBASE_ENV" ]; then printf '%s\n' "$FIREBASE_ENV" >> .env; fi
         env:
           APP_ENV: ${{ secrets.APP_ENV }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLASS_CODES: ${{ secrets.CLASS_CODES }}
-          FIREBASE_ENV: ${{ secrets.FIREBASE_ENV }}
       - run: npm run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/

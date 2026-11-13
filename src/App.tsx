@@ -81,7 +81,7 @@ import { Account, getLocalAccount, logoutAccount, moveStudentToClass, verifyAcco
 import type { AccountDone } from './components/AccountForms';
 import { AccountForms } from './components/AccountForms';
 import { DiaryScreen } from './screens/DiaryScreen';
-import { UpdateRequired } from './components/UpdateRequired';
+import { UpdateRequired, useAvailableUpdate } from './components/UpdateRequired';
 import { HolidayLayer } from './components/HolidayLayer';
 import { OnlineScreen } from './screens/OnlineScreen';
 import { startPresence } from './services/online';
@@ -301,6 +301,17 @@ export default function App() {
 
   // Simulated Time Machine for Developer Tools
   const [simulatedTime, setSimulatedTime] = useState<Date | null>(null);
+  const [simulatedUpdateVersion, setSimulatedUpdateVersion] = useState<string | null>(null);
+  const {
+    availableVersion: availableUpdateVersion,
+    isUpdating: isUpdatingApp,
+    applyUpdate,
+  } = useAvailableUpdate(simulatedUpdateVersion);
+
+  const handleApplyUpdate = () => {
+    setSimulatedUpdateVersion(null);
+    return applyUpdate();
+  };
 
   // FPS Overlay State
   const [fpsOverlayActive, setFpsOverlayActive] = useState(false);
@@ -1672,9 +1683,6 @@ export default function App() {
         name={(account?.name || studentName || '').split(' ')[0]}
       />
 
-      {/* Вышла новая версия — просим обновиться */}
-      <UpdateRequired />
-
       <PinLockModal
         isOpen={isPinLocked}
         onSuccess={() => setIsPinLocked(false)}
@@ -1722,6 +1730,11 @@ export default function App() {
         onToggleFpsOverlay={() => setFpsOverlayActive((v) => !v)}
         siteClosed={siteClosed}
         onToggleSiteClosed={handleToggleSiteClosed}
+        simulatedUpdateActive={Boolean(simulatedUpdateVersion)}
+        onToggleSimulatedUpdate={() => {
+          setSimulatedUpdateVersion((prev) => (prev ? null : 'v99.0'));
+          showToast(simulatedUpdateVersion ? 'Тестовая плашка обновления скрыта' : 'Показана тестовая плашка обновления');
+        }}
       />
 
       {/* Dev Suite Master Password Authentication Modal */}
@@ -1737,6 +1750,13 @@ export default function App() {
         soundProfile={settings.soundProfile}
         vibro={settings.vibro}
         onShowToast={showToast}
+      />
+
+      {/* Красная плашка сверху о выходе новой версии */}
+      <UpdateRequired
+        availableVersion={availableUpdateVersion}
+        currentScreen={currentScreen}
+        onGoToMain={() => setCurrentScreen('main')}
       />
 
       {/* Top Header Bar */}
@@ -1908,6 +1928,9 @@ export default function App() {
             nextLesson={nextLessonInfo}
             shortLessonsToday={!todayOff && isShortDay(currentDayName) ? settings.shortLessonMin ?? SHORT_LESSON_MIN : 0}
             siteClosed={siteClosed}
+            availableUpdateVersion={availableUpdateVersion}
+            isUpdatingApp={isUpdatingApp}
+            onApplyUpdate={handleApplyUpdate}
           />
         )}
 

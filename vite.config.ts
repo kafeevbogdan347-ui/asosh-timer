@@ -43,6 +43,13 @@ function versionPlugin(): Plugin {
   const version = (readFileSync(path.resolve(__dirname, 'src/data/constants.ts'), 'utf8').match(/APP_VERSION = '([^']+)'/) || [])[1] || '';
   return {
     name: 'asosh-version',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (!req.url?.split('?')[0].endsWith('/version.json')) return next();
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.end(JSON.stringify({ version }));
+      });
+    },
     generateBundle() {
       this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ version }) });
     },
@@ -70,12 +77,19 @@ export default defineConfig(({ mode }) => {
       __DEV_PASSWORD_HASH__: JSON.stringify(devPassword ? slowHash(devPassword) : ''),
       __KDF__: JSON.stringify({ salt: KDF_SALT, iter: KDF_ITER }),
       // Ключ Асошика: VITE_GEMINI_API_KEY (сборка на GitHub) или GEMINI_API_KEY (Google AI Studio)
-      'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || env.GEMINI_API_KEY || ''),
+      'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || ''),
     },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
+    },
+    server: {
+      host: '0.0.0.0',
+      port: 3000,
+      allowedHosts: true,
+      hmr: process.env.DISABLE_HMR !== 'true',
+      watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
   };
 });

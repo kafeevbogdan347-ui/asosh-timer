@@ -62,6 +62,8 @@ interface DeveloperModalProps {
   onToggleFpsOverlay?: () => void;
   siteClosed?: boolean;
   onToggleSiteClosed?: (closed: boolean) => void;
+  simulatedUpdateActive?: boolean;
+  onToggleSimulatedUpdate?: () => void;
 }
 
 export const DeveloperModal: React.FC<DeveloperModalProps> = ({
@@ -76,6 +78,8 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
   onToggleFpsOverlay,
   siteClosed = false,
   onToggleSiteClosed,
+  simulatedUpdateActive = false,
+  onToggleSimulatedUpdate,
 }) => {
   const [tab, setTab] = useState<'security' | 'stats' | 'presentation' | 'apk' | 'mobile' | 'time' | 'data' | 'audio' | 'system'>('security');
   const [togglingSiteClosed, setTogglingSiteClosed] = useState(false);
@@ -987,6 +991,21 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
                       className="w-5 h-5 accent-cyan-400 cursor-pointer"
                     />
                   </label>
+
+                  {onToggleSimulatedUpdate && (
+                    <label className="mt-2 flex items-center justify-between text-xs font-bold text-white cursor-pointer select-none bg-slate-950/80 p-2.5 rounded-xl border border-rose-500/30">
+                      <div className="flex items-center gap-2">
+                        <Radio className="w-4 h-4 text-rose-400" />
+                        <span>Тест: показать плашку новой версии</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={simulatedUpdateActive}
+                        onChange={onToggleSimulatedUpdate}
+                        className="w-5 h-5 accent-rose-500 cursor-pointer"
+                      />
+                    </label>
+                  )}
                 </div>
               </div>
             </div>

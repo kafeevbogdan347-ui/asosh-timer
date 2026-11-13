@@ -42,6 +42,9 @@ interface MainScreenProps {
   shortLessonsToday: number; // длина сокращённого урока сегодня, 0 — обычный день
   nextLesson: { sub: string; replaced: boolean; room: string; floor: number | null; time: string } | null;
   siteClosed?: boolean;
+  availableUpdateVersion?: string | null;
+  isUpdatingApp?: boolean;
+  onApplyUpdate?: () => void;
 }
 
 const ONLINE_TILE_SCREENS = new Set<string>(['diary', 'chat', 'online', 'profile', 'updates', 'teacher']);
@@ -117,6 +120,9 @@ export const MainScreen: React.FC<MainScreenProps> = ({
   nextLesson,
   shortLessonsToday,
   siteClosed = false,
+  availableUpdateVersion = null,
+  isUpdatingApp = false,
+  onApplyUpdate,
 }) => {
   const d = DICT[lang] || DICT.ru;
   // Учителю — плитка кабинета в группе «Класс»
@@ -140,6 +146,42 @@ export const MainScreen: React.FC<MainScreenProps> = ({
   return (
     <div className="card screen-enter">
       <div className="mc-splash">{splash}</div>
+
+      {/* Уведомление о доступном ручном обновлении */}
+      {availableUpdateVersion && (
+        <div
+          role="alert"
+          className="mb-3 p-3.5 rounded-2xl bg-gradient-to-br from-rose-600/25 via-red-600/20 to-rose-700/25 border-2 border-rose-500/70 shadow-lg space-y-2.5"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-base shrink-0">🚀</span>
+                <span className="text-sm font-black text-white leading-snug">
+                  Вышла новая версия АСОШ Таймер.
+                </span>
+                <span className="text-[10px] font-black font-mono px-2 py-0.5 rounded-lg bg-rose-500/30 text-rose-100 border border-rose-400/50">
+                  {availableUpdateVersion}
+                </span>
+              </div>
+              <p className="text-xs font-semibold text-rose-100/90 leading-relaxed mt-1">
+                Если не обновляться, некоторые новые функции будут вам недоступны и приложение может работать нестабильно.
+              </p>
+            </div>
+          </div>
+          {onApplyUpdate && (
+            <button
+              type="button"
+              disabled={isUpdatingApp}
+              onClick={onApplyUpdate}
+              className="w-full py-2.5 px-4 rounded-xl bg-rose-500 hover:bg-rose-400 disabled:opacity-60 text-white font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+            >
+              <span>{isUpdatingApp ? '⏳' : '🔄'}</span>
+              <span>{isUpdatingApp ? 'Обновляем приложение...' : 'Обновиться'}</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Интерактивный виджет звонка */}
       <div
