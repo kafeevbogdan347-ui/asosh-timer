@@ -5,8 +5,13 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import { receiveTransferIfNeeded } from './services/transfer';
 import { initCordovaPlugins } from './services/cordovaService';
+import { installErrorLog } from './services/errorLog';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 import './themes.css';
+
+// Журнал ошибок для разработчиков (src/services/errorLog.ts)
+installErrorLog();
 
 // Инициализация хуков Apache Cordova (deviceready, statusbar, splashscreen)
 initCordovaPlugins();
@@ -24,7 +29,9 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 receiveTransferIfNeeded().finally(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </StrictMode>,
   );
 });

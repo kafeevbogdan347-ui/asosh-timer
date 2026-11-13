@@ -123,6 +123,19 @@ await check('заглушка: только true/false', assertFails(set(ref(adm
 await check('админы: список видят вошедшие (значок «Разработчик»)', assertSucceeds(get(ref(stu2, 'asosh_admins'))));
 await check('админ: остальной конфиг не трогает', assertFails(set(ref(admin, 'asosh_config/lockdown'), true)));
 
+// --- Журнал ошибок ---
+const errRec = (extra = {}) => ({ msg: 'TypeError: x is undefined', stack: 'at App', ver: 'v16.21', scr: 'main', plat: 'apk', t: serverTimestamp(), ...extra });
+const sendErr = (d, uid, key, extra) => update(ref(d), { [`asosh_errors/${uid}/${key}`]: errRec(extra), [`asosh_rate/${uid}/err`]: serverTimestamp() });
+await check('ошибки: ученик отправляет ошибку', assertSucceeds(sendErr(stu2, 'stu2', 'e1')));
+await check('ошибки: вторая сразу же — отклоняется', assertFails(sendErr(stu2, 'stu2', 'e2')));
+await check('ошибки: без отметки частоты нельзя', assertFails(set(ref(stu1, 'asosh_errors/stu1/e3'), errRec())));
+await check('ошибки: от чужого имени нельзя', assertFails(sendErr(stu1, 'stu2', 'e4')));
+await check('ошибки: длинный текст отклоняется', assertFails(sendErr(anonDev, 'anon_device', 'e5', { msg: 'x'.repeat(301) })));
+await check('ошибки: ученик журнал не читает', assertFails(get(ref(stu2, 'asosh_errors'))));
+await check('ошибки: администратор читает', assertSucceeds(get(ref(admin, 'asosh_errors'))));
+await check('ошибки: ученик не очищает', assertFails(remove(ref(stu2, 'asosh_errors'))));
+await check('ошибки: администратор очищает', assertSucceeds(remove(ref(admin, 'asosh_errors'))));
+
 // --- Профиль аккаунта (ник, аватар, статус) — общий для всех устройств ---
 const prof = (extra = {}) => ({ nick: 'Ваня', avatar: '😎', status: 'Учусь', bio: 'Люблю футбол', t: 1, ...extra });
 await check('профиль: пишу свой', assertSucceeds(set(ref(stu1, 'asosh_profiles/stu1'), prof())));

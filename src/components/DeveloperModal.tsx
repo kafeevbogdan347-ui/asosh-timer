@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { APP_VERSION } from '../data/constants';
+import { ErrorsPanel } from './ErrorsPanel';
 import { StatsPanel } from './StatsPanel';
 import {
   Volume2,
@@ -81,7 +82,7 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
   simulatedUpdateActive = false,
   onToggleSimulatedUpdate,
 }) => {
-  const [tab, setTab] = useState<'security' | 'stats' | 'presentation' | 'apk' | 'mobile' | 'time' | 'data' | 'audio' | 'system'>('security');
+  const [tab, setTab] = useState<'security' | 'stats' | 'presentation' | 'apk' | 'mobile' | 'time' | 'data' | 'audio' | 'system' | 'errors'>('security');
   const [togglingSiteClosed, setTogglingSiteClosed] = useState(false);
   const [stressResult, setStressResult] = useState<string | null>(null);
   const [simBattery, setSimBattery] = useState(88);
@@ -267,7 +268,7 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className="grid grid-cols-3 sm:grid-cols-9 gap-1 my-3 bg-slate-950/80 p-1.5 rounded-2xl border border-white/10">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-1 my-3 bg-slate-950/80 p-1.5 rounded-2xl border border-white/10">
           {[
             { id: 'security', label: '🔒 Пароль Dev', icon: Lock },
             { id: 'stats', label: '📈 Статистика', icon: Activity },
@@ -278,6 +279,7 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
             { id: 'data', label: '💾 База', icon: Database },
             { id: 'audio', label: '🔊 Звуки', icon: Volume2 },
             { id: 'system', label: '⚡ HUD', icon: Terminal },
+            { id: 'errors', label: '🐞 Ошибки', icon: Activity },
           ].map((t) => (
             <button
               key={t.id}
@@ -449,6 +451,8 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
           )}
 
           {tab === 'stats' && <StatsPanel />}
+
+          {tab === 'errors' && <ErrorsPanel />}
 
           {/* 0. PRESENTATION TAB */}
           {tab === 'presentation' && (

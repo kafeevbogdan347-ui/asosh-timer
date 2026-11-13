@@ -87,6 +87,7 @@ import { OnlineScreen } from './screens/OnlineScreen';
 import { startPresence } from './services/online';
 import { pullProfile, pushPublicProfile, fetchPublicProfile } from './services/profileSync';
 import { loadAdmins, onAdminsLoaded } from './services/admins';
+import { setErrorScreen } from './services/errorLog';
 import { getMyProfile } from './services/userService';
 import { subscribeLockdown, subscribeSiteClosed, setGlobalSiteClosed, getLocalSiteClosed } from './services/lockdown';
 import { setAutoLanguage, tr as autoTr } from './i18n/auto';
@@ -535,6 +536,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    setErrorScreen(currentScreen); // в журнале ошибок видно, на каком экране упало
     if (!LOCKED_ONLINE_SCREENS.has(currentScreen)) {
       prevOfflineScreenRef.current = currentScreen;
     }

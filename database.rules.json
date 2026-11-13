@@ -20,7 +20,7 @@
         ".read": "auth != null && auth.uid === $uid",
         "$kind": {
           ".write": "auth != null && auth.uid === $uid && root.child('asosh_config').child('lockdown').val() !== true",
-          ".validate": "newData.isNumber() && newData.val() === now && ($kind === 'chat' || $kind === 'share') && (!data.exists() || ($kind === 'chat' && now - data.val() >= 2000) || ($kind === 'share' && now - data.val() >= 10000))"
+          ".validate": "newData.isNumber() && newData.val() === now && ($kind === 'chat' || $kind === 'share' || $kind === 'err') && (!data.exists() || ($kind === 'chat' && now - data.val() >= 2000) || ($kind === 'share' && now - data.val() >= 10000) || ($kind === 'err' && now - data.val() >= 60000))"
         }
       }
     },
@@ -132,6 +132,37 @@
           },
           "t": {
             ".validate": true
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "asosh_errors": {
+      ".read": "auth != null && root.child('asosh_admins').child(auth.uid).val() === true",
+      ".write": "auth != null && root.child('asosh_admins').child(auth.uid).val() === true && !newData.exists()",
+      "$uid": {
+        "$id": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.parent().parent().parent().child('asosh_rate').child(auth.uid).child('err').val() === now",
+          ".validate": "newData.hasChildren(['msg', 'ver', 't'])",
+          "msg": {
+            ".validate": "newData.isString() && newData.val().length <= 300"
+          },
+          "stack": {
+            ".validate": "newData.isString() && newData.val().length <= 1500"
+          },
+          "ver": {
+            ".validate": "newData.isString() && newData.val().length <= 12"
+          },
+          "scr": {
+            ".validate": "newData.isString() && newData.val().length <= 30"
+          },
+          "plat": {
+            ".validate": "newData.isString() && newData.val().length <= 10"
+          },
+          "t": {
+            ".validate": "newData.isNumber() && newData.val() === now"
           },
           "$other": {
             ".validate": false
