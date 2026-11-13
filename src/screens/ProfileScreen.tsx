@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { pushProfile, pushPublicProfile } from '../services/profileSync';
 import { getLocalAccount } from '../services/accounts';
+import { FriendsState, FriendCard, subscribeFriends, addFriend, acceptFriend, declineFriend, removeFriend } from '../services/friends';
 import { formatDuration } from '../services/online';
 import { getBirthday, setBirthday } from '../data/holidays';
 import { UserProfile, CertificateItem, LanguageType, SoundProfileType } from '../types';
@@ -252,6 +253,50 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     onShowToast('🗑️ Грамота удалена');
   };
 
+  // Друзья через аккаунт (заявки и взаимная дружба на всех устройствах)
+  const account = getLocalAccount();
+  const [fr, setFr] = useState<FriendsState>({ friends: [], outgoing: [], incoming: [] });
+  useEffect(() => {
+    if (!account) return;
+    return subscribeFriends(account, (st) => {
+      setFr(st);
+      // Число друзей в профиле — по взаимным друзьям из аккаунта
+      const ids = st.friends.map((f) => f.uid).sort();
+      const cur = getMyProfile();
+      if (JSON.stringify([...(cur.friends || [])].sort()) !== JSON.stringify(ids)) {
+        const next = { ...cur, friends: ids };
+        saveMyProfile(next);
+        setMyProfile(next);
+        pushPublicProfile(next).catch(() => {});
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.uid]);
+
+  const isAccountUid = (id: string) => /^[A-Za-z0-9_-]{6,128}$/.test(id) && !id.startsWith('user_') && !id.startsWith('chat_');
+  const relationTo = (uid: string): 'friend' | 'sent' | 'incoming' | 'none' =>
+    fr.friends.some((f) => f.uid === uid) ? 'friend' : fr.outgoing.some((f) => f.uid === uid) ? 'sent' : fr.incoming.some((f) => f.uid === uid) ? 'incoming' : 'none';
+
+  const handleCloudFriend = async (target: UserProfile) => {
+    if (!account) {
+      onShowToast('Чтобы дружить, войди в аккаунт: Опции → Аккаунт');
+      return;
+    }
+    const rel = relationTo(target.id);
+    if (rel === 'friend' || rel === 'sent') {
+      const ok = await removeFriend(account, target.id);
+      onShowToast(ok ? (rel === 'friend' ? `💔 Удалено из друзей: ${target.fullName}` : 'Заявка отменена') : 'Нужен интернет');
+      return;
+    }
+    const res = await addFriend(account, { uid: target.id, name: target.fullName, nick: target.username, avatar: target.avatar, cls: target.className });
+    if (res === 'error') onShowToast('Не получилось — нужен интернет');
+    else {
+      playSound('coin', soundProfile);
+      doVibro(vibro, 15);
+      onShowToast(res === 'friends' ? `❤️ Вы теперь друзья: ${target.fullName}` : `📨 Заявка отправлена: ${target.fullName}`);
+    }
+  };
+
   const handleToggleFriend = (targetId: string, name: string) => {
     const updated = toggleFriend(myProfile, targetId);
     setMyProfile(updated);
@@ -434,18 +479,27 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   </>
                 ) : (
                   <>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleFriend(activeProfile.id, activeProfile.fullName)}
-                      className={`btn text-xs py-1.5 px-3 flex items-center gap-1.5 ${
-                        isFriend
-                          ? 'bg-rose-500/20 border-rose-400 text-rose-200'
-                          : 'cyan'
-                      }`}
-                    >
-                      <Heart className={`w-3.5 h-3.5 ${isFriend ? 'fill-rose-400 text-rose-400' : ''}`} />
-                      <span>{isFriend ? 'В друзьях (удалить)' : 'Добавить в друзья'}</span>
-                    </button>
+                    {isAccountUid(activeProfile.id) ? (
+                      (() => {
+                        const rel = relationTo(activeProfile.id);
+                        const label =
+                          rel === 'friend' ? 'В друзьях (удалить)' : rel === 'sent' ? 'Заявка отправлена (отменить)' : rel === 'incoming' ? 'Принять заявку в друзья' : 'Добавить в друзья';
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => handleCloudFriend(activeProfile)}
+                            className={`btn text-xs py-1.5 px-3 flex items-center gap-1.5 ${
+                              rel === 'friend' ? 'bg-rose-500/20 border-rose-400 text-rose-200' : rel === 'sent' ? 'darkBtn' : 'cyan'
+                            }`}
+                          >
+                            <Heart className={`w-3.5 h-3.5 ${rel === 'friend' ? 'fill-rose-400 text-rose-400' : ''}`} />
+                            <span>{label}</span>
+                          </button>
+                        );
+                      })()
+                    ) : (
+                      <span className="text-[11px] text-white/55">Дружить можно с учениками, у которых есть аккаунт</span>
+                    )}
                     {onNavigateToChat && (
                       <button
                         type="button"
@@ -500,11 +554,73 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </div>
         </div>
 
+        {/* Друзья и заявки (через аккаунт) */}
+        {!isViewingOther && account && (fr.incoming.length > 0 || fr.friends.length > 0 || fr.outgoing.length > 0) && (
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+            {fr.incoming.length > 0 && (
+              <div className="space-y-1.5">
+                <b className="text-xs text-amber-300">📨 Заявки в друзья ({fr.incoming.length})</b>
+                {fr.incoming.map((f: FriendCard) => (
+                  <div key={f.uid} className="flex items-center gap-2 p-2 rounded-xl bg-black/20 text-xs">
+                    <span className="text-xl" data-no-tr>{f.avatar}</span>
+                    <span className="flex-1 min-w-0 truncate" data-no-tr>
+                      <b>{f.name}</b> <span className="text-white/50">@{f.nick} · {f.cls}</span>
+                    </span>
+                    <button
+                      type="button"
+                      className="btn cyan text-[11px] py-1 px-2 cursor-pointer"
+                      onClick={async () => onShowToast((await acceptFriend(account, f)) ? `❤️ Вы теперь друзья: ${f.name}` : 'Нужен интернет')}
+                    >
+                      Принять
+                    </button>
+                    <button
+                      type="button"
+                      className="text-white/50 hover:text-white px-1 cursor-pointer"
+                      aria-label="Отклонить"
+                      onClick={async () => onShowToast((await declineFriend(account, f.uid)) ? 'Заявка отклонена' : 'Нужен интернет')}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {fr.friends.length > 0 && (
+              <div>
+                <b className="text-xs text-rose-200">❤️ Друзья ({fr.friends.length})</b>
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {fr.friends.map((f) => (
+                    <span key={f.uid} className="px-2 py-1 rounded-full bg-rose-500/10 border border-rose-400/30 text-[11px]" data-no-tr>
+                      {f.avatar} {f.name} <span className="text-white/45">{f.cls}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {fr.outgoing.length > 0 && (
+              <div className="text-[11px] text-white/55">
+                ⏳ Ждут ответа: {fr.outgoing.map((f) => f.name).join(', ')}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Где хранятся данные */}
         {!isViewingOther ? (
           <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-[11px] text-white/70 leading-relaxed">
-            🛡️ Профиль, оценки и ДЗ хранятся только на этом устройстве. Чтобы не потерять их при смене телефона,
-            сделай резервную копию: <b className="text-white">Опции → Память и резервная копия</b>.
+            {account ? (
+              <>
+                🛡️ Ник, аватар, статус, грамоты и друзья сохранены в аккаунте — они одинаковые на всех твоих устройствах.
+                Фото профиля, оценки из калькулятора и ДЗ хранятся только на этом телефоне: сделай резервную копию в{' '}
+                <b className="text-white">Опции → Память и резервная копия</b>.
+              </>
+            ) : (
+              <>
+                🛡️ Профиль, оценки и ДЗ хранятся только на этом устройстве. Чтобы не потерять их при смене телефона,
+                сделай резервную копию: <b className="text-white">Опции → Память и резервная копия</b>. Войди в аккаунт, чтобы
+                профиль и друзья были на всех устройствах.
+              </>
+            )}
           </div>
         ) : (
           <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-[11px] text-white/70 leading-relaxed flex flex-wrap items-center justify-between gap-2">

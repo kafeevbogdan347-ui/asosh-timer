@@ -13,6 +13,8 @@ import {
   subscribeMyParents,
   subscribeMyRosterStatus,
 } from '../services/accounts';
+import { pickQuarter, quarterSummary } from '../utils/quarterGrades';
+import { SCHOOL_QUARTERS } from '../data/constants';
 import { Grade, bySubject, average, markColor, subscribeStudentGrades, newGrades, markGradesSeen } from '../services/journal';
 import { ClassHomework, subscribeClassHomework, toDateKey } from '../services/classShared';
 import { BoardPost, postsFor } from '../services/teacher';
@@ -52,6 +54,48 @@ const MarkChip: React.FC<{ g: Grade; fresh?: boolean }> = ({ g, fresh }) => (
   </span>
 );
 
+const pluralFives = (n: number) => (n === 1 ? 'пятёрка' : n < 5 ? 'пятёрки' : 'пятёрок');
+
+// Итоги текущей четверти: что выходит по каждому предмету и сколько пятёрок до следующей оценки
+const QuarterBlock: React.FC<{ grades: Grade[] }> = ({ grades }) => {
+  const q = useMemo(() => pickQuarter(SCHOOL_QUARTERS, toDateKey(new Date())), []);
+  const rows = useMemo(() => (q ? quarterSummary(grades, q) : []), [grades, q]);
+  if (!q || !rows.length) return null;
+  return (
+    <div className="p-3 rounded-2xl bg-white/5 border border-white/15 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <b className="text-sm">📊 Итоги: {q.name}</b>
+        <span className="text-[10px] text-white/50">
+          {fmtDate(q.start)} – {fmtDate(q.end)}
+        </span>
+      </div>
+      {rows.map((r) => (
+        <div key={r.sub} className="flex items-center gap-2 text-xs p-2 rounded-xl bg-black/15">
+          <div className="flex-1 min-w-0">
+            <b className="truncate block">{r.sub}</b>
+            <span className="text-[11px] text-white/60">
+              {r.avg ?? '—'} · оценок {r.count}
+              {r.absences > 0 && ` · Н ${r.absences}`}
+            </span>
+            {r.fivesToNext !== null && r.fivesToNext > 0 && r.predicted && (
+              <span className="block text-[11px] text-cyan-300">
+                До {r.predicted + 1}: ещё {r.fivesToNext} {pluralFives(r.fivesToNext)}
+              </span>
+            )}
+            {r.fewMarks && <span className="block text-[11px] text-amber-300">Мало оценок — нужно хотя бы 3</span>}
+          </div>
+          {r.predicted && (
+            <span className="mark-chip shrink-0" style={{ background: markColor(r.predicted) }} title="Какая оценка выходит сейчас">
+              {r.predicted}
+            </span>
+          )}
+        </div>
+      ))}
+      <p className="text-[10px] text-white/45">Прогноз по обычному округлению (4,5 → 5). Итоговую оценку ставит учитель.</p>
+    </div>
+  );
+};
+
 // Оценки по предметам + последние оценки с комментариями
 const GradesBlock: React.FC<{ grades: Grade[]; fresh?: Set<string> }> = ({ grades, fresh }) => {
   const subjects = useMemo(() => bySubject(grades), [grades]);
@@ -78,6 +122,8 @@ const GradesBlock: React.FC<{ grades: Grade[]; fresh?: Set<string> }> = ({ grade
           <span>пропусков</span>
         </div>
       </div>
+
+      <QuarterBlock grades={grades} />
 
       <div className="space-y-1.5">
         {subjects.map((s) => (

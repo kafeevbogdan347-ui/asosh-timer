@@ -13,7 +13,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+
   apk:
+    needs: checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,6 +49,8 @@ jobs:
           java-version: 21
       - run: npx cap add android
       - run: npx cap sync android
+      # Виджет на рабочий стол и плагин для него (native/android)
+      - run: bash native/android/install.sh
       # Микрофон для голосовых вопросов и камера для фото задания Асошику
       - name: Microphone and camera permissions
         run: |

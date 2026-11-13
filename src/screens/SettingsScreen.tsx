@@ -784,6 +784,48 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 }}
               />
             </label>
+            <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-2">
+              <label className="flex items-center justify-between text-xs font-bold text-white cursor-pointer select-none">
+                <div>
+                  <div>Напоминать о домашке вечером 📘</div>
+                  <div className="text-[11px] text-white/60 font-normal">
+                    {isNativeApp()
+                      ? 'Если на завтра что-то не сделано — уведомление, даже когда приложение закрыто'
+                      : 'Если на завтра что-то не сделано — напоминание, когда приложение открыто'}
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  className="w-5 h-5 shrink-0"
+                  checked={settings.hwReminder !== false}
+                  onChange={async (e) => {
+                    if (!e.target.checked) {
+                      onUpdateSettings({ hwReminder: false });
+                      return;
+                    }
+                    await requestNotificationPermission().catch(() => false);
+                    onUpdateSettings({ hwReminder: true });
+                    onShowToast('Напоминание о домашке включено 📘');
+                  }}
+                />
+              </label>
+              {settings.hwReminder !== false && (
+                <div className="flex items-center justify-between gap-2 text-xs text-white/80">
+                  <span>Во сколько напоминать:</span>
+                  <select
+                    value={settings.hwReminderTime || '19:00'}
+                    onChange={(e) => onUpdateSettings({ hwReminderTime: e.target.value })}
+                    className="text-xs"
+                  >
+                    {['16:00', '17:00', '18:00', '19:00', '20:00', '21:00'].map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
             <label className="flex items-center justify-between text-xs font-bold text-white cursor-pointer select-none p-2.5 rounded-xl bg-white/5 border border-white/10">
               <div>
                 <div>Предупреждать за 2 минуты до звонка 🔔</div>

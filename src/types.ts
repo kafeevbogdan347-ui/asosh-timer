@@ -124,6 +124,8 @@ export interface AppSettings {
   timerStyle: TimerStyleType;
   theme: ThemeType;
   bellNotifications?: boolean; // системные уведомления о звонках
+  hwReminder?: boolean; // вечернее напоминание о невыполненной домашке на завтра (по умолчанию включено)
+  hwReminderTime?: string; // «19:00»
   themeAuto?: boolean; // тема как в системе: светлая днём, тёмная ночью
   compact: boolean;
   devicePC: boolean;

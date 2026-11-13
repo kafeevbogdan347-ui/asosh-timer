@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { CLASS_LIST } from '../data/classCodes';
 import { toDateKey } from '../services/classShared';
@@ -11,7 +11,8 @@ import {
   deleteBoardPost,
   loginTeacher,
 } from '../services/teacher';
-import { Account } from '../services/accounts';
+import { Account, RosterEntry, subscribeRoster } from '../services/accounts';
+import { ReadMark, subscribeReadMarks } from '../services/boardRead';
 import { TeacherJournal } from '../components/TeacherJournal';
 
 // Кабинет учителя: вход по одноразовому коду, объявления и события для классов
@@ -31,6 +32,44 @@ interface TeacherScreenProps {
 
 const fmtDate = (key: string) => new Date(key + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
 
+// Кто прочитал объявление для класса: «Прочитали 12 из 25», по нажатию — кто ещё нет
+const ReadStats: React.FC<{ p: BoardPost }> = ({ p }) => {
+  const [marks, setMarks] = useState<ReadMark[]>([]);
+  const [roster, setRoster] = useState<RosterEntry[]>([]);
+  const [open, setOpen] = useState(false);
+  useEffect(() => subscribeReadMarks(p.id, setMarks), [p.id]);
+  useEffect(() => (p.cls ? subscribeRoster(p.cls, setRoster) : undefined), [p.cls]);
+  const students = roster.filter((r) => r.ok);
+  const readUids = new Set(marks.map((m) => m.uid));
+  const studentsRead = students.filter((r) => readUids.has(r.sid));
+  const notRead = students.filter((r) => !readUids.has(r.sid));
+  const parents = marks.filter((m) => m.role === 'parent');
+  return (
+    <div className="mt-1.5">
+      <button type="button" onClick={() => setOpen(!open)} className="text-[11px] font-bold text-emerald-300 cursor-pointer">
+        👀 {p.cls ? `Прочитали ${studentsRead.length} из ${students.length}` : `Прочитали: ${marks.length}`}
+        {parents.length > 0 && ` · родителей ${parents.length}`} {open ? '▴' : '▾'}
+      </button>
+      {open && (
+        <div className="mt-1 space-y-1 text-[11px]">
+          {notRead.length > 0 && (
+            <div className="text-amber-200">
+              <b>Ещё не прочитали:</b> {notRead.map((r) => r.name).join(', ')}
+            </div>
+          )}
+          {marks.length > 0 && (
+            <div className="text-white/70">
+              <b>Прочитали:</b>{' '}
+              {marks.map((m) => `${m.name}${m.role === 'parent' ? ' (родитель)' : ''}`).join(', ')}
+            </div>
+          )}
+          {!marks.length && !notRead.length && <div className="text-white/50">Пока никто не отметил.</div>}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Снаружи кабинета: App обновляется каждую секунду, и компонент внутри пересоздавался бы вместе с кнопками
 const PostRow: React.FC<{ p: BoardPost; canDelete: boolean; onShowToast: (msg: string) => void }> = ({ p, canDelete, onShowToast }) => (
   <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-start justify-between gap-2">
@@ -43,6 +82,7 @@ const PostRow: React.FC<{ p: BoardPost; canDelete: boolean; onShowToast: (msg: s
         {AUDIENCE_LABEL[p.aud]} · {p.cls || 'вся школа'}
         {p.date ? ` · ${fmtDate(p.date)}` : ''} · {p.author}
       </div>
+      {canDelete && p.kind === 'ann' && p.aud !== 'teachers' && <ReadStats p={p} />}
     </div>
     {canDelete && (
       <button

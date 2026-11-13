@@ -77,7 +77,7 @@ import { PortfolioScreen } from './screens/PortfolioScreen';
 import { FocusAudioScreen } from './screens/FocusAudioScreen';
 import { ChatScreen } from './screens/ChatScreen';
 import { isClassUnlocked, saveClassUnlocked } from './data/classCodes';
-import { Account, getLocalAccount, logoutAccount, moveStudentToClass, verifyAccountSession } from './services/accounts';
+import { Account, getLocalAccount, logoutAccount, moveStudentToClass, verifyAccountSession, subscribeMyChildren } from './services/accounts';
 import type { AccountDone } from './components/AccountForms';
 import { AccountForms } from './components/AccountForms';
 import { DiaryScreen } from './screens/DiaryScreen';
@@ -87,6 +87,11 @@ import { OnlineScreen } from './screens/OnlineScreen';
 import { startPresence } from './services/online';
 import { pullProfile, pushPublicProfile, fetchPublicProfile } from './services/profileSync';
 import { loadAdmins, onAdminsLoaded } from './services/admins';
+import { setErrorScreen } from './services/errorLog';
+import { homeworkForTomorrow, reminderText } from './utils/hwReminder';
+import { subscribeFriends } from './services/friends';
+import { drawWeekSchedule, shareScheduleImage } from './utils/scheduleImage';
+import { updateWidget, atTime, WidgetLesson } from './services/widget';
 import { getMyProfile } from './services/userService';
 import { subscribeLockdown, subscribeSiteClosed, setGlobalSiteClosed, getLocalSiteClosed } from './services/lockdown';
 import { setAutoLanguage, tr as autoTr } from './i18n/auto';
@@ -116,7 +121,7 @@ import {
   myUid,
   toDateKey,
 } from './services/classShared';
-import { isNativeApp, showSystemNotification, scheduleNativeReminders, cancelNativeReminders } from './services/bellNotifications';
+import { isNativeApp, showSystemNotification, scheduleNativeReminders, cancelNativeReminders, notifyNow, requestNotificationPermission } from './services/bellNotifications';
 
 export default function App() {
   // 1. Initial State from unified Account Vault (guarantees account NEVER resets on refresh or update)
@@ -535,6 +540,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    setErrorScreen(currentScreen); // в журнале ошибок видно, на каком экране упало
     if (!LOCKED_ONLINE_SCREENS.has(currentScreen)) {
       prevOfflineScreenRef.current = currentScreen;
     }
@@ -833,6 +839,33 @@ export default function App() {
   }, [registered, isTeacher]);
   const visiblePosts = postsFor(boardPosts, isTeacher, cls);
 
+  // Новое объявление учителя для своего класса или школы — уведомление (у учителя — нет)
+  const annIdsKey = visiblePosts.filter((p) => p.kind === 'ann').map((p) => p.id).join(',');
+  useEffect(() => {
+    if (isTeacher || !annIdsKey) return;
+    const ids = annIdsKey.split(',');
+    let known: string[] | null = null;
+    try {
+      known = JSON.parse(localStorage.getItem('asosh_ann_notified') || 'null');
+    } catch {
+      known = null;
+    }
+    // Первый запуск: всё, что уже было, считаем известным
+    if (known) {
+      const fresh = visiblePosts.filter((p) => p.kind === 'ann' && !known!.includes(p.id) && Date.now() - p.created_at < 3 * 24 * 3600 * 1000);
+      fresh.slice(0, 2).forEach((p) => {
+        showToast(`📢 ${p.title}`);
+        notifyNow(`📢 Объявление: ${p.title}`, p.text || p.author, `asosh-ann-${p.id}`);
+      });
+    }
+    try {
+      localStorage.setItem('asosh_ann_notified', JSON.stringify([...new Set([...(known || []), ...ids])].slice(-300)));
+    } catch {
+      // нет места
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [annIdsKey, isTeacher]);
+
   // Учитель остаётся учителем, только пока его запись есть в базе
   useEffect(() => {
     if (!teacher) return;
@@ -899,6 +932,27 @@ export default function App() {
       }
     }
     return result;
+  };
+
+  // Расписание на неделю картинкой: Пн–Сб текущей недели, а с пятницы — следующей; без каникул и праздников
+  const handleShareWeek = async () => {
+    const fmt = (key: string) => new Date(key + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    const monday = new Date(activeTime.getFullYear(), activeTime.getMonth(), activeTime.getDate() - dayIndex + (dayIndex >= 4 ? 7 : 0));
+    const days = DAYS.slice(0, 6)
+      .map((name, i) => ({ name, key: toDateKey(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i)) }))
+      .filter((d) => !isDayOff(d.key))
+      .map((d) => ({ name: d.name, date: fmt(d.key), key: d.key, lessons: getLessonsForDay(d.name), bells: getDayBells(d.name) }));
+    if (!days.length) {
+      showToast('На этой неделе уроков нет — каникулы 🎉');
+      return;
+    }
+    try {
+      const canvas = drawWeekSchedule({ cls, shift, title: `${fmt(days[0].key)} – ${fmt(days[days.length - 1].key)}`, days });
+      const res = await shareScheduleImage(canvas, `raspisanie-${cls || 'klass'}-${days[0].key}.png`);
+      if (res === 'saved') showToast('🖼 Картинка расписания сохранена');
+    } catch {
+      showToast('Не получилось сделать картинку');
+    }
   };
 
   // На каникулах и в праздники уроков нет, хотя расписание по дням недели остаётся
@@ -1079,10 +1133,60 @@ export default function App() {
       .join('\n');
   };
 
+  // Виджет Android: уроки на сегодня и завтра (виджет сам ведёт отсчёт до звонка)
+  const widgetLessons: WidgetLesson[] = (() => {
+    if (!cls || isTeacher) return [];
+    const out: WidgetLesson[] = [];
+    [
+      { date: activeTime, lessons: currentLessons, bells: currentBells },
+      { date: new Date(activeTime.getFullYear(), activeTime.getMonth(), activeTime.getDate() + 1), lessons: tomorrowLessons, bells: tomorrowBells },
+    ].forEach(({ date, lessons, bells }) =>
+      lessons.forEach(([sub, room], i) => {
+        if (!bells[i] || !sub || sub === '—') return;
+        out.push({ start: atTime(date, bells[i][0]), end: atTime(date, bells[i][1]), num: lessonNo(shift, i), sub: sub.replace('🔄 ', ''), room });
+      })
+    );
+    return out;
+  })();
+  const widgetKey = JSON.stringify(widgetLessons);
+  useEffect(() => {
+    updateWidget(widgetLessons, cls);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [widgetKey, cls]);
+
+  // Вечернее напоминание о домашке: что из невыполненного задано на завтра
+  const hwReminderOn = settings.hwReminder !== false && Boolean(cls) && !isTeacher;
+  const hwReminderTime = settings.hwReminderTime || '19:00';
+  const hwTomorrow = hwReminderOn && !tomorrowOff
+    ? homeworkForTomorrow(homeworkList, classHomework, cls, dateKeyForDay(tomorrowDayName), tomorrowLessons.map((l) => l[0]))
+    : [];
+  const hwTomorrowKey = hwTomorrow.join('|');
+  // Приложение открыто в это время (браузер, компьютер): тост и системное уведомление, раз в день
+  const nowHm = activeTime.toTimeString().slice(0, 5);
+  useEffect(() => {
+    if (!hwTomorrow.length || nowHm < hwReminderTime || isNativeApp()) return;
+    try {
+      if (localStorage.getItem('asosh_hw_reminded') === todayDateKey) return;
+      localStorage.setItem('asosh_hw_reminded', todayDateKey);
+    } catch {
+      return;
+    }
+    const { title, body } = reminderText(hwTomorrow);
+    showToast(`${title}: ${body}`);
+    notifyNow(title, body, 'asosh-hw');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nowHm >= hwReminderTime, hwTomorrowKey, todayDateKey]);
+
   // APK: заранее ставим напоминания за 5 минут до каждого урока на 7 дней вперёд
+  // и вечернее напоминание о домашке на сегодня (уведомление придёт, даже если приложение закрыто)
   const nativeReminders = (() => {
-    if (!settings.bellNotifications || !cls) return [];
     const list: { at: Date; title: string; body: string }[] = [];
+    if (hwTomorrow.length) {
+      const [h, m] = hwReminderTime.split(':').map(Number);
+      const at = new Date(activeTime.getFullYear(), activeTime.getMonth(), activeTime.getDate(), h || 19, m || 0);
+      list.push({ at, ...reminderText(hwTomorrow) });
+    }
+    if (!settings.bellNotifications || !cls) return list;
     for (let d = 0; d < 7; d++) {
       const date = new Date(activeTime.getFullYear(), activeTime.getMonth(), activeTime.getDate() + d);
       if (isDayOff(toDateKey(date))) continue;
@@ -1100,13 +1204,13 @@ export default function App() {
   const nativeRemindersKey = JSON.stringify(nativeReminders.map((r) => [r.at.getTime(), r.title, r.body]));
   useEffect(() => {
     if (!isNativeApp()) return;
-    if (!settings.bellNotifications) {
+    if (!nativeReminders.length) {
       cancelNativeReminders();
       return;
     }
     scheduleNativeReminders(nativeReminders);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nativeRemindersKey, settings.bellNotifications]);
+  }, [nativeRemindersKey]);
 
   // Ключ текущего урока/перемены: предупреждение срабатывает один раз за период
   const periodKey = `${currentDayName}-${lessonStatus.type}-${lessonStatus.currentIdx}-${lessonStatus.nextIdx}`;
@@ -1383,7 +1487,7 @@ export default function App() {
   const [newGradeCount, setNewGradeCount] = useState(0);
   useEffect(() => {
     if (account?.role !== 'student' || !account.cls) {
-      setNewGradeCount(0);
+      if (account?.role !== 'parent') setNewGradeCount(0);
       return;
     }
     const sid = account.uid;
@@ -1393,7 +1497,9 @@ export default function App() {
       const fresh = newGrades(sid, list);
       if (fresh.length > Math.max(known, 0)) {
         const last = fresh.reduce((a, b) => (b.t > a.t ? b : a));
-        showToast(known < 0 && fresh.length > 1 ? `📒 Новых оценок: ${fresh.length}` : `📒 Новая оценка: ${last.v} · ${last.sub}`);
+        const text = known < 0 && fresh.length > 1 ? `📒 Новых оценок: ${fresh.length}` : `📒 Новая оценка: ${last.v} · ${last.sub}`;
+        showToast(text);
+        notifyNow('Новая оценка', text.replace('📒 ', ''), 'asosh-grade');
         playSound('coin', settings.soundProfile);
       }
       known = fresh.length;
@@ -1401,6 +1507,80 @@ export default function App() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.uid, account?.cls, account?.role]);
+
+  // Новая заявка в друзья — тост и уведомление (сами заявки — в Профиле)
+  useEffect(() => {
+    if (!account || account.role === 'teacher') return;
+    let known: Set<string> | null = null;
+    return subscribeFriends(account, (st) => {
+      const ids = st.incoming.map((f) => f.uid);
+      if (known) {
+        st.incoming.filter((f) => !known!.has(f.uid)).forEach((f) => {
+          showToast(`📨 ${f.name} хочет дружить — открой Профиль`);
+          notifyNow('Заявка в друзья', `${f.name} (${f.cls}) хочет добавить тебя в друзья`, `asosh-friend-${f.uid}`);
+        });
+      }
+      known = new Set(ids);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.uid]);
+
+  // Родитель: уведомление о каждой новой оценке и «Н» у каждого ребёнка (пока приложение запущено)
+  useEffect(() => {
+    if (account?.role !== 'parent') return;
+    // В APK спрашиваем разрешение на уведомления сразу (в браузере — только по нажатию, в Опциях)
+    if (isNativeApp()) requestNotificationPermission().catch(() => {});
+    const perChild = new Map<string, () => void>();
+    const counts = new Map<string, number>();
+    const notifiedKey = (sid: string) => `asosh_parent_notified_${sid}`;
+    const stopKids = subscribeMyChildren(account.uid, (kids) => {
+      // Отписываемся от детей, которых отключили
+      [...perChild.keys()].filter((sid) => !kids.some((k) => k.sid === sid)).forEach((sid) => {
+        perChild.get(sid)?.();
+        perChild.delete(sid);
+        counts.delete(sid);
+      });
+      kids.forEach((kid) => {
+        if (perChild.has(kid.sid) || !kid.cls) return;
+        const first = kid.name.split(' ')[0];
+        perChild.set(
+          kid.sid,
+          subscribeStudentGrades(kid.cls, kid.sid, (list, fromServer) => {
+            if (!fromServer) return;
+            counts.set(kid.sid, newGrades(kid.sid, list).length);
+            setNewGradeCount([...counts.values()].reduce((a, b) => a + b, 0));
+            // Уведомляем только о том, что появилось после прошлого уведомления; в первый раз — ни о чём
+            let notified = -1;
+            try {
+              notified = Number(localStorage.getItem(notifiedKey(kid.sid)) ?? '-1');
+            } catch {
+              // ничего
+            }
+            const maxT = Math.max(0, ...list.map((g) => g.t));
+            if (notified >= 0) {
+              const fresh = list.filter((g) => g.t > notified).sort((a, b) => a.t - b.t);
+              fresh.slice(-3).forEach((g) => {
+                const text = g.v === 'Н' ? `${first}: пропуск (Н) · ${g.sub}` : `${first}: ${g.v} · ${g.sub}`;
+                showToast(`📒 ${text}`);
+                notifyNow(g.v === 'Н' ? 'Пропуск урока' : 'Новая оценка', text, `asosh-grade-${kid.sid}`);
+              });
+              if (fresh.length) playSound('coin', settings.soundProfile);
+            }
+            try {
+              localStorage.setItem(notifiedKey(kid.sid), String(Math.max(notified, maxT)));
+            } catch {
+              // ничего
+            }
+          })
+        );
+      });
+    });
+    return () => {
+      stopKids();
+      perChild.forEach((stop) => stop());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.uid, account?.role]);
   useEffect(() => {
     if (currentScreen === 'diary') setNewGradeCount(0);
   }, [currentScreen]);
@@ -1938,6 +2118,8 @@ export default function App() {
               ),
             }}
             announcements={visiblePosts}
+            account={account}
+            onShowToast={showToast}
             isTeacher={isTeacher}
             nextLesson={nextLessonInfo}
             shortLessonsToday={!todayOff && isShortDay(currentDayName) ? settings.shortLessonMin ?? SHORT_LESSON_MIN : 0}
@@ -1972,6 +2154,7 @@ export default function App() {
             currentLessonIdx={selectedDaySchedule === currentDayName ? lessonStatus.currentIdx : -1}
             lang={lang}
             onGoAddUpdates={() => setCurrentScreen('updates')}
+            onShareWeek={handleShareWeek}
           />
         )}
 

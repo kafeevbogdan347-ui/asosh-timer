@@ -30,6 +30,30 @@ export async function showSystemNotification(title: string, body: string) {
   }
 }
 
+// Уведомление «сейчас» о событии (новая оценка, объявление): в APK — системное уведомление,
+// в браузере — только когда приложение свёрнуто (на открытом экране хватает тоста)
+let instantId = 7900;
+export async function notifyNow(title: string, body: string, tag = 'asosh-event') {
+  if (isNativeApp()) {
+    try {
+      const { LocalNotifications } = await import('@capacitor/local-notifications');
+      instantId = instantId >= 7999 ? 7900 : instantId + 1;
+      await LocalNotifications.schedule({ notifications: [{ id: instantId, title, body, schedule: { at: new Date(Date.now() + 1000), allowWhileIdle: true } }] });
+    } catch {
+      // нет разрешения на уведомления
+    }
+    return;
+  }
+  if (!('Notification' in window) || Notification.permission !== 'granted' || document.visibilityState === 'visible') return;
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration();
+    if (reg) await reg.showNotification(title, { body, tag, icon: `${import.meta.env.BASE_URL}icon.svg` });
+    else new Notification(title, { body });
+  } catch {
+    // уведомления недоступны
+  }
+}
+
 export interface PlannedReminder {
   at: Date;
   title: string;

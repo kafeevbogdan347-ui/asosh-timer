@@ -40,6 +40,20 @@ npm run dev            # http://localhost:3000
 2. **Realtime Database → Data**: удали разделы `asosh_users`, `asosh_profiles`, `asosh_private`, `asosh_roster`, `asosh_journal`, `asosh_parent_codes`, `asosh_family`, `asosh_parent_links`, `asosh_teachers`, `asosh_teacher_claims`, `asosh_online`, `asosh_rate`, `asosh_transfer`, а если нужно начать совсем с нуля — ещё `asosh_rooms` (чат) и `asosh_class` (общие ДЗ и замены). `asosh_config`, `asosh_timer`, `asosh_board` и `asosh_stats` не трогай.
 3. **Authentication → Users**: выдели всех пользователей и удали. Тогда логины освободятся и их можно занять заново.
 
+## Проверки и публикация правил (v16.21)
+
+- `npm run check` — типы, тесты таймера, итогов четверти и напоминаний, стресс-тесты. `npm run test:rules` — правила базы на эмуляторе Firebase (нужна Java).
+- `.github/workflows/checks.yml` запускает всё это перед каждой сборкой: сайт, APK и версии для компьютера публикуются только если проверки прошли.
+- `.github/workflows/rules.yml` сам публикует `database.rules.json` в Firebase при изменении в `main`. Нужен секрет **FIREBASE_SERVICE_ACCOUNT**: консоль Firebase → ⚙️ Настройки проекта → Сервисные аккаунты → «Создать закрытый ключ», содержимое JSON-файла целиком вставь в GitHub → Settings → Secrets and variables → Actions. Без секрета правила по-прежнему вставляются вручную.
+
+## Новое в v16.21
+
+- **Друзья** — `asosh_friends/<я>/<друг>` и заявки `asosh_friend_req/<кому>/<от>` (`src/services/friends.ts`). Друзья — когда оба добавили друг друга.
+- **Отметки «прочитано»** у объявлений — `asosh_board_read/<объявление>/<uid>`, список видят только учителя.
+- **Журнал ошибок** — `asosh_errors/<uid>`, читают администраторы во вкладке «🐞 Ошибки» панели разработчика. При падении отрисовки вместо белого экрана — «Что-то пошло не так» (`ErrorBoundary`).
+- **Итоги четверти** (`src/utils/quarterGrades.ts`), **напоминание о домашке** (`src/utils/hwReminder.ts`), **расписание картинкой** (`src/utils/scheduleImage.ts`), **уведомления родителям** о новых оценках и «Н».
+- **Виджет Android** — исходники в `native/android`, в сборку APK их добавляет `native/android/install.sh` после `npx cap sync`. Уведомления родителям и ученикам приходят, пока приложение запущено (в APK — и в свёрнутом); для уведомлений при полностью закрытом приложении нужен сервер push-уведомлений.
+
 ## Администраторы, заглушка и публичный профиль (v16.20)
 
 - **Администраторы** — uid в `asosh_admins/<uid> = true`. Добавляются только вручную: консоль Firebase → Realtime Database → Data. Свой uid проще всего узнать так: открой Панель разработчика и нажми «Закрыть доступ» — если прав нет, uid скопируется в буфер и покажется в сообщении.

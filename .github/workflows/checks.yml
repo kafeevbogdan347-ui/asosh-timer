@@ -1,0 +1,36 @@
+name: Checks
+
+# Проверки перед публикацией: типы, тесты таймера, стресс-тесты и правила базы на эмуляторе.
+# Сайт, APK и версии для компьютера собираются только после них (needs: checks),
+# поэтому сломанное обновление не попадёт к ученикам.
+on:
+  workflow_call:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Типы (tsc)
+        run: npm run lint
+      - name: Тесты таймера
+        run: npm test
+      - name: Стресс-тесты
+        run: npm run test:stress
+      # Правила базы проверяются на эмуляторе Firebase (нужна Java)
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Правила базы
+        run: |
+          npm i --no-save --no-audit --no-fund --legacy-peer-deps @firebase/rules-unit-testing@4
+          npm run test:rules

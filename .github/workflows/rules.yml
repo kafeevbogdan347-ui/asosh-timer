@@ -1,0 +1,49 @@
+name: Publish database rules
+
+# Публикует database.rules.json в Firebase, когда правила меняются в main.
+# Нужен секрет FIREBASE_SERVICE_ACCOUNT — JSON-ключ сервисного аккаунта
+# (консоль Firebase → Настройки проекта → Сервисные аккаунты → «Создать закрытый ключ»).
+# Без секрета шаг пропускается с предупреждением — тогда правила вставляют вручную, как раньше.
+on:
+  push:
+    branches: [main]
+    paths: [database.rules.json]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rules
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+
+  publish:
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Publish rules
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SERVICE_ACCOUNT" ]; then
+            echo "::warning::Нет секрета FIREBASE_SERVICE_ACCOUNT — правила не опубликованы. Вставь database.rules.json в консоли Firebase вручную."
+            exit 0
+          fi
+          KEY_FILE="$RUNNER_TEMP/sa.json"
+          printf '%s' "$SERVICE_ACCOUNT" > "$KEY_FILE"
+          export GOOGLE_APPLICATION_CREDENTIALS="$KEY_FILE"
+          PROJECT_ID=$(node -e "console.log(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).project_id || '')" "$KEY_FILE")
+          if [ -z "$PROJECT_ID" ]; then
+            echo "::error::В секрете FIREBASE_SERVICE_ACCOUNT нет project_id — вставь JSON-ключ целиком"
+            exit 1
+          fi
+          npx -y firebase-tools@13 deploy --only database --project "$PROJECT_ID" --non-interactive
+          rm -f "$KEY_FILE"

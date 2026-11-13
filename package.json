@@ -9,12 +9,17 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "test": "node --experimental-strip-types tests/lessonStatus.test.mjs",
+    "test": "node --experimental-strip-types tests/lessonStatus.test.mjs && node --experimental-strip-types tests/quarterGrades.test.mjs && node --experimental-strip-types tests/hwReminder.test.mjs",
+    "test:stress": "npx -y tsx tests/stress.test.mjs",
+    "test:rules": "npx -y firebase-tools@13 emulators:exec --only database --project demo-asosh \"node tests/accounts.rules.test.mjs\"",
+    "check": "npm run lint && npm test && npm run test:stress",
     "presentation:md": "node --experimental-strip-types scripts/presentation-md.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.5",
     "@capacitor/local-notifications": "^8.3.1",
+    "@capacitor/share": "^8.0.3",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "firebase": "^12.18.0",

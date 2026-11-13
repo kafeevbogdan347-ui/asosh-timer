@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { isApkUpdate } from '../components/UpdateRequired';
+import { Account } from '../services/accounts';
+import { markAnnouncementRead, readLocally } from '../services/boardRead';
 import { ScreenId, LanguageType } from '../types';
 import { DICT } from '../data/constants';
 import { BoardPost, AUDIENCE_LABEL } from '../services/teacher';
@@ -38,6 +40,8 @@ interface MainScreenProps {
     daysToSummer: number;
   };
   announcements: BoardPost[]; // объявления учителей для этого класса и всей школы
+  account?: Account | null; // для отметки «прочитано» у объявлений
+  onShowToast?: (msg: string) => void;
   isTeacher: boolean;
   // Следующий урок: sub пустой — это был последний урок
   shortLessonsToday: number; // длина сокращённого урока сегодня, 0 — обычный день
@@ -117,6 +121,8 @@ export const MainScreen: React.FC<MainScreenProps> = ({
   showBackpackHint,
   quarterProgress,
   announcements,
+  account = null,
+  onShowToast,
   isTeacher,
   nextLesson,
   shortLessonsToday,
@@ -139,6 +145,15 @@ export const MainScreen: React.FC<MainScreenProps> = ({
     } catch {
       // нет места — скроется только до перезапуска
     }
+  };
+  // Отметка «прочитано»: учитель видит, кто из класса ознакомился
+  const [readAnn, setReadAnn] = useState<string[]>(() => readLocally());
+  const canMarkRead = account?.role === 'student' || account?.role === 'parent';
+  const markRead = async (id: string) => {
+    if (!account) return;
+    const ok = await markAnnouncementRead(id, account);
+    if (ok) setReadAnn((prev) => [...prev, id]);
+    else onShowToast?.('Не получилось отметить — нужен интернет');
   };
   const freshAnn = announcements
     .filter((a) => a.kind === 'ann' && Date.now() - a.created_at < 30 * 24 * 3600 * 1000 && !hiddenAnn.includes(a.id))
@@ -356,9 +371,23 @@ export const MainScreen: React.FC<MainScreenProps> = ({
                 </span>
               </div>
               {a.text && <div className="text-xs text-white/85 whitespace-pre-line break-words mt-0.5">{a.text}</div>}
-              <div className="text-[10px] text-white/55 mt-1">
-                👩‍🏫 {a.author} · {a.cls || t('wholeSchool', lang)}
-                {isTeacher && ` · ${AUDIENCE_LABEL[a.aud]}`}
+              <div className="text-[10px] text-white/55 mt-1 flex items-center justify-between gap-2 flex-wrap">
+                <span>
+                  👩‍🏫 {a.author} · {a.cls || t('wholeSchool', lang)}
+                  {isTeacher && ` · ${AUDIENCE_LABEL[a.aud]}`}
+                </span>
+                {canMarkRead &&
+                  (readAnn.includes(a.id) ? (
+                    <span className="text-emerald-300 font-bold">✅ Прочитано</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => markRead(a.id)}
+                      className="px-2.5 py-1 rounded-lg bg-amber-400 text-slate-950 font-black text-[11px] cursor-pointer"
+                    >
+                      👍 Прочитал(а)
+                    </button>
+                  ))}
               </div>
             </div>
           ))}

@@ -123,6 +123,61 @@ await check('заглушка: только true/false', assertFails(set(ref(adm
 await check('админы: список видят вошедшие (значок «Разработчик»)', assertSucceeds(get(ref(stu2, 'asosh_admins'))));
 await check('админ: остальной конфиг не трогает', assertFails(set(ref(admin, 'asosh_config/lockdown'), true)));
 
+// --- Отметки «прочитано» у объявлений ---
+await env.withSecurityRulesDisabled(async (c) => {
+  await set(ref(c.database(), 'asosh_board/pub/ann1'), { kind: 'ann', title: 'Экскурсия', aud: 'all', cls: '5А', uid: 'teacher1', created_at: 1 });
+  await set(ref(c.database(), 'asosh_users/par1'), { role: 'parent', name: 'Мама Ивана', login: 'mama', t: 1 });
+});
+const readMark = (name, role) => ({ name, role, t: serverTimestamp() });
+await check('прочитано: ученик отмечает', assertSucceeds(set(ref(stu1, 'asosh_board_read/ann1/stu1'), readMark('Иван П.', 'student'))));
+await check('прочитано: родитель отмечает', assertSucceeds(set(ref(par1, 'asosh_board_read/ann1/par1'), readMark('Мама Ивана', 'parent'))));
+await check('прочитано: за другого нельзя', assertFails(set(ref(stu1, 'asosh_board_read/ann1/stu2'), readMark('Петя С.', 'student'))));
+await check('прочитано: чужое имя нельзя', assertFails(set(ref(stu1, 'asosh_board_read/ann1/stu1'), readMark('Директор', 'student'))));
+await check('прочитано: чужую роль нельзя', assertFails(set(ref(stu1, 'asosh_board_read/ann1/stu1'), readMark('Иван П.', 'parent'))));
+await check('прочитано: несуществующее объявление нельзя', assertFails(set(ref(stu1, 'asosh_board_read/nope/stu1'), readMark('Иван П.', 'student'))));
+await check('прочитано: без аккаунта нельзя', assertFails(set(ref(anonDev, 'asosh_board_read/ann1/anon_device'), readMark('Аноним', 'student'))));
+await check('прочитано: учитель видит список', assertSucceeds(get(ref(teacher, 'asosh_board_read/ann1'))));
+await check('прочитано: ученик видит только своё', assertSucceeds(get(ref(stu1, 'asosh_board_read/ann1/stu1'))));
+await check('прочитано: ученик не видит весь список', assertFails(get(ref(stu1, 'asosh_board_read/ann1'))));
+
+// --- Друзья ---
+await env.withSecurityRulesDisabled(async (c) => {
+  await set(ref(c.database(), 'asosh_users/stu2'), { role: 'student', name: 'Петя С.', login: 'petya', t: 1, cls: '5А' });
+});
+const fcard = (name, extra = {}) => ({ name, nick: name, avatar: '🙂', cls: '5А', t: 1, ...extra });
+await check('друзья: ученик отправляет заявку', assertSucceeds(update(ref(stu1), {
+  'asosh_friends/stu1/stu2': fcard('Петя С.'),
+  'asosh_friend_req/stu2/stu1': fcard('Иван П.'),
+})));
+await check('друзья: заявку от чужого имени нельзя', assertFails(set(ref(stu1, 'asosh_friend_req/stu2/par1'), fcard('Мама Ивана'))));
+await check('друзья: подменить имя в заявке нельзя', assertFails(set(ref(stu1, 'asosh_friend_req/stu2/stu1'), fcard('Директор'))));
+await check('друзья: подменить имя друга нельзя', assertFails(set(ref(stu1, 'asosh_friends/stu1/stu2'), fcard('Кто-то'))));
+await check('друзья: без аккаунта нельзя', assertFails(set(ref(anonDev, 'asosh_friend_req/stu2/anon_device'), fcard('Аноним'))));
+await check('друзья: себя в друзья нельзя', assertFails(set(ref(stu1, 'asosh_friends/stu1/stu1'), fcard('Иван П.'))));
+await check('друзья: получатель видит заявки', assertSucceeds(get(ref(stu2, 'asosh_friend_req/stu2'))));
+await check('друзья: чужие заявки не видны', assertFails(get(ref(stu1, 'asosh_friend_req/stu2'))));
+await check('друзья: получатель проверяет, добавил ли его отправитель', assertSucceeds(get(ref(stu2, 'asosh_friends/stu1/stu2'))));
+await check('друзья: чужой список целиком не виден', assertFails(get(ref(stu2, 'asosh_friends/stu1'))));
+await check('друзья: получатель принимает', assertSucceeds(update(ref(stu2), {
+  'asosh_friends/stu2/stu1': fcard('Иван П.'),
+  'asosh_friend_req/stu2/stu1': null,
+})));
+await check('друзья: в чужой список не записаться', assertFails(set(ref(stu1, 'asosh_friends/stu2/par1'), fcard('Мама Ивана'))));
+await check('друзья: удаляю друга', assertSucceeds(remove(ref(stu1, 'asosh_friends/stu1/stu2'))));
+
+// --- Журнал ошибок ---
+const errRec = (extra = {}) => ({ msg: 'TypeError: x is undefined', stack: 'at App', ver: 'v16.21', scr: 'main', plat: 'apk', t: serverTimestamp(), ...extra });
+const sendErr = (d, uid, key, extra) => update(ref(d), { [`asosh_errors/${uid}/${key}`]: errRec(extra), [`asosh_rate/${uid}/err`]: serverTimestamp() });
+await check('ошибки: ученик отправляет ошибку', assertSucceeds(sendErr(stu2, 'stu2', 'e1')));
+await check('ошибки: вторая сразу же — отклоняется', assertFails(sendErr(stu2, 'stu2', 'e2')));
+await check('ошибки: без отметки частоты нельзя', assertFails(set(ref(stu1, 'asosh_errors/stu1/e3'), errRec())));
+await check('ошибки: от чужого имени нельзя', assertFails(sendErr(stu1, 'stu2', 'e4')));
+await check('ошибки: длинный текст отклоняется', assertFails(sendErr(anonDev, 'anon_device', 'e5', { msg: 'x'.repeat(301) })));
+await check('ошибки: ученик журнал не читает', assertFails(get(ref(stu2, 'asosh_errors'))));
+await check('ошибки: администратор читает', assertSucceeds(get(ref(admin, 'asosh_errors'))));
+await check('ошибки: ученик не очищает', assertFails(remove(ref(stu2, 'asosh_errors'))));
+await check('ошибки: администратор очищает', assertSucceeds(remove(ref(admin, 'asosh_errors'))));
+
 // --- Профиль аккаунта (ник, аватар, статус) — общий для всех устройств ---
 const prof = (extra = {}) => ({ nick: 'Ваня', avatar: '😎', status: 'Учусь', bio: 'Люблю футбол', t: 1, ...extra });
 await check('профиль: пишу свой', assertSucceeds(set(ref(stu1, 'asosh_profiles/stu1'), prof())));
