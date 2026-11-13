@@ -18,11 +18,13 @@ interface ScheduleScreenProps {
   smartDayAdvice?: SmartDayData | null;
   onAskAsoshik?: (text: string) => void;
   shift: string;
+  onShareWeek?: () => void; // расписание на неделю картинкой
 }
 
 const SHORT_DAYS_RU = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
+  onShareWeek,
   onAskAsoshik,
   shift,
   selectedDay,
@@ -53,6 +55,17 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
               : `${selectedDay} · сегодня ${currentDayName.toLowerCase()}`}
           </p>
         </div>
+        <div className="flex gap-1.5 shrink-0">
+        {onShareWeek && (
+          <button
+            type="button"
+            onClick={onShareWeek}
+            title="Расписание на неделю картинкой — поделиться в чате класса"
+            className="text-xs bg-white/5 border border-white/15 text-white/85 font-bold px-2.5 py-1.5 rounded-xl hover:bg-white/10 transition-all cursor-pointer"
+          >
+            📤 Картинкой
+          </button>
+        )}
         {onGoAddUpdates && (
           <button
             type="button"
@@ -62,6 +75,7 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({
             ✏️ Изменить
           </button>
         )}
+        </div>
       </div>
 
       {/* Day Tabs Chips (Пн..Вс) with "Сегодня" Badge */}

@@ -90,6 +90,7 @@ import { loadAdmins, onAdminsLoaded } from './services/admins';
 import { setErrorScreen } from './services/errorLog';
 import { homeworkForTomorrow, reminderText } from './utils/hwReminder';
 import { subscribeFriends } from './services/friends';
+import { drawWeekSchedule, shareScheduleImage } from './utils/scheduleImage';
 import { getMyProfile } from './services/userService';
 import { subscribeLockdown, subscribeSiteClosed, setGlobalSiteClosed, getLocalSiteClosed } from './services/lockdown';
 import { setAutoLanguage, tr as autoTr } from './i18n/auto';
@@ -930,6 +931,27 @@ export default function App() {
       }
     }
     return result;
+  };
+
+  // Расписание на неделю картинкой: Пн–Сб текущей недели, а с пятницы — следующей; без каникул и праздников
+  const handleShareWeek = async () => {
+    const fmt = (key: string) => new Date(key + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    const monday = new Date(activeTime.getFullYear(), activeTime.getMonth(), activeTime.getDate() - dayIndex + (dayIndex >= 4 ? 7 : 0));
+    const days = DAYS.slice(0, 6)
+      .map((name, i) => ({ name, key: toDateKey(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i)) }))
+      .filter((d) => !isDayOff(d.key))
+      .map((d) => ({ name: d.name, date: fmt(d.key), key: d.key, lessons: getLessonsForDay(d.name), bells: getDayBells(d.name) }));
+    if (!days.length) {
+      showToast('На этой неделе уроков нет — каникулы 🎉');
+      return;
+    }
+    try {
+      const canvas = drawWeekSchedule({ cls, shift, title: `${fmt(days[0].key)} – ${fmt(days[days.length - 1].key)}`, days });
+      const res = await shareScheduleImage(canvas, `raspisanie-${cls || 'klass'}-${days[0].key}.png`);
+      if (res === 'saved') showToast('🖼 Картинка расписания сохранена');
+    } catch {
+      showToast('Не получилось сделать картинку');
+    }
   };
 
   // На каникулах и в праздники уроков нет, хотя расписание по дням недели остаётся
@@ -2110,6 +2132,7 @@ export default function App() {
             currentLessonIdx={selectedDaySchedule === currentDayName ? lessonStatus.currentIdx : -1}
             lang={lang}
             onGoAddUpdates={() => setCurrentScreen('updates')}
+            onShareWeek={handleShareWeek}
           />
         )}
 
