@@ -77,7 +77,7 @@ import { PortfolioScreen } from './screens/PortfolioScreen';
 import { FocusAudioScreen } from './screens/FocusAudioScreen';
 import { ChatScreen } from './screens/ChatScreen';
 import { isClassUnlocked, saveClassUnlocked } from './data/classCodes';
-import { Account, getLocalAccount, logoutAccount, moveStudentToClass, verifyAccountSession } from './services/accounts';
+import { Account, getLocalAccount, logoutAccount, moveStudentToClass, verifyAccountSession, subscribeMyChildren } from './services/accounts';
 import type { AccountDone } from './components/AccountForms';
 import { AccountForms } from './components/AccountForms';
 import { DiaryScreen } from './screens/DiaryScreen';
@@ -117,7 +117,7 @@ import {
   myUid,
   toDateKey,
 } from './services/classShared';
-import { isNativeApp, showSystemNotification, scheduleNativeReminders, cancelNativeReminders } from './services/bellNotifications';
+import { isNativeApp, showSystemNotification, scheduleNativeReminders, cancelNativeReminders, notifyNow, requestNotificationPermission } from './services/bellNotifications';
 
 export default function App() {
   // 1. Initial State from unified Account Vault (guarantees account NEVER resets on refresh or update)
@@ -1385,7 +1385,7 @@ export default function App() {
   const [newGradeCount, setNewGradeCount] = useState(0);
   useEffect(() => {
     if (account?.role !== 'student' || !account.cls) {
-      setNewGradeCount(0);
+      if (account?.role !== 'parent') setNewGradeCount(0);
       return;
     }
     const sid = account.uid;
@@ -1395,7 +1395,9 @@ export default function App() {
       const fresh = newGrades(sid, list);
       if (fresh.length > Math.max(known, 0)) {
         const last = fresh.reduce((a, b) => (b.t > a.t ? b : a));
-        showToast(known < 0 && fresh.length > 1 ? `📒 Новых оценок: ${fresh.length}` : `📒 Новая оценка: ${last.v} · ${last.sub}`);
+        const text = known < 0 && fresh.length > 1 ? `📒 Новых оценок: ${fresh.length}` : `📒 Новая оценка: ${last.v} · ${last.sub}`;
+        showToast(text);
+        notifyNow('Новая оценка', text.replace('📒 ', ''), 'asosh-grade');
         playSound('coin', settings.soundProfile);
       }
       known = fresh.length;
@@ -1403,6 +1405,63 @@ export default function App() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.uid, account?.cls, account?.role]);
+
+  // Родитель: уведомление о каждой новой оценке и «Н» у каждого ребёнка (пока приложение запущено)
+  useEffect(() => {
+    if (account?.role !== 'parent') return;
+    // В APK спрашиваем разрешение на уведомления сразу (в браузере — только по нажатию, в Опциях)
+    if (isNativeApp()) requestNotificationPermission().catch(() => {});
+    const perChild = new Map<string, () => void>();
+    const counts = new Map<string, number>();
+    const notifiedKey = (sid: string) => `asosh_parent_notified_${sid}`;
+    const stopKids = subscribeMyChildren(account.uid, (kids) => {
+      // Отписываемся от детей, которых отключили
+      [...perChild.keys()].filter((sid) => !kids.some((k) => k.sid === sid)).forEach((sid) => {
+        perChild.get(sid)?.();
+        perChild.delete(sid);
+        counts.delete(sid);
+      });
+      kids.forEach((kid) => {
+        if (perChild.has(kid.sid) || !kid.cls) return;
+        const first = kid.name.split(' ')[0];
+        perChild.set(
+          kid.sid,
+          subscribeStudentGrades(kid.cls, kid.sid, (list, fromServer) => {
+            if (!fromServer) return;
+            counts.set(kid.sid, newGrades(kid.sid, list).length);
+            setNewGradeCount([...counts.values()].reduce((a, b) => a + b, 0));
+            // Уведомляем только о том, что появилось после прошлого уведомления; в первый раз — ни о чём
+            let notified = -1;
+            try {
+              notified = Number(localStorage.getItem(notifiedKey(kid.sid)) ?? '-1');
+            } catch {
+              // ничего
+            }
+            const maxT = Math.max(0, ...list.map((g) => g.t));
+            if (notified >= 0) {
+              const fresh = list.filter((g) => g.t > notified).sort((a, b) => a.t - b.t);
+              fresh.slice(-3).forEach((g) => {
+                const text = g.v === 'Н' ? `${first}: пропуск (Н) · ${g.sub}` : `${first}: ${g.v} · ${g.sub}`;
+                showToast(`📒 ${text}`);
+                notifyNow(g.v === 'Н' ? 'Пропуск урока' : 'Новая оценка', text, `asosh-grade-${kid.sid}`);
+              });
+              if (fresh.length) playSound('coin', settings.soundProfile);
+            }
+            try {
+              localStorage.setItem(notifiedKey(kid.sid), String(Math.max(notified, maxT)));
+            } catch {
+              // ничего
+            }
+          })
+        );
+      });
+    });
+    return () => {
+      stopKids();
+      perChild.forEach((stop) => stop());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.uid, account?.role]);
   useEffect(() => {
     if (currentScreen === 'diary') setNewGradeCount(0);
   }, [currentScreen]);
