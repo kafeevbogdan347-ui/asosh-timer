@@ -83,6 +83,16 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
   const [simBattery, setSimBattery] = useState(88);
   const [simNetwork, setSimNetwork] = useState<'online' | 'offline' | 'slow3g'>('online');
 
+  React.useEffect(() => {
+    if (isOpen) {
+      try {
+        localStorage.setItem('asosh_dev_unlocked', 'true');
+      } catch {
+        // ignore
+      }
+    }
+  }, [isOpen]);
+
 
   const copyToClipboard = (text: string, label: string) => {
     try {

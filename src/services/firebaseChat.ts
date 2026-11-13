@@ -138,7 +138,15 @@ export async function sendFirebaseMessage(
   room: string = 'global',
   userId?: string,
   avatar?: string,
-  options?: { isIncognito?: boolean; isSelfDestruct?: boolean }
+  options?: {
+    isIncognito?: boolean;
+    isSelfDestruct?: boolean;
+    handle?: string;
+    fullName?: string;
+    className?: string;
+    registeredAt?: number;
+    isDev?: boolean;
+  }
 ): Promise<{ success: boolean; id?: string; error?: string }> {
   const isIncognito = !!options?.isIncognito;
   const isSelfDestruct = !!options?.isSelfDestruct;
@@ -167,19 +175,27 @@ export async function sendFirebaseMessage(
       const path = getChatRoomPath(room);
       const key = push(ref(db, path)).key || '';
       const uid = getAuth(getApp()).currentUser?.uid || '';
+      const msgPayload: Record<string, unknown> = {
+        username: trimmedUser.slice(0, 60),
+        userId: finalUserId,
+        avatar: finalAvatar,
+        content: trimmedContent,
+        room: room,
+        isIncognito,
+        isSelfDestruct,
+        created_at: new Date().toISOString(),
+        timestamp: Date.now(),
+      };
+      if (!isIncognito) {
+        if (options?.handle) msgPayload.handle = options.handle.trim().slice(0, 40);
+        if (options?.fullName) msgPayload.fullName = options.fullName.trim().slice(0, 60);
+        if (options?.className) msgPayload.className = options.className.trim().slice(0, 12);
+        if (typeof options?.registeredAt === 'number') msgPayload.registeredAt = options.registeredAt;
+        if (options?.isDev) msgPayload.isDev = true;
+      }
       // Сообщение и отметка «когда писал» уходят одной записью: сервер проверяет частоту сам
       await update(ref(db), {
-        [`${path}/${key}`]: {
-          username: trimmedUser,
-          userId: finalUserId,
-          avatar: finalAvatar,
-          content: trimmedContent,
-          room: room,
-          isIncognito,
-          isSelfDestruct,
-          created_at: new Date().toISOString(),
-          timestamp: Date.now(),
-        },
+        [`${path}/${key}`]: msgPayload,
         [`asosh_rate/${uid}/chat`]: serverTimestamp(),
       });
       lastChatSentAt = Date.now();
@@ -275,12 +291,17 @@ export function subscribeToFirebaseMessages(
                 knownMessages.set(key, {
                   id: key,
                   username: censor(item.username || 'Ученик'),
+                  handle: item.handle ? censor(String(item.handle)) : undefined,
+                  fullName: item.fullName ? censor(String(item.fullName)) : undefined,
+                  className: item.className ? String(item.className) : undefined,
                   userId: item.userId || '',
                   avatar: item.avatar || '',
                   content: censor(item.content || ''),
                   created_at: item.created_at || (item.timestamp ? new Date(item.timestamp).toISOString() : new Date().toISOString()),
                   isIncognito: !!item.isIncognito,
                   isSelfDestruct: !!item.isSelfDestruct,
+                  registeredAt: typeof item.registeredAt === 'number' ? item.registeredAt : undefined,
+                  isDev: Boolean(item.isDev),
                 });
               });
             }

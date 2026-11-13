@@ -6,6 +6,7 @@ import {
   LessonUpdate,
   LanguageType,
   DeviceType,
+  UserProfile,
 } from './types';
 import {
   DAYS,
@@ -19,6 +20,7 @@ import {
   SPLASHES_RU,
   SPLASHES_BA,
   SPLASHES_TEACHER,
+  THEME_SPLASHES,
   MOTIVATORS_RU,
   MOTIVATORS_BA,
   SCHOOL_QUARTERS,
@@ -83,11 +85,12 @@ import { UpdateRequired } from './components/UpdateRequired';
 import { HolidayLayer } from './components/HolidayLayer';
 import { OnlineScreen } from './screens/OnlineScreen';
 import { startPresence } from './services/online';
-import { pullProfile } from './services/profileSync';
+import { pullProfile, pushPublicProfile, fetchPublicProfile } from './services/profileSync';
+import { getMyProfile } from './services/userService';
 import { subscribeLockdown, subscribeSiteClosed, setGlobalSiteClosed, getLocalSiteClosed } from './services/lockdown';
 import { setAutoLanguage, tr as autoTr } from './i18n/auto';
 import { subscribeStudentGrades, newGrades } from './services/journal';
-import { ProfileScreen } from './screens/ProfileScreen';
+import { ProfileScreen, ViewedOnlineStats } from './screens/ProfileScreen';
 import { RetroFirstScreen } from './screens/RetroFirstScreen';
 import { BellsScreen } from './screens/BellsScreen';
 import { MaintenanceScreen } from './screens/MaintenanceScreen';
@@ -592,24 +595,47 @@ export default function App() {
     setCurrentScreen('assistant');
   };
 
-  // Splashes and Motivators
-  const [currentSplash, setCurrentSplash] = useState('');
-  const [currentMotivator, setCurrentMotivator] = useState('');
+  // Просмотр полноценного профиля одноклассника (из чата или рейтинга «Онлайн класса»)
+  const [viewedStudentProfile, setViewedStudentProfile] = useState<UserProfile | null>(null);
+  const [viewedOnlineStats, setViewedOnlineStats] = useState<ViewedOnlineStats | null>(null);
+  const [profileReturnScreen, setProfileReturnScreen] = useState<ScreenId | null>(null);
+  const [loadingViewedProfile, setLoadingViewedProfile] = useState(false);
 
-  const refreshSplash = () => {
-    const pool = teacher ? SPLASHES_TEACHER : lang === 'ba' ? SPLASHES_BA : SPLASHES_RU;
-    setCurrentSplash(pool[Math.floor(Math.random() * pool.length)]);
-  };
+  const openStudentProfile = (fallbackProfile: UserProfile, stats?: ViewedOnlineStats) => {
+    const returnTo: ScreenId = currentScreen === 'online' || currentScreen === 'chat' ? currentScreen : 'main';
+    setProfileReturnScreen(returnTo);
+    setViewedStudentProfile(fallbackProfile);
+    setViewedOnlineStats(stats || null);
+    setCurrentScreen('profile');
 
-  const refreshMotivator = () => {
-    const pool = lang === 'ba' ? MOTIVATORS_BA : MOTIVATORS_RU;
-    setCurrentMotivator(pool[Math.floor(Math.random() * pool.length)]);
+    const myId = getMyProfile().id;
+    if (fallbackProfile.id && fallbackProfile.id !== myId) {
+      setLoadingViewedProfile(true);
+      fetchPublicProfile(fallbackProfile.id, 15_000)
+        .then((remote) => {
+          if (remote) {
+            setViewedStudentProfile((cur) => {
+              if (!cur || cur.id !== fallbackProfile.id) return cur;
+              return {
+                ...fallbackProfile,
+                ...remote,
+                className: remote.className || fallbackProfile.className,
+                avatar: remote.avatar || fallbackProfile.avatar,
+              };
+            });
+          }
+        })
+        .finally(() => setLoadingViewedProfile(false));
+    }
   };
 
   useEffect(() => {
-    refreshSplash();
-    refreshMotivator();
-  }, [lang, currentScreen]);
+    if (currentScreen !== 'profile' && (viewedStudentProfile || viewedOnlineStats)) {
+      setViewedStudentProfile(null);
+      setViewedOnlineStats(null);
+      setLoadingViewedProfile(false);
+    }
+  }, [currentScreen, viewedStudentProfile, viewedOnlineStats]);
 
   // Тема «как в системе»: следим за светлым/тёмным режимом устройства
   const [systemDark, setSystemDark] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true);
@@ -621,6 +647,38 @@ export default function App() {
     return () => mq.removeEventListener('change', onChange);
   }, []);
   const effectiveTheme = settings.themeAuto ? (systemDark ? 'dark' : 'minimal') : settings.theme;
+
+  // Splashes and Motivators
+  const [currentSplash, setCurrentSplash] = useState('');
+  const [currentMotivator, setCurrentMotivator] = useState('');
+
+  const refreshSplash = () => {
+    if (teacher) {
+      setCurrentSplash(SPLASHES_TEACHER[Math.floor(Math.random() * SPLASHES_TEACHER.length)]);
+      return;
+    }
+    if (lang === 'ba') {
+      setCurrentSplash(SPLASHES_BA[Math.floor(Math.random() * SPLASHES_BA.length)]);
+      return;
+    }
+    const themePool = THEME_SPLASHES[effectiveTheme];
+    if (themePool && themePool.length > 0 && Math.random() < 0.65) {
+      setCurrentSplash(themePool[Math.floor(Math.random() * themePool.length)]);
+      return;
+    }
+    setCurrentSplash(SPLASHES_RU[Math.floor(Math.random() * SPLASHES_RU.length)]);
+  };
+
+  const refreshMotivator = () => {
+    const pool = lang === 'ba' ? MOTIVATORS_BA : MOTIVATORS_RU;
+    setCurrentMotivator(pool[Math.floor(Math.random() * pool.length)]);
+  };
+
+  useEffect(() => {
+    refreshSplash();
+    refreshMotivator();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang, currentScreen, effectiveTheme, teacher]);
 
   // Анонимная статистика устройств: раз в день, через несколько секунд после запуска
   useEffect(() => {
@@ -1671,6 +1729,8 @@ export default function App() {
         isOpen={isDevPasswordPromptOpen}
         onClose={() => setIsDevPasswordPromptOpen(false)}
         onSuccess={() => {
+          localStorage.setItem('asosh_dev_unlocked', 'true');
+          pushPublicProfile(getMyProfile(), true).catch(() => {});
           setIsDevPasswordPromptOpen(false);
           setIsDevOpen(true);
         }}
@@ -1965,7 +2025,14 @@ export default function App() {
           </div>
         )}
 
-        {currentScreen === 'online' && <OnlineScreen cls={cls} isGuest={isGuest || isTeacher} onShowToast={showToast} />}
+        {currentScreen === 'online' && (
+          <OnlineScreen
+            cls={cls}
+            isGuest={isGuest || isTeacher}
+            onShowToast={showToast}
+            onOpenStudentProfile={(prof, stats) => openStudentProfile(prof, stats)}
+          />
+        )}
 
         {currentScreen === 'assistant' && (
           <AssistantScreen
@@ -2085,7 +2152,12 @@ export default function App() {
             vibro={settings.vibro}
             onBack={() => setCurrentScreen('main')}
             onOpenDevModal={() => setIsDevOpen(true)}
-            onOpenProfile={() => setCurrentScreen('profile')}
+            onOpenProfile={() => {
+              setViewedStudentProfile(null);
+              setViewedOnlineStats(null);
+              setCurrentScreen('profile');
+            }}
+            onOpenStudentProfile={(prof) => openStudentProfile(prof)}
           />
         )}
 
@@ -2097,6 +2169,16 @@ export default function App() {
             onShowToast={showToast}
             onNavigateToChat={() => setCurrentScreen('chat')}
             onUnlockAchievement={handleUnlockAchievement}
+            viewedProfile={viewedStudentProfile}
+            viewedOnlineStats={viewedOnlineStats}
+            isLoadingExternalProfile={loadingViewedProfile}
+            onBackFromViewedProfile={() => {
+              const target = profileReturnScreen || 'main';
+              setViewedStudentProfile(null);
+              setViewedOnlineStats(null);
+              setProfileReturnScreen(null);
+              setCurrentScreen(target);
+            }}
           />
         )}
 

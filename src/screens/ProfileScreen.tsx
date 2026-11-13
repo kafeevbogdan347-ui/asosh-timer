@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { pushProfile } from '../services/profileSync';
+import { pushProfile, pushPublicProfile } from '../services/profileSync';
 import { getLocalAccount } from '../services/accounts';
+import { formatDuration } from '../services/online';
 import { getBirthday, setBirthday } from '../data/holidays';
 import { UserProfile, CertificateItem, LanguageType, SoundProfileType } from '../types';
 import {
@@ -11,6 +12,7 @@ import {
   addCertificateToProfile,
   removeCertificateFromProfile,
 } from '../services/userService';
+import { getProfileBadges } from '../utils/profileBadges';
 import { playSound, doVibro } from '../utils/audio';
 import { compressImage } from '../utils/image';
 import { isHideGradesInProfile } from '../utils/privacy';
@@ -71,6 +73,14 @@ const CERT_PLACES: { id: CertificateItem['place']; label: string }[] = [
   { id: 'participant', label: '📜 Участник' },
 ];
 
+export interface ViewedOnlineStats {
+  sec?: number;
+  rank?: number;
+  presenceText?: string;
+  online?: boolean;
+  last?: number;
+}
+
 interface ProfileScreenProps {
   lang: LanguageType;
   soundProfile: SoundProfileType;
@@ -78,6 +88,10 @@ interface ProfileScreenProps {
   onShowToast: (msg: string) => void;
   onNavigateToChat?: () => void;
   onUnlockAchievement?: (id: string) => void;
+  viewedProfile?: UserProfile | null;
+  viewedOnlineStats?: ViewedOnlineStats | null;
+  isLoadingExternalProfile?: boolean;
+  onBackFromViewedProfile?: () => void;
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
@@ -87,6 +101,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onShowToast,
   onNavigateToChat,
   onUnlockAchievement,
+  viewedProfile = null,
+  viewedOnlineStats = null,
+  isLoadingExternalProfile = false,
+  onBackFromViewedProfile,
 }) => {
   const [myProfile, setMyProfile] = useState<UserProfile>(() => getMyProfile());
 
@@ -130,6 +148,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   const allStudents = getAllSearchableStudents(myProfile);
 
+  const isViewingOther = Boolean(viewedProfile && viewedProfile.id !== myProfile.id);
+  const activeProfile: UserProfile = isViewingOther && viewedProfile ? viewedProfile : myProfile;
+  const activeBadges = getProfileBadges({
+    isDev: activeProfile.isDev,
+    registeredAt: activeProfile.registeredAt,
+    registeredDate: activeProfile.registeredDate,
+    id: activeProfile.id,
+    isSelf: !isViewingOther,
+  });
+
   // Sync profile when opened
   useEffect(() => {
     const p = getMyProfile();
@@ -141,6 +169,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setEditBio(p.bio || '');
     setSelectedAvatar(p.avatar);
     setAvatarType(p.avatarType || 'emoji');
+    pushPublicProfile(p).catch(() => {});
   }, []);
 
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -205,6 +234,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     });
 
     setMyProfile(updated);
+    pushPublicProfile(updated, true).catch(() => {});
     setIsAddingCert(false);
     setCertTitle('');
     setCertIssuer('');
@@ -217,6 +247,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const handleDeleteCert = (certId: string) => {
     const updated = removeCertificateFromProfile(myProfile, certId);
     setMyProfile(updated);
+    pushPublicProfile(updated, true).catch(() => {});
     playSound('nav', soundProfile);
     onShowToast('🗑️ Грамота удалена');
   };
@@ -243,40 +274,71 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   const friendsList = allStudents.filter((st) => myProfile.friends.includes(st.id));
 
+  const displayGpa = isViewingOther
+    ? activeProfile.hideGrades
+      ? '🔒'
+      : activeProfile.gpa > 0
+      ? activeProfile.gpa.toFixed(2)
+      : '—'
+    : isHideGradesInProfile()
+    ? '🔒'
+    : realGpa;
+
+  const isFriend = isViewingOther && myProfile.friends.includes(activeProfile.id);
+
   return (
     <div className="card screen-enter space-y-4">
       {/* Top Header */}
       <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-white/10">
-        <div>
-          <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2">
-            <User className="w-6 h-6 text-cyan-400" />
-            <span>Школьные Аккаунты & Профиль</span>
-          </h2>
-          <p className="text-xs text-white/70">
-            Твой профиль, средний балл и витрина грамот
-          </p>
+        <div className="flex items-center gap-2.5 min-w-0">
+          {isViewingOther && onBackFromViewedProfile && (
+            <button
+              type="button"
+              onClick={onBackFromViewedProfile}
+              className="btn darkBtn text-xs py-1.5 px-3 flex items-center gap-1.5 shrink-0 !m-0 !w-auto"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Назад</span>
+            </button>
+          )}
+          <div className="min-w-0">
+            <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2">
+              <User className="w-6 h-6 text-cyan-400 shrink-0" />
+              <span className="truncate">
+                {isViewingOther ? `Профиль ученика: ${activeProfile.fullName}` : 'Школьные Аккаунты & Профиль'}
+              </span>
+            </h2>
+            <p className="text-xs text-white/70 truncate">
+              {isViewingOther
+                ? `${activeProfile.className ? `${activeProfile.className} класс` : 'АСОШ №2'}${viewedOnlineStats?.presenceText ? ` • ${viewedOnlineStats.presenceText}` : ''}`
+                : 'Твой профиль, средний балл и витрина грамот'}
+            </p>
+          </div>
         </div>
+        {isViewingOther && isLoadingExternalProfile && (
+          <span className="text-[11px] text-cyan-300 font-bold animate-pulse">Загрузка данных…</span>
+        )}
       </div>
 
-      {/* TAB 1: MY PROFILE */}
-      {(
-        <div className="space-y-4">
-          {/* Profile Card Header */}
-          <div className="p-4 sm:p-5 bg-gradient-to-br from-cyan-950/60 via-slate-900/80 to-purple-950/60 rounded-3xl border border-cyan-400/30 shadow-lg relative overflow-hidden">
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-              {/* Avatar Box */}
-              <div className="relative group">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 border-2 border-cyan-400 flex items-center justify-center text-4xl sm:text-5xl shadow-xl overflow-hidden">
-                  {myProfile.avatarType === 'image' && myProfile.avatar.startsWith('data:') ? (
-                    <img
-                      src={myProfile.avatar}
-                      alt={myProfile.username}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span>{myProfile.avatar || '🎒'}</span>
-                  )}
-                </div>
+      {/* PROFILE CARD */}
+      <div className="space-y-4">
+        {/* Profile Card Header */}
+        <div className="p-4 sm:p-5 bg-gradient-to-br from-cyan-950/60 via-slate-900/80 to-purple-950/60 rounded-3xl border border-cyan-400/30 shadow-lg relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+            {/* Avatar Box */}
+            <div className="relative group shrink-0">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 border-2 border-cyan-400 flex items-center justify-center text-4xl sm:text-5xl shadow-xl overflow-hidden">
+                {activeProfile.avatarType === 'image' && activeProfile.avatar?.startsWith('data:') ? (
+                  <img
+                    src={activeProfile.avatar}
+                    alt={activeProfile.username}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span>{activeProfile.avatar || '🎒'}</span>
+                )}
+              </div>
+              {!isViewingOther ? (
                 <button
                   type="button"
                   onClick={() => setIsEditing(true)}
@@ -285,89 +347,184 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 >
                   <Camera className="w-3.5 h-3.5" />
                 </button>
-              </div>
+              ) : (
+                viewedOnlineStats && (
+                  <span
+                    className={`online-dot big ${viewedOnlineStats.online ? 'on' : ''}`}
+                    title={viewedOnlineStats.presenceText}
+                  />
+                )
+              )}
+            </div>
 
-              {/* User Info */}
-              <div className="flex-1 text-center sm:text-left space-y-1">
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                  <h3 className="sensitive-data text-xl font-black text-white">{myProfile.fullName}</h3>
-                  <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-xs font-mono font-bold">
-                    @{myProfile.username}
+            {/* User Info */}
+            <div className="flex-1 text-center sm:text-left space-y-1 min-w-0">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                <h3 className="sensitive-data text-xl font-black text-white">{activeProfile.fullName}</h3>
+                <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-xs font-mono font-bold">
+                  @{activeProfile.username}
+                </span>
+                {/* Бейджики справа от @пользователя */}
+                {activeBadges.map((b) => (
+                  <span
+                    key={b.id}
+                    title={b.title}
+                    className={`px-2 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1 ${b.className}`}
+                  >
+                    <span>{b.icon}</span>
+                    <span>{b.label}</span>
                   </span>
+                ))}
+                {activeProfile.className && (
                   <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-bold">
-                    {myProfile.className} класс
+                    {activeProfile.className} класс
                   </span>
+                )}
+                {(!isViewingOther || activeProfile.verifiedClass) && (
                   <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold">
                     🔒 Подтверждённый класс
                   </span>
-                </div>
-
-                {myProfile.status && (
-                  <p className="text-xs font-medium text-cyan-200/90 italic">
-                    «{myProfile.status}»
-                  </p>
                 )}
-
-                {myProfile.bio && (
-                  <p className="sensitive-data text-[11px] text-white/70 pt-1 leading-relaxed">
-                    {myProfile.bio}
-                  </p>
-                )}
-
-                <div className="flex flex-wrap justify-center sm:justify-start gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditing(true)}
-                    className="btn cyan text-xs py-1.5 px-3 flex items-center gap-1.5"
+                {isViewingOther && viewedOnlineStats?.presenceText && (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-bold border ${
+                      viewedOnlineStats.online
+                        ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300'
+                        : 'bg-white/10 border-white/15 text-white/70'
+                    }`}
                   >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Редактировать Профиль</span>
-                  </button>
-                  {onNavigateToChat && (
+                    {viewedOnlineStats.online ? '🟢 ' : ''}
+                    {viewedOnlineStats.presenceText}
+                  </span>
+                )}
+              </div>
+
+              {activeProfile.status && (
+                <p className="text-xs font-medium text-cyan-200/90 italic">
+                  «{activeProfile.status}»
+                </p>
+              )}
+
+              {activeProfile.bio && (
+                <p className="sensitive-data text-[11px] text-white/70 pt-1 leading-relaxed whitespace-pre-line">
+                  {activeProfile.bio}
+                </p>
+              )}
+
+              <div className="flex flex-wrap justify-center sm:justify-start gap-2 pt-2">
+                {!isViewingOther ? (
+                  <>
                     <button
                       type="button"
-                      onClick={onNavigateToChat}
-                      className="btn darkBtn text-xs py-1.5 px-3 flex items-center gap-1.5"
+                      onClick={() => setIsEditing(true)}
+                      className="btn cyan text-xs py-1.5 px-3 flex items-center gap-1.5"
                     >
-                      <span>💬 В школьный чат</span>
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Редактировать Профиль</span>
                     </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Stats Row */}
-            <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-white/10 text-center">
-              <div className="p-2 bg-white/5 rounded-xl border border-white/8">
-                <span className="sensitive-data block text-base font-black text-amber-300 font-mono">
-                  {isHideGradesInProfile() ? '🔒' : realGpa}
-                </span>
-                <span className="text-[9px] text-white/60 uppercase">Ср. балл</span>
-              </div>
-              <div className="p-2 bg-white/5 rounded-xl border border-white/8">
-                <span className="block text-base font-black text-cyan-300 font-mono">
-                  {myProfile.certificates?.length || 0}
-                </span>
-                <span className="text-[9px] text-white/60 uppercase">Грамот</span>
+                    {onNavigateToChat && (
+                      <button
+                        type="button"
+                        onClick={onNavigateToChat}
+                        className="btn darkBtn text-xs py-1.5 px-3 flex items-center gap-1.5"
+                      >
+                        <span>💬 В школьный чат</span>
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleFriend(activeProfile.id, activeProfile.fullName)}
+                      className={`btn text-xs py-1.5 px-3 flex items-center gap-1.5 ${
+                        isFriend
+                          ? 'bg-rose-500/20 border-rose-400 text-rose-200'
+                          : 'cyan'
+                      }`}
+                    >
+                      <Heart className={`w-3.5 h-3.5 ${isFriend ? 'fill-rose-400 text-rose-400' : ''}`} />
+                      <span>{isFriend ? 'В друзьях (удалить)' : 'Добавить в друзья'}</span>
+                    </button>
+                    {onNavigateToChat && (
+                      <button
+                        type="button"
+                        onClick={onNavigateToChat}
+                        className="btn darkBtn text-xs py-1.5 px-3 flex items-center gap-1.5"
+                      >
+                        <span>💬 Написать в чат</span>
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Где хранятся данные */}
+          {/* Stats Row */}
+          <div className={`grid ${isViewingOther ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'} gap-2 mt-4 pt-3 border-t border-white/10 text-center`}>
+            <div className="p-2 bg-white/5 rounded-xl border border-white/8">
+              <span className="sensitive-data block text-base font-black text-amber-300 font-mono">
+                {displayGpa}
+              </span>
+              <span className="text-[9px] text-white/60 uppercase">Ср. балл</span>
+            </div>
+            <div className="p-2 bg-white/5 rounded-xl border border-white/8">
+              <span className="block text-base font-black text-cyan-300 font-mono">
+                {activeProfile.certificates?.length || 0}
+              </span>
+              <span className="text-[9px] text-white/60 uppercase">Грамот</span>
+            </div>
+            {isViewingOther && (
+              <>
+                <div className="p-2 bg-white/5 rounded-xl border border-white/8">
+                  <span className="block text-base font-black text-emerald-300 font-mono">
+                    {viewedOnlineStats?.sec !== undefined
+                      ? formatDuration(viewedOnlineStats.sec)
+                      : activeProfile.registeredDate || '—'}
+                  </span>
+                  <span className="text-[9px] text-white/60 uppercase">
+                    {viewedOnlineStats?.sec !== undefined ? 'За неделю' : 'В АСОШ с'}
+                  </span>
+                </div>
+                <div className="p-2 bg-white/5 rounded-xl border border-white/8">
+                  <span className="block text-base font-black text-purple-300 font-mono">
+                    {viewedOnlineStats?.rank ? `#${viewedOnlineStats.rank}` : `${activeProfile.gamesScore || 0} 🎮`}
+                  </span>
+                  <span className="text-[9px] text-white/60 uppercase">
+                    {viewedOnlineStats?.rank ? 'Место в классе' : 'Очков игр'}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Где хранятся данные */}
+        {!isViewingOther ? (
           <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-[11px] text-white/70 leading-relaxed">
             🛡️ Профиль, оценки и ДЗ хранятся только на этом устройстве. Чтобы не потерять их при смене телефона,
             сделай резервную копию: <b className="text-white">Опции → Память и резервная копия</b>.
           </div>
+        ) : (
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-[11px] text-white/70 leading-relaxed flex flex-wrap items-center justify-between gap-2">
+            <span>📅 В АСОШ Таймере с <b className="text-white">{activeProfile.registeredDate || 'недавно'}</b></span>
+            {activeProfile.friendsCount !== undefined && (
+              <span>👥 Друзей: <b className="text-cyan-300">{activeProfile.friendsCount}</b></span>
+            )}
+          </div>
+        )}
 
-          {/* Showcase of Certificates (Витрина грамот и наград) */}
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-amber-400" />
-                <h4 className="text-sm font-bold text-amber-300 uppercase tracking-wider">
-                  Витрина грамот, дипломов и побед ({myProfile.certificates?.length || 0})
-                </h4>
-              </div>
+        {/* Showcase of Certificates (Витрина грамот и наград) */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-amber-400" />
+              <h4 className="text-sm font-bold text-amber-300 uppercase tracking-wider">
+                Витрина грамот, дипломов и побед ({activeProfile.certificates?.length || 0})
+              </h4>
+            </div>
+            {!isViewingOther && (
               <button
                 type="button"
                 onClick={() => setIsAddingCert(true)}
@@ -376,46 +533,48 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <Plus className="w-3.5 h-3.5" />
                 <span>Добавить грамоту</span>
               </button>
-            </div>
+            )}
+          </div>
 
-            {myProfile.certificates && myProfile.certificates.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {myProfile.certificates.map((cert) => {
-                  const cat = CERT_CATEGORIES.find((c) => c.id === cert.category);
-                  const isGold = cert.place === '1' || cert.place === 'gold';
-                  return (
-                    <div
-                      key={cert.id}
-                      className={`p-3 rounded-2xl border transition-all relative overflow-hidden flex items-start gap-3 ${
-                        isGold
-                          ? 'bg-amber-500/10 border-amber-400/40 shadow-sm'
-                          : 'bg-white/5 border-white/10'
-                      }`}
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-xl shrink-0">
-                        {cat?.icon || '📜'}
+          {activeProfile.certificates && activeProfile.certificates.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {activeProfile.certificates.map((cert) => {
+                const cat = CERT_CATEGORIES.find((c) => c.id === cert.category);
+                const isGold = cert.place === '1' || cert.place === 'gold';
+                return (
+                  <div
+                    key={cert.id}
+                    className={`p-3 rounded-2xl border transition-all relative overflow-hidden flex items-start gap-3 ${
+                      isGold
+                        ? 'bg-amber-500/10 border-amber-400/40 shadow-sm'
+                        : 'bg-white/5 border-white/10'
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-xl shrink-0">
+                      {cat?.icon || '📜'}
+                    </div>
+                    <div className="flex-1 min-w-0 pr-6">
+                      <b className="text-xs font-bold text-white block truncate">
+                        {cert.title}
+                      </b>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        <span className="px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 text-[10px] font-bold">
+                          {cert.place === 'gold'
+                            ? '🥇 Золото'
+                            : cert.place === '1'
+                            ? '🥇 1 Место'
+                            : cert.place === '2'
+                            ? '🥈 2 Место'
+                            : cert.place === '3'
+                            ? '🥉 3 Место'
+                            : '📜 Награда'}
+                        </span>
+                        <span className="text-[10px] text-white/60">
+                          {cert.year} • {cert.issuer || 'АСОШ №2'}
+                        </span>
                       </div>
-                      <div className="flex-1 min-w-0 pr-6">
-                        <b className="text-xs font-bold text-white block truncate">
-                          {cert.title}
-                        </b>
-                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                          <span className="px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 text-[10px] font-bold">
-                            {cert.place === 'gold'
-                              ? '🥇 Золото'
-                              : cert.place === '1'
-                              ? '🥇 1 Место'
-                              : cert.place === '2'
-                              ? '🥈 2 Место'
-                              : cert.place === '3'
-                              ? '🥉 3 Место'
-                              : '📜 Награда'}
-                          </span>
-                          <span className="text-[10px] text-white/60">
-                            {cert.year} • {cert.issuer || 'АСОШ №2'}
-                          </span>
-                        </div>
-                      </div>
+                    </div>
+                    {!isViewingOther && (
                       <button
                         type="button"
                         onClick={() => handleDeleteCert(cert.id)}
@@ -424,19 +583,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="p-6 text-center bg-white/5 rounded-2xl border border-white/10 text-xs text-white/60 space-y-2">
-                <Award className="w-8 h-8 mx-auto text-white/30" />
-                <p>У вас пока нет добавленных грамот. Добавьте свою первую победу!</p>
-              </div>
-            )}
-          </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="p-6 text-center bg-white/5 rounded-2xl border border-white/10 text-xs text-white/60 space-y-2">
+              <Award className="w-8 h-8 mx-auto text-white/30" />
+              <p>
+                {isViewingOther
+                  ? 'У этого ученика пока нет добавленных грамот'
+                  : 'У вас пока нет добавленных грамот. Добавьте свою первую победу!'}
+              </p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
 
       {/* MODAL: EDIT PROFILE & AVATAR */}

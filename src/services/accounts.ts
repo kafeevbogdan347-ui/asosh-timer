@@ -47,6 +47,7 @@ export interface Account {
   login: string;
   cls?: string;
   subjects?: string[];
+  registeredAt?: number;
 }
 
 export interface ChildLink {
@@ -224,7 +225,7 @@ export async function registerAccount(input: RegisterInput): Promise<RegisterRes
         [`asosh_parent_codes/${h}`]: { student: uid, t },
         [`asosh_private/${uid}`]: { pcode: code },
       });
-      const account: Account = { uid, role: 'student', name, login, cls: input.cls };
+      const account: Account = { uid, role: 'student', name, login, cls: input.cls, registeredAt: t };
       saveLocalAccount(account);
       return { ok: true, account, parentCode: code };
     }
@@ -253,7 +254,7 @@ export async function registerAccount(input: RegisterInput): Promise<RegisterRes
         await update(ref(ctx.db), { [`asosh_users/${uid}`]: { ...base, subjects } });
       }
       localStorage.setItem('asosh_teacher', JSON.stringify({ name }));
-      const account: Account = { uid, role: 'teacher', name, login, subjects: input.subjects };
+      const account: Account = { uid, role: 'teacher', name, login, subjects: input.subjects, registeredAt: t };
       saveLocalAccount(account);
       return { ok: true, account };
     }
@@ -270,7 +271,7 @@ export async function registerAccount(input: RegisterInput): Promise<RegisterRes
       [`asosh_family/${sid}/${uid}`]: { h: parentHash, name, t },
     });
     const child = await linkChildInfo(uid, sid);
-    const account: Account = { uid, role: 'parent', name, login, cls: child?.cls };
+    const account: Account = { uid, role: 'parent', name, login, cls: child?.cls, registeredAt: t };
     saveLocalAccount(account);
     return { ok: true, account, child: child || undefined };
   } catch (err) {
@@ -351,7 +352,7 @@ export async function loginAccount(login: string, password: string): Promise<{ o
     if (before && before.isAnonymous) await removeMyPresence(localClass());
     const res = await signInWithEmailAndPassword(ctx.auth, loginToEmail(login), password);
     const snap = await get(ref(ctx.db, `asosh_users/${res.user.uid}`));
-    const v = snap.val() as { role: Role; name: string; login: string; cls?: string; subjects?: string } | null;
+    const v = snap.val() as { role: Role; name: string; login: string; cls?: string; subjects?: string; t?: number } | null;
     if (!v) return { ok: false, error: 'Аккаунт найден, но профиль пустой. Зарегистрируйся заново' };
     const account: Account = {
       uid: res.user.uid,
@@ -360,6 +361,7 @@ export async function loginAccount(login: string, password: string): Promise<{ o
       login: v.login,
       cls: v.cls,
       subjects: v.subjects ? v.subjects.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
+      registeredAt: typeof v.t === 'number' ? v.t : undefined,
     };
     if (v.role === 'teacher') localStorage.setItem('asosh_teacher', JSON.stringify({ name: v.name }));
     if (v.role === 'parent') {

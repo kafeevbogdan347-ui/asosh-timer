@@ -19,15 +19,16 @@ import {
   Trash2,
   Ghost,
 } from 'lucide-react';
-import { ChatMessage, LanguageType, SoundProfileType } from '../types';
+import { ChatMessage, LanguageType, SoundProfileType, UserProfile } from '../types';
 import {
   sendFirebaseMessage,
   subscribeToFirebaseMessages,
   getActiveFirebaseConfig,
   saveCustomFirebaseConfig,
-  GLOBAL_CHAT_PATH,
 } from '../services/firebaseChat';
 import { getMyProfile } from '../services/userService';
+import { fetchPublicProfile, getCachedPublicProfile } from '../services/profileSync';
+import { getProfileBadges, isDevPanelUnlocked } from '../utils/profileBadges';
 import { playSound, doVibro } from '../utils/audio';
 import { useOnline } from '../utils/useOnline';
 import { checkBeforePublish } from '../components/HumanCheck';
@@ -41,6 +42,7 @@ interface ChatScreenProps {
   onBack?: () => void;
   onOpenDevModal?: () => void;
   onOpenProfile?: () => void;
+  onOpenStudentProfile?: (profile: UserProfile) => void;
 }
 
 const AVATAR_PRESETS = ['🎒', '🚀', '⚡', '👑', '🦊', '🎧', '🥋', '📚', '🌟', '👾', '🔥', '💎'];
@@ -49,8 +51,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   cls,
   soundProfile,
   vibro,
-  onOpenDevModal,
   onOpenProfile,
+  onOpenStudentProfile,
 }) => {
   // Mode: 'class' (классный чат) | 'global' (общешкольный)
   const [activeTab, setActiveTab] = useState<'class' | 'global'>('class');
@@ -60,12 +62,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   // Firebase Chat States
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
+  const [pubProfiles, setPubProfiles] = useState<Record<string, UserProfile>>({});
   // Profile state from user service
   const userProfile = getMyProfile();
   const username = userProfile.username || `Ученик ${cls || 'АСОШ №2'}`;
   const selectedAvatar = userProfile.avatar || '🎒';
   // Фото-аватар в base64 слишком длинный для имени в сообщении
   const chatAvatar = selectedAvatar.startsWith('data:') ? '🎒' : selectedAvatar;
+  const myBadges = getProfileBadges({
+    isDev: userProfile.isDev,
+    registeredAt: userProfile.registeredAt,
+    registeredDate: userProfile.registeredDate,
+    id: userProfile.id,
+    isSelf: true,
+  });
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
@@ -140,6 +150,34 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     };
   }, [activeTab, classRoom, currentRoomKey, soundProfile, vibro]);
 
+  // Подгружаем публичные профили авторов сообщений (для бейджиков и быстрого перехода в профиль)
+  useEffect(() => {
+    const ids = Array.from(
+      new Set(
+        messages
+          .filter((m) => !m.isIncognito && m.userId && m.userId !== 'anonymous' && m.userId !== userProfile.id)
+          .map((m) => m.userId as string)
+      )
+    );
+    if (!ids.length) return;
+    let alive = true;
+    ids.slice(-25).forEach((uid) => {
+      const cached = getCachedPublicProfile(uid);
+      if (cached) {
+        setPubProfiles((prev) => (prev[uid] ? prev : { ...prev, [uid]: cached }));
+        return;
+      }
+      fetchPublicProfile(uid).then((prof) => {
+        if (alive && prof) {
+          setPubProfiles((prev) => ({ ...prev, [uid]: prof }));
+        }
+      });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [messages, userProfile.id]);
+
   // Send message handler (Firebase)
   const handleSendFirebase = async (textToSend?: string) => {
     const rawText = textToSend !== undefined ? textToSend : inputText;
@@ -171,7 +209,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       currentRoomKey,
       isIncognito ? 'anonymous' : userProfile.id,
       isIncognito ? '🎭' : chatAvatar,
-      { isIncognito, isSelfDestruct }
+      isIncognito
+        ? { isIncognito, isSelfDestruct }
+        : {
+            isIncognito,
+            isSelfDestruct,
+            handle: username,
+            fullName: userProfile.fullName,
+            className: userProfile.className || classRoom,
+            registeredAt: userProfile.registeredAt,
+            isDev: isDevPanelUnlocked() || Boolean(userProfile.isDev),
+          }
     );
 
     if (res.success) {
@@ -326,13 +374,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
               <span className="text-xs font-bold text-white truncate max-w-[120px] sm:max-w-[200px] whitespace-nowrap">
                 {userProfile.fullName}
               </span>
               <span className="text-[10px] text-cyan-300 font-mono shrink-0 whitespace-nowrap">
                 @{username}
               </span>
+              {myBadges.map((b) => (
+                <span
+                  key={b.id}
+                  title={b.title}
+                  className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold inline-flex items-center gap-0.5 shrink-0 ${b.className}`}
+                >
+                  <span>{b.icon}</span>
+                  <span>{b.label}</span>
+                </span>
+              ))}
             </div>
             <span className="text-[10px] text-white/60 block truncate">
               {userProfile.status || `${classRoom} класс АСОШ №2`}
@@ -392,30 +450,117 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               ))
             );
 
+            const isAnon = Boolean(msg.isIncognito || msg.userId === 'anonymous' || (msg.username && msg.username.includes('🎭')));
+            const senderPub = !isAnon && msg.userId ? pubProfiles[msg.userId] : undefined;
+            const senderHandle =
+              msg.handle ||
+              senderPub?.username ||
+              (msg.username || 'Ученик').replace(/^[\p{Emoji}\uFE0F\u200D]+\s*/u, '').trim() ||
+              'Ученик';
+            const senderBadges = isAnon
+              ? []
+              : getProfileBadges({
+                  isDev: isMe ? userProfile.isDev : senderPub?.isDev ?? msg.isDev,
+                  registeredAt: isMe ? userProfile.registeredAt : senderPub?.registeredAt ?? msg.registeredAt,
+                  registeredDate: isMe ? userProfile.registeredDate : senderPub?.registeredDate,
+                  id: isMe ? userProfile.id : senderPub?.id || msg.userId,
+                  isSelf: isMe,
+                });
+            const canOpenProfile = Boolean(!isAnon && (onOpenStudentProfile || (isMe && onOpenProfile)));
+
+            const openSenderProfile = () => {
+              if (!canOpenProfile) return;
+              if (isMe) {
+                if (onOpenProfile) onOpenProfile();
+                else if (onOpenStudentProfile) onOpenStudentProfile(userProfile);
+                return;
+              }
+              if (!onOpenStudentProfile) return;
+              const fallbackProfile: UserProfile = senderPub
+                ? senderPub
+                : {
+                    id: msg.userId || `chat_${senderHandle}`,
+                    username: senderHandle,
+                    fullName: msg.fullName || senderHandle,
+                    className: msg.className || (activeTab === 'class' ? classRoom : ''),
+                    avatar: msg.avatar || '🎒',
+                    avatarType: 'emoji',
+                    status: '',
+                    bio: '',
+                    gpa: 0,
+                    hwDoneCount: 0,
+                    gamesScore: 0,
+                    certificates: [],
+                    friends: [],
+                    registeredDate: msg.registeredAt
+                      ? new Date(msg.registeredAt).toLocaleDateString('ru-RU')
+                      : '',
+                    registeredAt: msg.registeredAt,
+                    isDev: msg.isDev,
+                  };
+              onOpenStudentProfile(fallbackProfile);
+            };
+
             return (
               <div
                 key={msg.id || idx}
                 className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} transition-all`}
               >
-                <div className="flex items-center gap-1.5 mb-0.5 px-1">
-                  <span className="text-[11px] font-black text-cyan-300/90 flex items-center gap-1">
-                    {msg.username || 'Ученик'}
-                    {(msg.isIncognito || (msg.username && msg.username.includes('🎭'))) && (
-                      <span className="text-[9px] bg-purple-500/25 text-purple-200 border border-purple-400/40 px-1 py-0.2 rounded font-bold flex items-center gap-0.5">
-                        <Ghost className="w-2.5 h-2.5" /> Анонимно
-                      </span>
-                    )}
-                    {msg.isSelfDestruct && (
-                      <span className="text-[9px] bg-rose-500/25 text-rose-300 border border-rose-400/40 px-1 py-0.2 rounded font-bold">
-                        💣 5 мин
-                      </span>
-                    )}
-                    {isMe && (
-                      <span className="text-[9px] bg-cyan-500/20 text-cyan-200 border border-cyan-400/30 px-1 py-0.2 rounded font-bold">
-                        Вы
-                      </span>
-                    )}
-                  </span>
+                <div className="flex flex-wrap items-center gap-1.5 mb-0.5 px-1">
+                  {canOpenProfile ? (
+                    <button
+                      type="button"
+                      onClick={openSenderProfile}
+                      title="Открыть полный профиль ученика"
+                      className="text-[11px] font-black text-cyan-300/95 hover:text-cyan-200 flex flex-wrap items-center gap-1 cursor-pointer transition-colors text-left !m-0 !p-0 !bg-transparent !border-0"
+                    >
+                      <span className="hover:underline underline-offset-2">{msg.username || 'Ученик'}</span>
+                      {msg.handle && (
+                        <span className="text-[9px] font-mono text-cyan-300/80 bg-cyan-500/15 border border-cyan-400/25 px-1.5 py-0.2 rounded-full">
+                          @{senderHandle}
+                        </span>
+                      )}
+                      {senderBadges.map((b) => (
+                        <span
+                          key={b.id}
+                          title={b.title}
+                          className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold inline-flex items-center gap-0.5 ${b.className}`}
+                        >
+                          <span>{b.icon}</span>
+                          <span>{b.label}</span>
+                        </span>
+                      ))}
+                      {msg.isSelfDestruct && (
+                        <span className="text-[9px] bg-rose-500/25 text-rose-300 border border-rose-400/40 px-1 py-0.2 rounded font-bold">
+                          💣 5 мин
+                        </span>
+                      )}
+                      {isMe && (
+                        <span className="text-[9px] bg-cyan-500/20 text-cyan-200 border border-cyan-400/30 px-1 py-0.2 rounded font-bold">
+                          Вы
+                        </span>
+                      )}
+                    </button>
+                  ) : (
+                    <span className="text-[11px] font-black text-cyan-300/90 flex items-center gap-1">
+                      {msg.username || 'Ученик'}
+                      {isAnon && (
+                        <span className="text-[9px] bg-purple-500/25 text-purple-200 border border-purple-400/40 px-1 py-0.2 rounded font-bold flex items-center gap-0.5">
+                          <Ghost className="w-2.5 h-2.5" /> Анонимно
+                        </span>
+                      )}
+                      {msg.isSelfDestruct && (
+                        <span className="text-[9px] bg-rose-500/25 text-rose-300 border border-rose-400/40 px-1 py-0.2 rounded font-bold">
+                          💣 5 мин
+                        </span>
+                      )}
+                      {isMe && (
+                        <span className="text-[9px] bg-cyan-500/20 text-cyan-200 border border-cyan-400/30 px-1 py-0.2 rounded font-bold">
+                          Вы
+                        </span>
+                      )}
+                    </span>
+                  )}
                   {msg.created_at && (
                     <span className="text-[9px] text-white/40 font-mono">
                       {formatMessageTime(msg.created_at)}

@@ -291,6 +291,11 @@ export interface UserProfile {
   certificates: CertificateItem[];
   friends: string[]; // IDs of friends
   registeredDate: string;
+  registeredAt?: number;
+  isDev?: boolean;
+  hideGrades?: boolean;
+  friendsCount?: number;
+  verifiedClass?: boolean;
   badge?: string;
   authProvider?: 'guest' | 'local' | 'google' | 'apple';
   authEmail?: string;
@@ -318,12 +323,17 @@ export interface ChatMessage {
   id?: number | string;
   created_at?: string;
   username: string;
+  handle?: string;
+  fullName?: string;
+  className?: string;
   userId?: string;
   avatar?: string;
   content: string;
   room?: string;
   isIncognito?: boolean;
   isSelfDestruct?: boolean;
+  registeredAt?: number;
+  isDev?: boolean;
 }
 
 export interface WeatherAktivkaData {

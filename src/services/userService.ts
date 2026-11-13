@@ -3,19 +3,48 @@ import { UserProfile, CertificateItem } from '../types';
 const PROFILE_KEY = 'asosh_user_profile_v1';
 const ALL_USERS_REGISTRY_KEY = 'asosh_registered_users_registry_v1';
 
+import { isDevPanelUnlocked, parseRegisteredTimestamp } from '../utils/profileBadges';
+
+export function getRealGpaNumber(): number {
+  try {
+    const subjects: { grades: number[] }[] = JSON.parse(localStorage.getItem('asosh_gpa_subjects') || '[]');
+    const all = subjects.flatMap((sub) => (Array.isArray(sub.grades) ? sub.grades : []));
+    if (!all.length) return 0;
+    return Number((all.reduce((a, b) => a + b, 0) / all.length).toFixed(2));
+  } catch {
+    return 0;
+  }
+}
+
+export function getRealHwDoneCount(): number {
+  try {
+    const hw = JSON.parse(localStorage.getItem('asosh_hw_v105') || localStorage.getItem('asosh_hw_v11') || '[]');
+    if (!Array.isArray(hw)) return 0;
+    return hw.filter((item: any) => Boolean(item?.done)).length;
+  } catch {
+    return 0;
+  }
+}
+
 export function getMyProfile(defaultName = 'Ученик', defaultClass = '8А'): UserProfile {
+  const devUnlocked = isDevPanelUnlocked();
   try {
     const saved = localStorage.getItem(PROFILE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
       const guaranteedId = parsed.id || ('user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
+      const regTs =
+        parseRegisteredTimestamp(parsed.registeredAt, parsed.registeredDate, guaranteedId) || Date.now();
       const profile: UserProfile = {
         ...parsed,
         id: guaranteedId,
         certificates: parsed.certificates || [],
         friends: parsed.friends || [],
+        registeredAt: regTs,
+        registeredDate: parsed.registeredDate || new Date(regTs).toLocaleDateString('ru-RU'),
+        isDev: devUnlocked || Boolean(parsed.isDev),
       };
-      if (!parsed.id) {
+      if (!parsed.id || !parsed.registeredAt || (devUnlocked && !parsed.isDev)) {
         saveMyProfile(profile);
       }
       return profile;
@@ -32,10 +61,10 @@ export function getMyProfile(defaultName = 'Ученик', defaultClass = '8А')
     : `Ученик_${Math.floor(1000 + Math.random() * 9000)}`;
   const storedChatName = localStorage.getItem('asosh_chat_username') || defaultUniqueUsername;
   const storedAvatar = localStorage.getItem('asosh_chat_avatar') || '🎒';
-  const isDev = localStorage.getItem('asosh_dev_unlocked') === 'true';
+  const nowTs = Date.now();
 
   const newProfile: UserProfile = {
-    id: 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9),
+    id: 'user_' + nowTs + '_' + Math.random().toString(36).substring(2, 9),
     username: storedChatName,
     fullName: storedStudent,
     className: storedClass,
@@ -43,13 +72,15 @@ export function getMyProfile(defaultName = 'Ученик', defaultClass = '8А')
     avatarType: 'emoji',
     status: '',
     bio: '',
-    gpa: 5.0,
-    hwDoneCount: 0,
+    gpa: getRealGpaNumber(),
+    hwDoneCount: getRealHwDoneCount(),
     gamesScore: 0,
     certificates: [],
     friends: [],
-    registeredDate: new Date().toLocaleDateString('ru-RU'),
-    badge: isDev ? '👑 Разработчик' : '🎒 Ученик',
+    registeredDate: new Date(nowTs).toLocaleDateString('ru-RU'),
+    registeredAt: nowTs,
+    isDev: devUnlocked,
+    badge: devUnlocked ? '🛠️ Разработчик' : '🎒 Ученик',
   };
 
   saveMyProfile(newProfile);
@@ -58,15 +89,24 @@ export function getMyProfile(defaultName = 'Ученик', defaultClass = '8А')
 
 export function saveMyProfile(profile: UserProfile): void {
   try {
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    const devUnlocked = isDevPanelUnlocked();
+    const regTs =
+      parseRegisteredTimestamp(profile.registeredAt, profile.registeredDate, profile.id) || Date.now();
+    const normalized: UserProfile = {
+      ...profile,
+      registeredAt: regTs,
+      registeredDate: profile.registeredDate || new Date(regTs).toLocaleDateString('ru-RU'),
+      isDev: devUnlocked || Boolean(profile.isDev),
+    };
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(normalized));
     // Keep chat username and avatar in sync with profile
-    localStorage.setItem('asosh_chat_username', profile.username);
-    localStorage.setItem('asosh_chat_avatar', profile.avatar);
-    localStorage.setItem('asosh_student_v11', profile.fullName);
-    localStorage.setItem('asosh_class_v11', profile.className);
+    localStorage.setItem('asosh_chat_username', normalized.username);
+    localStorage.setItem('asosh_chat_avatar', normalized.avatar);
+    localStorage.setItem('asosh_student_v11', normalized.fullName);
+    localStorage.setItem('asosh_class_v11', normalized.className);
 
     // Update in all users registry
-    registerOrUpdateUser(profile);
+    registerOrUpdateUser(normalized);
   } catch (e) {
     console.error('Failed to save profile:', e);
   }
