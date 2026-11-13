@@ -1,17 +1,17 @@
 // Профиль (ник, эмодзи-аватар, статус, «о себе») привязан к аккаунту:
 // хранится в базе asosh_profiles/<uid>, поэтому одинаковый на всех телефонах и компьютерах,
 // где выполнен вход в этот аккаунт. Фото-аватар в базу не отправляем — только эмодзи.
-// Для просмотра полноценного профиля одноклассников из чата и онлайна публичная карточка
-// синхронизируется в asosh_transfer/PUBPROF_<id>.
+// Для просмотра профиля одноклассников из чата и онлайна публичная карточка лежит в asosh_pubprof/<uid>:
+// писать может только владелец аккаунта, читать — вошедшие. В неё НЕ попадают фото, средний балл
+// из калькулятора и список друзей: по политике конфиденциальности они остаются на телефоне.
 
 import { getAuth } from 'firebase/auth';
-import { ref, get, set, remove } from 'firebase/database';
+import { ref, get, set } from 'firebase/database';
 import { initFirebase, ensureSignedIn } from './firebaseChat';
 import { Account, getLocalAccount } from './accounts';
-import { getMyProfile, saveMyProfile, getRealGpaNumber, getRealHwDoneCount } from './userService';
-import { isDevPanelUnlocked } from '../utils/profileBadges';
-import { isHideGradesInProfile } from '../utils/privacy';
-import { UserProfile } from '../types';
+import { getMyProfile, saveMyProfile, getRealHwDoneCount } from './userService';
+import { isAdminUid } from './admins';
+import { UserProfile, CertificateItem } from '../types';
 
 export interface CloudProfile {
   nick: string;
@@ -23,12 +23,12 @@ export interface CloudProfile {
 
 const PUSHED_KEY = 'asosh_profile_pushed'; // что уже отправили, чтобы не писать в базу лишний раз
 const PUBPROF_SIG_KEY = 'asosh_pubprof_pushed_sig';
-const PUBPROF_CACHE_PREFIX = 'PUBPROF_';
 
 const publicProfileMemoryCache = new Map<string, { profile: UserProfile; fetchedAt: number }>();
 const publicProfilePending = new Map<string, Promise<UserProfile | null>>();
 
-const safeKey = (id: string) => id.replace(/[.#$\[\]/]/g, '_').slice(0, 96);
+// Ключ в базе — только uid аккаунта (буквы и цифры), иначе не читаем
+const validUid = (id: string) => /^[A-Za-z0-9_-]{6,128}$/.test(id) && !id.startsWith('user_');
 
 const isEmoji = (p: UserProfile) => p.avatarType !== 'image' && !(p.avatar || '').startsWith('data:');
 
@@ -117,86 +117,111 @@ export function forgetPushedProfile() {
   }
 }
 
-function buildPublicSnapshot(p: UserProfile): UserProfile {
-  const hideGrades = isHideGradesInProfile();
-  const realGpa = getRealGpaNumber();
-  const realHw = getRealHwDoneCount();
-  const devUnlocked = isDevPanelUnlocked() || Boolean(p.isDev);
-  const acc = getLocalAccount();
-  const regAt = acc?.registeredAt || p.registeredAt;
-  const safeAvatar =
-    p.avatarType === 'image' && p.avatar?.startsWith('data:') && p.avatar.length > 180_000
-      ? '🎒'
-      : p.avatar || '🎒';
-  const safeAvatarType: 'emoji' | 'image' =
-    safeAvatar.startsWith('data:') && p.avatarType === 'image' ? 'image' : 'emoji';
+// Что видят другие: имя из аккаунта («Иван П.»), ник, эмодзи, статус, «о себе», класс,
+// выполненные ДЗ, очки в играх, число друзей и грамоты (без файлов)
+interface PublicCard {
+  name: string;
+  nick: string;
+  avatar: string;
+  status: string;
+  bio: string;
+  cls: string;
+  hw: number;
+  games: number;
+  friends: number;
+  certs: string;
+  reg?: number;
+  t: number;
+}
 
+function packCerts(list: CertificateItem[] | undefined): string {
+  const slim = (Array.isArray(list) ? list : []).slice(0, 25).map((c) => ({
+    title: String(c.title || '').slice(0, 120),
+    category: c.category,
+    level: c.level,
+    year: String(c.year || '').slice(0, 12),
+    place: c.place,
+    issuer: c.issuer ? String(c.issuer).slice(0, 80) : undefined,
+    subject: c.subject ? String(c.subject).slice(0, 40) : undefined,
+  }));
+  let out = JSON.stringify(slim);
+  while (out.length > 6000 && slim.length) {
+    slim.pop();
+    out = JSON.stringify(slim);
+  }
+  return out;
+}
+
+function buildPublicCard(p: UserProfile, account: Account): PublicCard {
+  const card = cardOf(p, account.name);
+  const reg = account.registeredAt || p.registeredAt;
+  const n = (v: unknown, max: number) => Math.max(0, Math.min(max, Math.round(Number(v) || 0)));
   return {
-    id: p.id,
-    username: (p.username || 'Ученик').slice(0, 40),
-    fullName: (p.fullName || p.username || 'Ученик').slice(0, 60),
-    className: (p.className || '8А').slice(0, 12),
-    avatar: safeAvatar,
-    avatarType: safeAvatarType,
-    status: (p.status || '').slice(0, 100),
-    bio: (p.bio || '').slice(0, 400),
-    gpa: hideGrades ? 0 : realGpa || p.gpa || 0,
-    hideGrades,
-    hwDoneCount: realHw || p.hwDoneCount || 0,
-    gamesScore: p.gamesScore || 0,
-    certificates: Array.isArray(p.certificates) ? p.certificates.slice(0, 25) : [],
-    friends: [],
-    friendsCount: Array.isArray(p.friends) ? p.friends.length : 0,
-    registeredDate: regAt ? new Date(regAt).toLocaleDateString('ru-RU') : p.registeredDate,
-    registeredAt: regAt,
-    isDev: devUnlocked,
-    verifiedClass: acc?.role === 'student' || Boolean(p.verifiedClass),
+    name: account.name.slice(0, 60),
+    nick: card.nick || account.name.slice(0, 30),
+    avatar: card.avatar,
+    status: card.status,
+    bio: card.bio,
+    cls: (account.cls || '').slice(0, 4),
+    hw: n(getRealHwDoneCount() || p.hwDoneCount, 100000),
+    games: n(p.gamesScore, 100000000),
+    friends: n(Array.isArray(p.friends) ? p.friends.length : 0, 10000),
+    certs: packCerts(p.certificates),
+    ...(reg && reg <= Date.now() ? { reg } : {}),
+    t: Date.now(),
   };
 }
 
-async function writePublicTransferNode(db: any, keyId: string, payloadStr: string) {
-  const path = `asosh_transfer/${PUBPROF_CACHE_PREFIX}${safeKey(keyId)}`;
-  const nodeRef = ref(db, path);
+function cardToProfile(uid: string, c: PublicCard): UserProfile {
+  let certificates: CertificateItem[] = [];
   try {
-    const existing = await get(nodeRef);
-    if (existing.exists()) {
-      await remove(nodeRef);
-    }
-    await set(nodeRef, {
-      payload: payloadStr,
-      created_at: Date.now(),
-    });
+    const raw = JSON.parse(c.certs || '[]');
+    if (Array.isArray(raw)) certificates = raw.map((x, i) => ({ ...x, id: `pub-${uid}-${i}` }));
   } catch {
-    // оффлайн, локдаун или правило запрета записи — игнорируем без падения
+    // повреждённый список грамот — показываем без них
   }
+  return {
+    id: uid,
+    username: c.nick,
+    fullName: c.name,
+    className: c.cls || '',
+    avatar: c.avatar || '🎒',
+    avatarType: 'emoji',
+    status: c.status || '',
+    bio: c.bio || '',
+    gpa: 0,
+    hideGrades: true, // средний балл из калькулятора не публикуется
+    hwDoneCount: Number(c.hw) || 0,
+    gamesScore: Number(c.games) || 0,
+    certificates,
+    friends: [],
+    friendsCount: Number(c.friends) || 0,
+    registeredAt: c.reg,
+    registeredDate: c.reg ? new Date(c.reg).toLocaleDateString('ru-RU') : '',
+    isDev: isAdminUid(uid),
+    verifiedClass: true,
+  };
 }
 
 export async function pushPublicProfile(p: UserProfile = getMyProfile(), force = false): Promise<void> {
-  if (!navigator.onLine) return;
-  const { app, db } = initFirebase();
-  if (!app || !db) return;
-  const ok = await ensureSignedIn();
-  if (!ok) return;
-
-  const snap = buildPublicSnapshot(p);
-  const authUid = getAuth(app).currentUser?.uid || '';
-  const keys = Array.from(new Set([snap.id, authUid].filter(Boolean)));
-  if (!keys.length) return;
-
-  const payloadStr = JSON.stringify(snap);
-  const sig = `${keys.join('|')}::${payloadStr}`;
+  const account = getLocalAccount();
+  if (!account || !navigator.onLine) return;
+  const db = ctxFor(account.uid);
+  if (!db) return;
+  const card = buildPublicCard(p, account);
+  const { t: _t, ...stable } = card;
+  const sig = JSON.stringify([account.uid, stable]);
   try {
     if (!force && localStorage.getItem(PUBPROF_SIG_KEY) === sig) return;
   } catch {
     // продолжаем
   }
-
-  await Promise.all(keys.map((k) => writePublicTransferNode(db, k, payloadStr)));
-  keys.forEach((k) => publicProfileMemoryCache.set(k, { profile: snap, fetchedAt: Date.now() }));
   try {
+    await set(ref(db, `asosh_pubprof/${account.uid}`), card);
+    publicProfileMemoryCache.set(account.uid, { profile: cardToProfile(account.uid, card), fetchedAt: Date.now() });
     localStorage.setItem(PUBPROF_SIG_KEY, sig);
   } catch {
-    // игнорируем
+    // нет сети, защитный режим или старые правила — попробуем при следующем сохранении
   }
 }
 
@@ -206,40 +231,30 @@ export function getCachedPublicProfile(idOrUid?: string): UserProfile | null {
   return cached ? cached.profile : null;
 }
 
-export async function fetchPublicProfile(idOrUid: string, maxAgeMs = 60_000): Promise<UserProfile | null> {
-  if (!idOrUid || idOrUid === 'anonymous') return null;
-  const cached = publicProfileMemoryCache.get(idOrUid);
-  if (cached && Date.now() - cached.fetchedAt < maxAgeMs) {
-    return cached.profile;
-  }
+export async function fetchPublicProfile(uid: string, maxAgeMs = 60_000): Promise<UserProfile | null> {
+  if (!uid || !validUid(uid)) return null;
+  const cached = publicProfileMemoryCache.get(uid);
+  if (cached && Date.now() - cached.fetchedAt < maxAgeMs) return cached.profile;
 
-  const inflight = publicProfilePending.get(idOrUid);
+  const inflight = publicProfilePending.get(uid);
   if (inflight) return inflight;
 
   const promise = (async (): Promise<UserProfile | null> => {
     const { db } = initFirebase();
-    if (!db || !navigator.onLine) return cached?.profile || null;
-    if (!(await ensureSignedIn())) return cached?.profile || null;
-
+    if (!db || !navigator.onLine || !(await ensureSignedIn())) return cached?.profile || null;
     try {
-      const snap = await get(ref(db, `asosh_transfer/${PUBPROF_CACHE_PREFIX}${safeKey(idOrUid)}`));
-      if (!snap.exists()) return cached?.profile || null;
-      const val = snap.val() as { payload?: string } | null;
-      if (!val?.payload) return cached?.profile || null;
-      const parsed = JSON.parse(val.payload) as UserProfile;
-      if (!parsed || typeof parsed !== 'object') return cached?.profile || null;
-      publicProfileMemoryCache.set(idOrUid, { profile: parsed, fetchedAt: Date.now() });
-      if (parsed.id && parsed.id !== idOrUid) {
-        publicProfileMemoryCache.set(parsed.id, { profile: parsed, fetchedAt: Date.now() });
-      }
-      return parsed;
+      const card = (await get(ref(db, `asosh_pubprof/${uid}`))).val() as PublicCard | null;
+      if (!card || typeof card !== 'object' || !card.nick) return cached?.profile || null;
+      const prof = cardToProfile(uid, card);
+      publicProfileMemoryCache.set(uid, { profile: prof, fetchedAt: Date.now() });
+      return prof;
     } catch {
       return cached?.profile || null;
     } finally {
-      publicProfilePending.delete(idOrUid);
+      publicProfilePending.delete(uid);
     }
   })();
 
-  publicProfilePending.set(idOrUid, promise);
+  publicProfilePending.set(uid, promise);
   return promise;
 }

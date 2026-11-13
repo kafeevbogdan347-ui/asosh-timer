@@ -40,6 +40,16 @@ npm run dev            # http://localhost:3000
 2. **Realtime Database → Data**: удали разделы `asosh_users`, `asosh_profiles`, `asosh_private`, `asosh_roster`, `asosh_journal`, `asosh_parent_codes`, `asosh_family`, `asosh_parent_links`, `asosh_teachers`, `asosh_teacher_claims`, `asosh_online`, `asosh_rate`, `asosh_transfer`, а если нужно начать совсем с нуля — ещё `asosh_rooms` (чат) и `asosh_class` (общие ДЗ и замены). `asosh_config`, `asosh_timer`, `asosh_board` и `asosh_stats` не трогай.
 3. **Authentication → Users**: выдели всех пользователей и удали. Тогда логины освободятся и их можно занять заново.
 
+## Администраторы, заглушка и публичный профиль (v16.20)
+
+- **Администраторы** — uid в `asosh_admins/<uid> = true`. Добавляются только вручную: консоль Firebase → Realtime Database → Data. Свой uid проще всего узнать так: открой Панель разработчика и нажми «Закрыть доступ» — если прав нет, uid скопируется в буфер и покажется в сообщении.
+- **Заглушка** («АСОШ Таймер временно недоступен») — флаг `asosh_config/siteClosed` (`true`/`false`). Менять его могут только администраторы, читать — кто угодно (сайту не нужен вход).
+- **Значок «Разработчик»** — только у администраторов из `asosh_admins`. Открытая панель разработчика его не даёт.
+- **Публичный профиль** для просмотра из чата и рейтинга — `asosh_pubprof/<uid>`: имя из аккаунта, ник, эмодзи, статус, «о себе», класс, число выполненных ДЗ, очки, число друзей и грамоты. Пишет только владелец; фото и средний балл из калькулятора туда не попадают.
+- В чате `userId` сообщения должен совпадать с uid входа (или быть `anonymous` / гостевым `user_…`), иначе база не примет сообщение.
+
+После обновления правил (Rules → Publish) удали в Data старые записи `asosh_transfer/SYSTEM_MAINTENANCE` и все `asosh_transfer/PUBPROF_…`.
+
 ## Настройки (.env)
 
 | Переменная | Зачем |

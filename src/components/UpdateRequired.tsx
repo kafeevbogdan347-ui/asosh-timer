@@ -55,73 +55,10 @@ async function clearWebCaches() {
   await withTimeout(work, 600, undefined);
 }
 
-// Подгрузка свежих модулей с GitHub Pages при ручном нажатии «Обновиться» в APK
-async function hotSwapFromRemote(targetVersion: string): Promise<boolean> {
-  const ctrl = new AbortController();
-  const abortTimer = setTimeout(() => ctrl.abort(), 6000);
-  try {
-    const res = await fetch(`${REMOTE_BASE}/index.html?v=${encodeURIComponent(targetVersion)}&t=${Date.now()}`, {
-      cache: 'no-store',
-      signal: ctrl.signal,
-    });
-    if (!res.ok) return false;
-    const html = await res.text();
-
-    const toAbs = (rawPath: string) => {
-      if (/^https?:\/\//i.test(rawPath)) return rawPath;
-      const clean = rawPath.replace(/^\/asosh-timer\//, '/').replace(/^\.\//, '/');
-      return `${REMOTE_BASE}${clean.startsWith('/') ? '' : '/'}${clean}`;
-    };
-
-    const cssMatches = [...html.matchAll(/<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["']/gi)];
-    const jsMatch = html.match(/<script[^>]+type=["']module["'][^>]+src=["']([^"']+\.js)["']/i);
-    if (!jsMatch) return false;
-
-    await withTimeout(
-      Promise.all(
-        cssMatches.map(
-          (m) =>
-            new Promise<void>((resolve) => {
-              const link = document.createElement('link');
-              link.rel = 'stylesheet';
-              link.href = `${toAbs(m[1])}?v=${encodeURIComponent(targetVersion)}`;
-              link.onload = () => resolve();
-              link.onerror = () => resolve();
-              document.head.appendChild(link);
-            })
-        )
-      ),
-      3500,
-      undefined
-    );
-
-    const jsUrl = `${toAbs(jsMatch[1])}?v=${encodeURIComponent(targetVersion)}`;
-    const oldRoot = document.getElementById('root');
-    const oldHtml = oldRoot ? oldRoot.innerHTML : '';
-    if (oldRoot) {
-      const freshRoot = document.createElement('div');
-      freshRoot.id = 'root';
-      freshRoot.className = oldRoot.className;
-      oldRoot.replaceWith(freshRoot);
-    }
-
-    const loaded = await withTimeout(
-      import(/* @vite-ignore */ jsUrl).then(() => true).catch(() => false),
-      8000,
-      false
-    );
-    if (!loaded) {
-      const curRoot = document.getElementById('root');
-      if (curRoot && oldHtml) curRoot.innerHTML = oldHtml;
-      return false;
-    }
-    return true;
-  } catch {
-    return false;
-  } finally {
-    clearTimeout(abortTimer);
-  }
-}
+// В APK новая версия ставится только новым APK-файлом. Подгружать веб-сборку с сайта поверх
+// запущенного приложения нельзя: старое приложение продолжает работать в фоне (таймеры, рейтинг,
+// звуки дублируются), а после перезапуска APK снова открывает старую встроенную версию.
+export const isApkUpdate = () => isNativeApp();
 
 export function useAvailableUpdate(simulatedVersion: string | null = null) {
   const [remoteVersion, setRemoteVersion] = useState<string | null>(null);
@@ -148,7 +85,8 @@ export function useAvailableUpdate(simulatedVersion: string | null = null) {
     };
 
     checkVersion();
-    const timer = setInterval(checkVersion, 30 * 1000);
+    // Раз в 5 минут и при каждом возвращении в приложение: чаще — лишний трафик и батарея
+    const timer = setInterval(checkVersion, 5 * 60 * 1000);
     const onVisible = () => {
       if (document.visibilityState === 'visible') checkVersion();
     };
@@ -171,11 +109,10 @@ export function useAvailableUpdate(simulatedVersion: string | null = null) {
     const target = availableVersion || APP_VERSION;
 
     if (isNativeApp()) {
-      const swapped = await hotSwapFromRemote(target);
-      if (swapped) {
-        setIsUpdating(false);
-        return;
-      }
+      // Открываем скачивание нового APK в браузере телефона; установится поверх, данные сохранятся
+      window.open(APK_URL, '_blank');
+      setIsUpdating(false);
+      return;
     }
 
     if (isDesktopApp()) {

@@ -55,6 +55,26 @@ function isNewerVersion(remote, local) {
   return false;
 }
 
+// Запрос с ограничением по времени: на медленном Wi-Fi окно не должно висеть белым
+async function fetchWithTimeout(url, ms) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await net.fetch(url, { cache: 'no-store', signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Файлы, без которых новая версия не запустится: главный JS и CSS из index.html
+function entryAssets(html) {
+  const list = [];
+  const re = /(?:src|href)="(\/assets\/[^"]+\.(?:js|css))"/g;
+  let m;
+  while ((m = re.exec(html))) list.push(m[1]);
+  return [...new Set(list)];
+}
+
 function getLocalDistVersion() {
   try {
     const raw = fs.readFileSync(path.join(DIST, 'version.json'), 'utf8');
@@ -78,15 +98,25 @@ app.whenReady().then(() => {
     // чтобы кнопка «Обновить» в Windows-приложении сразу обновляла интерфейс без переустановки .exe
     if (rel === '/index.html') {
       try {
-        const vRes = await net.fetch(`${REMOTE_BASE}/version.json?t=${Date.now()}`, { cache: 'no-store' });
+        const vRes = await fetchWithTimeout(`${REMOTE_BASE}/version.json?t=${Date.now()}`, 3000);
         if (vRes.ok) {
           const { version: remoteVer } = await vRes.json();
           if (remoteVer && isNewerVersion(remoteVer, distVersion)) {
-            const htmlRes = await net.fetch(`${REMOTE_BASE}/index.html?v=${remoteVer}`, { cache: 'no-store' });
+            const htmlRes = await fetchWithTimeout(`${REMOTE_BASE}/index.html?v=${remoteVer}`, 5000);
             if (htmlRes.ok) {
               let html = await htmlRes.text();
               html = html.replace(/\/asosh-timer\//g, '/');
+              // Сначала докачиваем главный JS и CSS. Если не вышло — остаёмся на текущей версии:
+              // иначе без интернета новая index.html ссылалась бы на файлы, которых нет, и окно было бы пустым
               fs.mkdirSync(CACHE_DIR, { recursive: true });
+              for (const assetRel of entryAssets(html)) {
+                const target = path.normalize(path.join(CACHE_DIR, assetRel));
+                if (!target.startsWith(CACHE_DIR) || fs.existsSync(target)) continue;
+                const res = await fetchWithTimeout(`${REMOTE_BASE}${assetRel}`, 15000);
+                if (!res.ok) throw new Error('asset ' + assetRel);
+                fs.mkdirSync(path.dirname(target), { recursive: true });
+                fs.writeFileSync(target, Buffer.from(await res.arrayBuffer()));
+              }
               fs.writeFileSync(path.join(CACHE_DIR, 'index.html'), html, 'utf8');
               fs.writeFileSync(path.join(CACHE_DIR, 'version.json'), JSON.stringify({ version: remoteVer }), 'utf8');
               return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });

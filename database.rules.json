@@ -4,6 +4,15 @@
     ".write": false,
     "asosh_config": {
       ".read": "auth != null",
+      ".write": false,
+      "siteClosed": {
+        ".read": true,
+        ".write": "auth != null && root.child('asosh_admins').child(auth.uid).val() === true",
+        ".validate": "newData.isBoolean()"
+      }
+    },
+    "asosh_admins": {
+      ".read": "auth != null",
       ".write": false
     },
     "asosh_rate": {
@@ -19,7 +28,7 @@
       ".read": "auth != null",
       "$msg": {
         ".write": "auth != null && !data.exists() && newData.parent().parent().child('asosh_rate').child(auth.uid).child('chat').val() === now && root.child('asosh_config').child('lockdown').val() !== true",
-        ".validate": "newData.hasChildren(['content', 'created_at']) && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 400 && (!newData.child('username').exists() || (newData.child('username').isString() && newData.child('username').val().length <= 60))"
+        ".validate": "newData.hasChildren(['content', 'created_at']) && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 400 && (!newData.child('username').exists() || (newData.child('username').isString() && newData.child('username').val().length <= 60)) && (!newData.child('userId').exists() || newData.child('userId').val() === auth.uid || newData.child('userId').val() === 'anonymous' || newData.child('userId').val() === '' || (newData.child('userId').isString() && newData.child('userId').val().beginsWith('user_')))"
       }
     },
     "asosh_rooms": {
@@ -27,7 +36,7 @@
         ".read": "auth != null",
         "$msg": {
           ".write": "auth != null && !data.exists() && newData.parent().parent().parent().child('asosh_rate').child(auth.uid).child('chat').val() === now && root.child('asosh_config').child('lockdown').val() !== true",
-          ".validate": "newData.hasChildren(['content', 'created_at']) && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 400 && (!newData.child('username').exists() || (newData.child('username').isString() && newData.child('username').val().length <= 60))"
+          ".validate": "newData.hasChildren(['content', 'created_at']) && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 400 && (!newData.child('username').exists() || (newData.child('username').isString() && newData.child('username').val().length <= 60)) && (!newData.child('userId').exists() || newData.child('userId').val() === auth.uid || newData.child('userId').val() === 'anonymous' || newData.child('userId').val() === '' || (newData.child('userId').isString() && newData.child('userId').val().beginsWith('user_')))"
         }
       }
     },
@@ -214,6 +223,52 @@
         },
         "t": {
           ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "asosh_pubprof": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid && root.child('asosh_config').child('lockdown').val() !== true && (!newData.exists() || root.child('asosh_users').child($uid).exists())",
+        ".validate": "newData.hasChildren(['name', 'nick', 'avatar', 't'])",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60"
+        },
+        "nick": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+        },
+        "avatar": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 12"
+        },
+        "status": {
+          ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 60"
+        },
+        "bio": {
+          ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 200"
+        },
+        "cls": {
+          ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 4"
+        },
+        "hw": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
+        },
+        "games": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"
+        },
+        "friends": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000"
+        },
+        "certs": {
+          ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 6000"
+        },
+        "reg": {
+          ".validate": "newData.isNumber() && newData.val() <= now"
+        },
+        "t": {
+          ".validate": "newData.isNumber() && newData.val() <= now + 60000"
         },
         "$other": {
           ".validate": false

@@ -86,6 +86,7 @@ import { HolidayLayer } from './components/HolidayLayer';
 import { OnlineScreen } from './screens/OnlineScreen';
 import { startPresence } from './services/online';
 import { pullProfile, pushPublicProfile, fetchPublicProfile } from './services/profileSync';
+import { loadAdmins, onAdminsLoaded } from './services/admins';
 import { getMyProfile } from './services/userService';
 import { subscribeLockdown, subscribeSiteClosed, setGlobalSiteClosed, getLocalSiteClosed } from './services/lockdown';
 import { setAutoLanguage, tr as autoTr } from './i18n/auto';
@@ -136,6 +137,13 @@ export default function App() {
   // Защитный режим: администратор остановил запись на сервере
   const [lockdown, setLockdown] = useState(false);
   useEffect(() => (registered ? subscribeLockdown(setLockdown) : undefined), [registered]);
+
+  // Список администраторов: от него зависит значок «Разработчик» в чате, рейтинге и профиле
+  const [, setAdminsTick] = useState(0);
+  useEffect(() => {
+    loadAdmins();
+    return onAdminsLoaded(() => setAdminsTick((t) => t + 1));
+  }, []);
 
   // Глобальное закрытие доступа к онлайн-функциям приложения и сайту (из Панели разработчика)
   const [siteClosed, setSiteClosed] = useState<boolean>(() => getLocalSiteClosed());
@@ -383,21 +391,27 @@ export default function App() {
   };
 
   const handleToggleSiteClosed = async (closed: boolean) => {
-    setSiteClosed(closed);
-    const synced = await setGlobalSiteClosed(closed);
-    if (closed) {
+    const res = await setGlobalSiteClosed(closed);
+    if (res.ok) {
+      setSiteClosed(closed);
       showToast(
-        synced
-          ? '🔴 Доступ к приложению и сайту закрыт для всех пользователей (включена заглушка)'
-          : '🔴 Доступ закрыт (включена заглушка)'
+        closed
+          ? '🔴 Доступ к онлайн-функциям приложения и сайту закрыт для всех (включена заглушка)'
+          : '🟢 Доступ к приложению и сайту снова открыт для всех!'
       );
-    } else {
-      showToast(
-        synced
-          ? '🟢 Доступ к приложению и сайту снова открыт для всех пользователей!'
-          : '🟢 Доступ к приложению разблокирован!'
-      );
+      return;
     }
+    if (res.reason === 'offline') {
+      showToast('Нет связи с сервером — заглушку не переключить');
+      return;
+    }
+    // Не администратор: сервер не дал записать. uid нужен, чтобы добавить себя в asosh_admins
+    try {
+      await navigator.clipboard?.writeText(res.uid);
+    } catch {
+      // буфер обмена недоступен
+    }
+    showToast(`Нет прав. Добавь в Firebase → Realtime Database: asosh_admins/${res.uid} = true (uid скопирован)`);
   };
 
   // Auto-determination of current day of week (Monday..Sunday)

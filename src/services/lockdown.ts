@@ -1,13 +1,16 @@
 // Аварийный рубильник и глобальная заглушка сайта и приложения:
 // 1) asosh_config/lockdown = true — запрет записи в базу
-// 2) asosh_transfer/SYSTEM_MAINTENANCE — глобальное закрытие доступа к приложению и сайту
-//    из Панели разработчика (ставит экран-заглушку «АСОШ Таймер временно недоступен. Попробуйте позже.»)
+// 2) asosh_config/siteClosed = true — глобальное закрытие онлайн-функций приложения и сайта
+//    из Панели разработчика (экран-заглушка «АСОШ Таймер временно недоступен. Попробуйте позже.»).
+//    Читать флаг может кто угодно (сайту не нужен вход), а менять — только администраторы:
+//    их uid вписаны в asosh_admins/<uid> = true в консоли Firebase. Так ученик не выключит приложение всем.
 
-import { ref, onValue, set, remove, get } from 'firebase/database';
+import { ref, onValue, set } from 'firebase/database';
+import { getAuth } from 'firebase/auth';
 import { initFirebase, ensureSignedIn, saveCustomFirebaseConfig } from './firebaseChat';
 
 const SITE_CLOSED_STORAGE_KEY = 'asosh_site_closed';
-const SITE_CLOSED_DB_PATH = 'asosh_transfer/SYSTEM_MAINTENANCE';
+const SITE_CLOSED_DB_PATH = 'asosh_config/siteClosed';
 const DISCOVERED_CFG_KEY = 'asosh_discovered_fb_cfg_v1';
 
 // Если локальный дев-сервер запущен без .env, автоматически подтягиваем публичный веб-конфиг
@@ -109,8 +112,7 @@ export function subscribeSiteClosed(cb: (closed: boolean) => void): () => void {
     unsub = onValue(
       ref(db, SITE_CLOSED_DB_PATH),
       (snap) => {
-        const val = snap.val();
-        const isClosed = Boolean(val && val.payload === 'closed');
+        const isClosed = snap.val() === true;
         try {
           localStorage.setItem(SITE_CLOSED_STORAGE_KEY, isClosed ? '1' : '0');
         } catch {
@@ -131,39 +133,29 @@ export function subscribeSiteClosed(cb: (closed: boolean) => void): () => void {
   };
 }
 
+export interface SiteClosedResult {
+  ok: boolean;
+  uid?: string;
+  reason?: 'offline' | 'denied';
+}
+
 // Включить или выключить заглушку «АСОШ Таймер временно недоступен. Попробуйте позже.»
-// для всех пользователей приложения и сайта
-export async function setGlobalSiteClosed(closed: boolean): Promise<boolean> {
+// для всех пользователей приложения и сайта. Получится только у администратора (asosh_admins/<uid>).
+export async function setGlobalSiteClosed(closed: boolean): Promise<SiteClosedResult> {
+  const db = await ensureDatabaseReady();
+  if (!db || !(await ensureSignedIn())) return { ok: false, uid: '', reason: 'offline' };
+  const { app } = initFirebase();
+  const uid = (app && getAuth(app).currentUser?.uid) || '';
   try {
-    localStorage.setItem(SITE_CLOSED_STORAGE_KEY, closed ? '1' : '0');
-  } catch {
-    // ignore
-  }
-
-  try {
-    const db = await ensureDatabaseReady();
-    if (!db) return false;
-    const ok = await ensureSignedIn();
-    if (!ok) return false;
-
-    const maintenanceRef = ref(db, SITE_CLOSED_DB_PATH);
-    if (closed) {
-      // В правилах asosh_transfer разрешено создание (!data.exists()) и удаление (!newData.exists()).
-      // Поэтому перед записью проверяем/очищаем узел, если он уже существовал.
-      const existing = await get(maintenanceRef);
-      if (existing.exists()) {
-        await remove(maintenanceRef);
-      }
-      await set(maintenanceRef, {
-        payload: 'closed',
-        created_at: Date.now(),
-      });
-    } else {
-      await remove(maintenanceRef);
+    await set(ref(db, SITE_CLOSED_DB_PATH), closed);
+    try {
+      localStorage.setItem(SITE_CLOSED_STORAGE_KEY, closed ? '1' : '0');
+    } catch {
+      // ignore
     }
-    return true;
+    return { ok: true };
   } catch (err) {
     console.warn('Не удалось обновить статус глобальной заглушки в базе:', err);
-    return false;
+    return { ok: false, uid, reason: navigator.onLine ? 'denied' : 'offline' };
   }
 }

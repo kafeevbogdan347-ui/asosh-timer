@@ -98,6 +98,31 @@ await check('онлайн: свою старую запись удалить м�
 await check('онлайн: время прибавляется', assertSucceeds(set(ref(stu1, `asosh_online/${cls}/stu1`), card())));
 await check('онлайн: прибавка со второго устройства', assertSucceeds(update(ref(stu1, `asosh_online/${cls}/stu1`), { sec: 3700, last: 2 })));
 
+// --- Публичная карточка профиля (видят вошедшие, пишет только владелец) ---
+const pub = (extra = {}) => ({ name: 'Иван П.', nick: 'Ваня', avatar: '😎', status: '', bio: '', cls: '5А', hw: 3, games: 10, friends: 1, certs: '[]', t: 1, ...extra });
+await check('публичный профиль: пишу свой', assertSucceeds(set(ref(stu1, 'asosh_pubprof/stu1'), pub())));
+await check('публичный профиль: одноклассник читает', assertSucceeds(get(ref(stu2, 'asosh_pubprof/stu1'))));
+await check('публичный профиль: без входа не читается', assertFails(get(ref(anon, 'asosh_pubprof/stu1'))));
+await check('публичный профиль: чужой не перезаписать', assertFails(set(ref(stu2, 'asosh_pubprof/stu1'), pub({ nick: 'Взлом' }))));
+await check('публичный профиль: чужой не удалить', assertFails(remove(ref(stu2, 'asosh_pubprof/stu1'))));
+await check('публичный профиль: без аккаунта нельзя', assertFails(set(ref(anonDev, 'asosh_pubprof/anon_device'), pub())));
+await check('публичный профиль: фото не принимается', assertFails(set(ref(stu1, 'asosh_pubprof/stu1'), pub({ photo: 'data:image/png;base64,AAAA' }))));
+await check('публичный профиль: средний балл не принимается', assertFails(set(ref(stu1, 'asosh_pubprof/stu1'), pub({ gpa: 4.5 }))));
+await check('публичный профиль: дата регистрации из будущего нельзя', assertFails(set(ref(stu1, 'asosh_pubprof/stu1'), pub({ reg: Date.now() + 86400000 }))));
+
+// --- Заглушка сайта и администраторы ---
+await check('заглушка: флаг читается без входа (сайт)', assertSucceeds(get(ref(anon, 'asosh_config/siteClosed'))));
+await check('заглушка: ученик не закроет приложение', assertFails(set(ref(stu1, 'asosh_config/siteClosed'), true)));
+await check('заглушка: аноним не закроет приложение', assertFails(set(ref(anonDev, 'asosh_config/siteClosed'), true)));
+await check('админы: себя не добавить', assertFails(set(ref(stu1, 'asosh_admins/stu1'), true)));
+await env.withSecurityRulesDisabled(async (c) => { await set(ref(c.database(), 'asosh_admins/admin1'), true); });
+const admin = db('admin1');
+await check('заглушка: администратор закрывает', assertSucceeds(set(ref(admin, 'asosh_config/siteClosed'), true)));
+await check('заглушка: администратор открывает', assertSucceeds(set(ref(admin, 'asosh_config/siteClosed'), false)));
+await check('заглушка: только true/false', assertFails(set(ref(admin, 'asosh_config/siteClosed'), 'closed')));
+await check('админы: список видят вошедшие (значок «Разработчик»)', assertSucceeds(get(ref(stu2, 'asosh_admins'))));
+await check('админ: остальной конфиг не трогает', assertFails(set(ref(admin, 'asosh_config/lockdown'), true)));
+
 // --- Профиль аккаунта (ник, аватар, статус) — общий для всех устройств ---
 const prof = (extra = {}) => ({ nick: 'Ваня', avatar: '😎', status: 'Учусь', bio: 'Люблю футбол', t: 1, ...extra });
 await check('профиль: пишу свой', assertSucceeds(set(ref(stu1, 'asosh_profiles/stu1'), prof())));
@@ -118,6 +143,10 @@ await check('чат: чужую отметку не поставить', assertF
 await check('чат: время подделать нельзя', assertFails(update(ref(stu2), { 'asosh_timer/m5': msg(), 'asosh_rate/stu2/chat': 1 })));
 await check('чат: другой ученик пишет', assertSucceeds(sendChat(stu2, 'stu2', 'm6')));
 await check('чат: чужое сообщение не перезаписать', assertFails(set(ref(stu1, 'asosh_timer/m6'), msg({ content: 'взлом' }))));
+await env.withSecurityRulesDisabled(async (c) => { await remove(ref(c.database(), 'asosh_rate')); });
+await check('чат: подписаться чужим uid нельзя', assertFails(update(ref(stu1), { 'asosh_timer/m10': msg({ userId: 'stu2' }), 'asosh_rate/stu1/chat': serverTimestamp() })));
+await check('чат: своим uid можно', assertSucceeds(update(ref(stu1), { 'asosh_timer/m11': msg({ userId: 'stu1' }), 'asosh_rate/stu1/chat': serverTimestamp() })));
+await check('чат: гость с user_… можно', assertSucceeds(update(ref(stu2), { 'asosh_timer/m12': msg({ userId: 'user_1700000000000_abc' }), 'asosh_rate/stu2/chat': serverTimestamp() })));
 await check('чат: неизвестный вид лимита нельзя', assertFails(set(ref(stu1, 'asosh_rate/stu1/hack'), serverTimestamp())));
 const hw = { sub: 'Математика', text: '№ 125', uid: 'stu1', created_at: 1 };
 const share = (d, uid, key) => update(ref(d), { [`asosh_class/${cls}/homework/${key}`]: { ...hw, uid }, [`asosh_rate/${uid}/share`]: serverTimestamp() });

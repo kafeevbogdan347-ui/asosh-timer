@@ -28,7 +28,7 @@ import {
 } from '../services/firebaseChat';
 import { getMyProfile } from '../services/userService';
 import { fetchPublicProfile, getCachedPublicProfile } from '../services/profileSync';
-import { getProfileBadges, isDevPanelUnlocked } from '../utils/profileBadges';
+import { getProfileBadges } from '../utils/profileBadges';
 import { playSound, doVibro } from '../utils/audio';
 import { useOnline } from '../utils/useOnline';
 import { checkBeforePublish } from '../components/HumanCheck';
@@ -152,11 +152,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
   // Подгружаем публичные профили авторов сообщений (для бейджиков и быстрого перехода в профиль)
   useEffect(() => {
-    const ids = Array.from(
-      new Set(
+    // Публичный профиль есть только у аккаунтов (id = uid); у гостей id вида user_… — их не запрашиваем
+    const ids: string[] = Array.from(
+      new Set<string>(
         messages
-          .filter((m) => !m.isIncognito && m.userId && m.userId !== 'anonymous' && m.userId !== userProfile.id)
-          .map((m) => m.userId as string)
+          .filter((m) => !m.isIncognito && m.userId && m.userId !== 'anonymous' && m.userId !== userProfile.id && !m.userId.startsWith('user_'))
+          .map((m) => String(m.userId))
       )
     );
     if (!ids.length) return;
@@ -214,11 +215,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         : {
             isIncognito,
             isSelfDestruct,
+            // Полное имя в общешкольный чат не отправляем — только ник и класс
             handle: username,
-            fullName: userProfile.fullName,
             className: userProfile.className || classRoom,
             registeredAt: userProfile.registeredAt,
-            isDev: isDevPanelUnlocked() || Boolean(userProfile.isDev),
           }
     );
 

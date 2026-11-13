@@ -1,3 +1,5 @@
+import { isAdminUid } from '../services/admins';
+
 export interface ProfileBadgeInfo {
   id: 'developer' | 'newbie' | 'veteran';
   label: string;
@@ -57,14 +59,16 @@ export function getProfileBadges(params: {
 }): ProfileBadgeInfo[] {
   const badges: ProfileBadgeInfo[] = [];
 
-  const hasDev = params.isSelf ? isDevPanelUnlocked() || Boolean(params.isDev) : Boolean(params.isDev);
+  // «Разработчик» — только администратор из базы (asosh_admins). Открытая панель разработчика
+  // или флаг isDev в сообщении значок не дают: их легко подделать
+  const hasDev = isAdminUid(params.id);
   if (hasDev) {
     badges.push({
       id: 'developer',
       label: 'Разработчик',
       icon: '🛠️',
       className: 'bg-violet-500/25 border border-violet-400/50 text-violet-200',
-      title: 'Открыл панель разработчика',
+      title: 'Разработчик приложения',
     });
   }
 

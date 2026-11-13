@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { isApkUpdate } from '../components/UpdateRequired';
 import { ScreenId, LanguageType } from '../types';
 import { DICT } from '../data/constants';
 import { BoardPost, AUDIENCE_LABEL } from '../services/teacher';
@@ -176,9 +177,14 @@ export const MainScreen: React.FC<MainScreenProps> = ({
               onClick={onApplyUpdate}
               className="w-full py-2.5 px-4 rounded-xl bg-rose-500 hover:bg-rose-400 disabled:opacity-60 text-white font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
             >
-              <span>{isUpdatingApp ? '⏳' : '🔄'}</span>
-              <span>{isUpdatingApp ? 'Обновляем приложение...' : 'Обновиться'}</span>
+              <span>{isUpdatingApp ? '⏳' : isApkUpdate() ? '⬇️' : '🔄'}</span>
+              <span>{isUpdatingApp ? 'Обновляем приложение...' : isApkUpdate() ? 'Скачать новую версию' : 'Обновиться'}</span>
             </button>
+          )}
+          {onApplyUpdate && isApkUpdate() && (
+            <p className="text-[11px] text-rose-100/80 leading-snug">
+              Скачай файл и открой его — новая версия установится поверх, все данные сохранятся.
+            </p>
           )}
         </div>
       )}

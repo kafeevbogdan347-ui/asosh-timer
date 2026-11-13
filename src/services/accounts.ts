@@ -426,6 +426,17 @@ export async function logoutAccount(): Promise<void> {
   clearGradeCaches();
   localStorage.removeItem('asosh_teacher');
   localStorage.removeItem('asosh_profile_pushed');
+  localStorage.removeItem('asosh_pubprof_pushed_sig');
+  // После выхода устройство пишет в чат как гость: id профиля больше не должен совпадать с uid аккаунта
+  try {
+    const prof = JSON.parse(localStorage.getItem('asosh_user_profile_v1') || 'null');
+    if (prof && prof.id && !String(prof.id).startsWith('user_')) {
+      prof.id = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+      localStorage.setItem('asosh_user_profile_v1', JSON.stringify(prof));
+    }
+  } catch {
+    // повреждённый профиль пересоздастся сам
+  }
   const ctx = authOrNull();
   if (ctx) {
     // Строка аккаунта в рейтинге остаётся (на других устройствах он ещё вошёл),
