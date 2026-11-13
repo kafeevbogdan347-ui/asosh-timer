@@ -91,6 +91,7 @@ import { setErrorScreen } from './services/errorLog';
 import { homeworkForTomorrow, reminderText } from './utils/hwReminder';
 import { subscribeFriends } from './services/friends';
 import { drawWeekSchedule, shareScheduleImage } from './utils/scheduleImage';
+import { updateWidget, atTime, WidgetLesson } from './services/widget';
 import { getMyProfile } from './services/userService';
 import { subscribeLockdown, subscribeSiteClosed, setGlobalSiteClosed, getLocalSiteClosed } from './services/lockdown';
 import { setAutoLanguage, tr as autoTr } from './i18n/auto';
@@ -1131,6 +1132,27 @@ export default function App() {
       .filter(Boolean)
       .join('\n');
   };
+
+  // Виджет Android: уроки на сегодня и завтра (виджет сам ведёт отсчёт до звонка)
+  const widgetLessons: WidgetLesson[] = (() => {
+    if (!cls || isTeacher) return [];
+    const out: WidgetLesson[] = [];
+    [
+      { date: activeTime, lessons: currentLessons, bells: currentBells },
+      { date: new Date(activeTime.getFullYear(), activeTime.getMonth(), activeTime.getDate() + 1), lessons: tomorrowLessons, bells: tomorrowBells },
+    ].forEach(({ date, lessons, bells }) =>
+      lessons.forEach(([sub, room], i) => {
+        if (!bells[i] || !sub || sub === '—') return;
+        out.push({ start: atTime(date, bells[i][0]), end: atTime(date, bells[i][1]), num: lessonNo(shift, i), sub: sub.replace('🔄 ', ''), room });
+      })
+    );
+    return out;
+  })();
+  const widgetKey = JSON.stringify(widgetLessons);
+  useEffect(() => {
+    updateWidget(widgetLessons, cls);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [widgetKey, cls]);
 
   // Вечернее напоминание о домашке: что из невыполненного задано на завтра
   const hwReminderOn = settings.hwReminder !== false && Boolean(cls) && !isTeacher;
