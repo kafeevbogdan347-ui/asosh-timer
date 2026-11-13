@@ -101,7 +101,7 @@ import { RetroFirstScreen } from './screens/RetroFirstScreen';
 import { BellsScreen } from './screens/BellsScreen';
 import { MaintenanceScreen } from './screens/MaintenanceScreen';
 import { Achievement } from './types';
-import { LIGHT_THEME_IDS, HOLIDAY_THEME_EFFECTS } from './data/themes';
+import { LIGHT_THEME_IDS, HOLIDAY_THEME_EFFECTS, NO_GLASS_THEME_IDS } from './data/themes';
 import { BoardScreen } from './screens/BoardScreen';
 import { HumanCheckHost } from './components/HumanCheck';
 import { CalendarScreen } from './screens/CalendarScreen';
@@ -744,6 +744,11 @@ export default function App() {
     const quality = settings.quality ?? (settings.perfLow ? 'eco' : 'normal');
     if (quality === 'eco') body.classList.add('low', 'q-eco');
     if (quality === 'ultra') body.classList.add('q-ultra');
+    if (quality === 'ultra' && !NO_GLASS_THEME_IDS.includes(effectiveTheme)) {
+      body.classList.add('lg');
+      // преломление фона (линза) умеет только Chromium: Android, Chrome, Edge
+      if (/Chrome\//.test(navigator.userAgent)) body.classList.add('lg-refract');
+    }
     if (!settings.anim) body.classList.add('no-anim');
     if (!settings.splash) body.classList.add('hide-splash');
     if (!settings.mot) body.classList.add('hide-mot');

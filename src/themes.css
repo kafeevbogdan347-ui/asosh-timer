@@ -868,6 +868,94 @@ body.q-ultra .lesson.current { box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.5
 body.q-ultra .screen-enter { animation-duration: 0.45s; }
 body.q-ultra.no-anim #root::before { animation: none; }
 
+/* ---------- LIQUID GLASS (только «Максимум», класс .lg ставит App.tsx) ---------- */
+body.lg {
+  --lg-tint: rgba(255, 255, 255, 0.13);
+  --lg-tint2: rgba(255, 255, 255, 0.02);
+  --lg-rim: rgba(255, 255, 255, 0.55);
+  --lg-edge: rgba(255, 255, 255, 0.2);
+  --lg-glare: rgba(255, 255, 255, 0.16);
+  --lg-shadow: 0 14px 34px rgba(0, 0, 0, 0.3);
+}
+body.lg.ui-light {
+  --lg-tint: rgba(255, 255, 255, 0.6);
+  --lg-tint2: rgba(255, 255, 255, 0.25);
+  --lg-rim: rgba(255, 255, 255, 0.95);
+  --lg-edge: rgba(255, 255, 255, 0.7);
+  --lg-glare: rgba(255, 255, 255, 0.5);
+  --lg-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+}
+/* карточки: прозрачное стекло, цвет темы просвечивает */
+body.lg .card {
+  background: linear-gradient(160deg, var(--lg-tint), var(--lg-tint2));
+  background: linear-gradient(160deg, var(--lg-tint), var(--lg-tint2)), color-mix(in srgb, var(--card) 45%, transparent);
+  border: 1px solid var(--lg-edge);
+  backdrop-filter: blur(14px) saturate(1.9) brightness(1.05);
+  -webkit-backdrop-filter: blur(14px) saturate(1.9) brightness(1.05);
+  box-shadow:
+    inset 0 1px 0.5px var(--lg-rim),
+    inset 0 -1px 0.5px rgba(255, 255, 255, 0.1),
+    inset 0 0 22px rgba(255, 255, 255, 0.05),
+    var(--lg-shadow);
+}
+/* блик сверху слева, под текстом карточки */
+body.lg .card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 70% at 15% 0%, var(--lg-glare), transparent 55%),
+    radial-gradient(70% 45% at 100% 100%, rgba(255, 255, 255, 0.06), transparent 60%);
+}
+body.lg .card:hover {
+  box-shadow:
+    inset 0 1px 0.5px var(--lg-rim),
+    inset 0 -1px 0.5px rgba(255, 255, 255, 0.14),
+    inset 0 0 26px rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(var(--accent-rgb), 0.22),
+    0 18px 44px rgba(var(--accent-rgb), 0.16);
+}
+/* нижняя панель: стеклянная «капсула» */
+body.lg .nav-bar {
+  background: linear-gradient(160deg, var(--lg-tint), var(--lg-tint2)), rgba(10, 17, 40, 0.32);
+  border: 1px solid var(--lg-edge);
+  border-radius: 30px;
+  backdrop-filter: blur(16px) saturate(2) brightness(1.06);
+  -webkit-backdrop-filter: blur(16px) saturate(2) brightness(1.06);
+  box-shadow: inset 0 1px 0.5px var(--lg-rim), inset 0 -1px 0.5px rgba(255, 255, 255, 0.1), var(--lg-shadow);
+}
+body.lg.ui-light .nav-bar { background: linear-gradient(160deg, var(--lg-tint), var(--lg-tint2)); }
+body.lg-refract .nav-bar {
+  backdrop-filter: url(#lg-refract) blur(10px) saturate(2) brightness(1.06);
+}
+body.lg .nav-bar button { transition: background 0.3s ease, color 0.2s ease, transform 0.35s cubic-bezier(0.3, 1.6, 0.5, 1); }
+body.lg .nav-bar button:active { transform: scale(1.12); }
+body.lg .nav-bar button.active {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06));
+  box-shadow: inset 0 1px 0.5px var(--lg-rim), inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 4px 14px rgba(var(--accent-rgb), 0.25);
+}
+/* тёмные кнопки и кнопки выбора: тоже стекло */
+body.lg .btn.darkBtn,
+body.lg .choice:not(.active) {
+  background: linear-gradient(160deg, var(--lg-tint), var(--lg-tint2));
+  border: 1px solid var(--lg-edge);
+  backdrop-filter: blur(10px) saturate(1.8);
+  -webkit-backdrop-filter: blur(10px) saturate(1.8);
+  box-shadow: inset 0 1px 0.5px var(--lg-rim), 0 4px 14px rgba(0, 0, 0, 0.14);
+}
+/* цветные кнопки: стеклянный блик поверх градиента */
+body.lg .btn:not(.darkBtn) {
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.55), inset 0 -2px 6px rgba(0, 0, 0, 0.12), var(--sh);
+}
+/* упругое нажатие, как у стекла в iOS */
+body.lg .btn,
+body.lg .choice { transition: transform 0.35s cubic-bezier(0.3, 1.6, 0.5, 1), filter 0.2s ease, background 0.2s ease; }
+body.lg .btn:active,
+body.lg .choice:active { transform: scale(0.95); }
+
 /* ============================================================
    ЦВЕТНЫЕ ТЁМНЫЕ ТЕМЫ: тёмно-синие панели из Tailwind (slate/indigo-950 и т.п.)
    делаем нейтрально-тёмными, чтобы сквозь них просвечивал цвет темы
