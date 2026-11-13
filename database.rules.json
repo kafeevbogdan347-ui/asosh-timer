@@ -200,6 +200,28 @@
         }
       }
     },
+    "asosh_board_read": {
+      "$post": {
+        ".read": "auth != null && root.child('asosh_teachers').child(auth.uid).exists()",
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid && root.child('asosh_users').child($uid).exists() && root.child('asosh_board').child('pub').child($post).exists() && root.child('asosh_config').child('lockdown').val() !== true",
+          ".validate": "newData.hasChildren(['name', 'role', 't']) && newData.child('role').val() === root.child('asosh_users').child($uid).child('role').val() && newData.child('name').val() === root.child('asosh_users').child($uid).child('name').val()",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60"
+          },
+          "role": {
+            ".validate": "newData.val() === 'student' || newData.val() === 'parent'"
+          },
+          "t": {
+            ".validate": "newData.isNumber() && newData.val() === now"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
     "asosh_transfer": {
       "$id": {
         ".read": "auth != null",

@@ -836,6 +836,33 @@ export default function App() {
   }, [registered, isTeacher]);
   const visiblePosts = postsFor(boardPosts, isTeacher, cls);
 
+  // Новое объявление учителя для своего класса или школы — уведомление (у учителя — нет)
+  const annIdsKey = visiblePosts.filter((p) => p.kind === 'ann').map((p) => p.id).join(',');
+  useEffect(() => {
+    if (isTeacher || !annIdsKey) return;
+    const ids = annIdsKey.split(',');
+    let known: string[] | null = null;
+    try {
+      known = JSON.parse(localStorage.getItem('asosh_ann_notified') || 'null');
+    } catch {
+      known = null;
+    }
+    // Первый запуск: всё, что уже было, считаем известным
+    if (known) {
+      const fresh = visiblePosts.filter((p) => p.kind === 'ann' && !known!.includes(p.id) && Date.now() - p.created_at < 3 * 24 * 3600 * 1000);
+      fresh.slice(0, 2).forEach((p) => {
+        showToast(`📢 ${p.title}`);
+        notifyNow(`📢 Объявление: ${p.title}`, p.text || p.author, `asosh-ann-${p.id}`);
+      });
+    }
+    try {
+      localStorage.setItem('asosh_ann_notified', JSON.stringify([...new Set([...(known || []), ...ids])].slice(-300)));
+    } catch {
+      // нет места
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [annIdsKey, isTeacher]);
+
   // Учитель остаётся учителем, только пока его запись есть в базе
   useEffect(() => {
     if (!teacher) return;
@@ -2029,6 +2056,8 @@ export default function App() {
               ),
             }}
             announcements={visiblePosts}
+            account={account}
+            onShowToast={showToast}
             isTeacher={isTeacher}
             nextLesson={nextLessonInfo}
             shortLessonsToday={!todayOff && isShortDay(currentDayName) ? settings.shortLessonMin ?? SHORT_LESSON_MIN : 0}

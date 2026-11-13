@@ -123,6 +123,23 @@ await check('заглушка: только true/false', assertFails(set(ref(adm
 await check('админы: список видят вошедшие (значок «Разработчик»)', assertSucceeds(get(ref(stu2, 'asosh_admins'))));
 await check('админ: остальной конфиг не трогает', assertFails(set(ref(admin, 'asosh_config/lockdown'), true)));
 
+// --- Отметки «прочитано» у объявлений ---
+await env.withSecurityRulesDisabled(async (c) => {
+  await set(ref(c.database(), 'asosh_board/pub/ann1'), { kind: 'ann', title: 'Экскурсия', aud: 'all', cls: '5А', uid: 'teacher1', created_at: 1 });
+  await set(ref(c.database(), 'asosh_users/par1'), { role: 'parent', name: 'Мама Ивана', login: 'mama', t: 1 });
+});
+const readMark = (name, role) => ({ name, role, t: serverTimestamp() });
+await check('прочитано: ученик отмечает', assertSucceeds(set(ref(stu1, 'asosh_board_read/ann1/stu1'), readMark('Иван П.', 'student'))));
+await check('прочитано: родитель отмечает', assertSucceeds(set(ref(par1, 'asosh_board_read/ann1/par1'), readMark('Мама Ивана', 'parent'))));
+await check('прочитано: за другого нельзя', assertFails(set(ref(stu1, 'asosh_board_read/ann1/stu2'), readMark('Петя С.', 'student'))));
+await check('прочитано: чужое имя нельзя', assertFails(set(ref(stu1, 'asosh_board_read/ann1/stu1'), readMark('Директор', 'student'))));
+await check('прочитано: чужую роль нельзя', assertFails(set(ref(stu1, 'asosh_board_read/ann1/stu1'), readMark('Иван П.', 'parent'))));
+await check('прочитано: несуществующее объявление нельзя', assertFails(set(ref(stu1, 'asosh_board_read/nope/stu1'), readMark('Иван П.', 'student'))));
+await check('прочитано: без аккаунта нельзя', assertFails(set(ref(anonDev, 'asosh_board_read/ann1/anon_device'), readMark('Аноним', 'student'))));
+await check('прочитано: учитель видит список', assertSucceeds(get(ref(teacher, 'asosh_board_read/ann1'))));
+await check('прочитано: ученик видит только своё', assertSucceeds(get(ref(stu1, 'asosh_board_read/ann1/stu1'))));
+await check('прочитано: ученик не видит весь список', assertFails(get(ref(stu1, 'asosh_board_read/ann1'))));
+
 // --- Журнал ошибок ---
 const errRec = (extra = {}) => ({ msg: 'TypeError: x is undefined', stack: 'at App', ver: 'v16.21', scr: 'main', plat: 'apk', t: serverTimestamp(), ...extra });
 const sendErr = (d, uid, key, extra) => update(ref(d), { [`asosh_errors/${uid}/${key}`]: errRec(extra), [`asosh_rate/${uid}/err`]: serverTimestamp() });
