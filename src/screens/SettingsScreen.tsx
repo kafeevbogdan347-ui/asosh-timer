@@ -684,6 +684,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               }}
               className="text-xs w-full mt-1"
             >
+              <option value="5">АСОШ: мягкие звуки (маримба и стекло)</option>
               <option value="1">Классический щелчок (Classic Triangle Wave)</option>
               <option value="2">8-bit Синтезатор (Retro Gaming Square Wave)</option>
               <option value="3">Мягкий клик (Soft Sine Wave)</option>
@@ -1273,7 +1274,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 {quality === 'normal' &&
                   'Баланс красоты и скорости — подходит для большинства телефонов.'}
                 {quality === 'ultra' &&
-                  'Толстое стекло, мягкое свечение и плавные переходы. Лучше для мощных телефонов и ПК.'}
+                  'Liquid Glass: прозрачное жидкое стекло с бликами, мягкое свечение и плавные переходы. Лучше для мощных телефонов и ПК.'}
               </div>
             </div>
           </div>

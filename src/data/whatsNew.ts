@@ -14,7 +14,20 @@ export interface WhatsNewRelease {
   items: WhatsNewItem[];
 }
 
+// Страница с подробным описанием обновлений (сайт приложения). Якорь: #v16-23
+export const UPDATES_URL = 'https://kafeevbogdan347-ui.github.io/asosh-timer-site/updates/';
+export const updatesLink = (version: string) => `${UPDATES_URL}#${version.replace('.', '-')}`;
+
 export const WHATS_NEW: WhatsNewRelease[] = [
+  {
+    version: 'v16.23',
+    date: '14 ноября 2026',
+    items: [
+      { icon: '🔊', title: 'Новые звуки «АСОШ»', text: 'Мягкие звуки, как в iPhone: маримба, стекло и новый звонок. Опции → Звук → «АСОШ: мягкие звуки».' },
+      { icon: '💎', title: 'Liquid Glass', text: 'Прозрачное жидкое стекло с бликами. Включается в Опции → Качество графики → «Максимум».' },
+      { icon: '📰', title: 'Сайт обновлений', text: 'Подробно о каждой версии — по кнопке «Подробнее» ниже.' },
+    ],
+  },
   {
     version: 'v16.22',
     date: '13 ноября 2026',
