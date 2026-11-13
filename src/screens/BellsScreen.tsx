@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Bell, Volume2, Clock, Sparkles, Coffee, AlertCircle, Play, ShieldCheck, Sun, Moon, Zap } from 'lucide-react';
 import { LanguageType, SoundProfileType } from '../types';
 import { B1, B2, B2F, shortenBells, SHORT_LESSON_MIN } from '../data/constants';
@@ -45,20 +45,24 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
     progress: 0,
   });
 
-  const isFriday = new Date().getDay() === 5;
+  const [isFriday, setIsFriday] = useState(() => new Date().getDay() === 5);
+  const bellTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Get active schedule array
-  const getCurrentSchedule = (): [string, string][] => {
-    switch (selectedShift) {
+  const buildSchedule = (
+    shiftMode: '1' | '2' | 'short1' | 'short2',
+    fridayFlag: boolean,
+    shortMin: number
+  ): [string, string][] => {
+    switch (shiftMode) {
       case '1': return B1;
-      case '2': return isFriday ? B2F : B2; // по пятницам 2-я смена начинается в 13:00
-      case 'short1': return shortenBells(B1, shortLessonMin);
-      case 'short2': return shortenBells(isFriday ? B2F : B2, shortLessonMin);
+      case '2': return fridayFlag ? B2F : B2; // по пятницам 2-я смена начинается в 13:00
+      case 'short1': return shortenBells(B1, shortMin);
+      case 'short2': return shortenBells(fridayFlag ? B2F : B2, shortMin);
       default: return B1;
     }
   };
 
-  const schedule = getCurrentSchedule();
+  const schedule = buildSchedule(selectedShift, isFriday, shortLessonMin);
 
   // Update live clock and active lesson countdown
   useEffect(() => {
@@ -68,22 +72,24 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
       const m = now.getMinutes();
       const s = now.getSeconds();
       const curTotalSec = h * 3600 + m * 60 + s;
+      const fridayNow = now.getDay() === 5;
+      setIsFriday((prev) => (prev === fridayNow ? prev : fridayNow));
       setCurrentTimeStr(
         `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
       );
 
-      const schedule = getCurrentSchedule();
-      if (schedule.length === 0) return;
+      const liveSchedule = buildSchedule(selectedShift, fridayNow, shortLessonMin);
+      if (liveSchedule.length === 0) return;
 
-      const firstStart = parseTimeToSec(schedule[0][0]);
-      const lastEnd = parseTimeToSec(schedule[schedule.length - 1][1]);
+      const firstStart = parseTimeToSec(liveSchedule[0][0]);
+      const lastEnd = parseTimeToSec(liveSchedule[liveSchedule.length - 1][1]);
 
       if (curTotalSec < firstStart) {
         const diff = firstStart - curTotalSec;
         setActiveLessonInfo({
           status: 'before',
           lessonNum: 1,
-          title: `До 1-го урока (${schedule[0][0]})`,
+          title: `До 1-го урока (${liveSchedule[0][0]})`,
           remainSec: diff,
           progress: 0,
         });
@@ -93,7 +99,7 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
       if (curTotalSec >= lastEnd) {
         setActiveLessonInfo({
           status: 'after',
-          lessonNum: schedule.length,
+          lessonNum: liveSchedule.length,
           title: 'Учебные занятия на сегодня окончены 🎉',
           remainSec: 0,
           progress: 100,
@@ -102,8 +108,8 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
       }
 
       // Check current lessons and breaks
-      for (let i = 0; i < schedule.length; i++) {
-        const [startStr, endStr] = schedule[i];
+      for (let i = 0; i < liveSchedule.length; i++) {
+        const [startStr, endStr] = liveSchedule[i];
         const startSec = parseTimeToSec(startStr);
         const endSec = parseTimeToSec(endStr);
 
@@ -122,8 +128,8 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
         }
 
         // Check break before next lesson
-        if (i < schedule.length - 1) {
-          const nextStartSec = parseTimeToSec(schedule[i + 1][0]);
+        if (i < liveSchedule.length - 1) {
+          const nextStartSec = parseTimeToSec(liveSchedule[i + 1][0]);
           if (curTotalSec >= endSec && curTotalSec < nextStartSec) {
             const breakTotal = nextStartSec - endSec;
             const breakElapsed = curTotalSec - endSec;
@@ -145,7 +151,13 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
     updateTime();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
-  }, [selectedShift]);
+  }, [selectedShift, shortLessonMin]);
+
+  useEffect(() => {
+    return () => {
+      if (bellTimeoutRef.current) clearTimeout(bellTimeoutRef.current);
+    };
+  }, []);
 
   const parseTimeToSec = (t: string) => {
     const [h, m] = t.split(':').map(Number);
@@ -163,7 +175,9 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
     setActivePlayingBell(kind);
     playBellSimulatorSound(kind, soundProfile);
     onShowToast(`Звучит: ${label} 🔔`);
-    setTimeout(() => {
+    if (bellTimeoutRef.current) clearTimeout(bellTimeoutRef.current);
+    bellTimeoutRef.current = setTimeout(() => {
+      bellTimeoutRef.current = null;
       setActivePlayingBell(null);
     }, 2000);
   };

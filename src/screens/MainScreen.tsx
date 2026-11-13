@@ -152,7 +152,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
   const markRead = async (id: string) => {
     if (!account) return;
     const ok = await markAnnouncementRead(id, account);
-    if (ok) setReadAnn((prev) => [...prev, id]);
+    if (ok) setReadAnn((prev) => (prev.includes(id) ? prev : [...prev, id]));
     else onShowToast?.('Не получилось отметить — нужен интернет');
   };
   const freshAnn = announcements

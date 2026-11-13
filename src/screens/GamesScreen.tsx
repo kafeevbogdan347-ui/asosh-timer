@@ -76,6 +76,8 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
   const foodRef = useRef<{ x: number; y: number; isGold?: boolean }>({ x: 15, y: 15, isGold: false });
   const dirRef = useRef<{ x: number; y: number }>({ x: 1, y: 0 });
   const snakeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const snakeScoreRef = useRef(0);
+  const snakeHighScoreRef = useRef(snakeHighScore);
 
   const spawnSnakeFood = (tc: number) => {
     const isGold = Math.random() < 0.25;
@@ -99,6 +101,7 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
       { x: 8, y: 10 },
     ];
     dirRef.current = { x: 1, y: 0 };
+    snakeScoreRef.current = 0;
     setSnakeScore(0);
     setSnakePlaying(true);
     spawnSnakeFood(20);
@@ -153,16 +156,18 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
     // Food collision
     if (head.x === foodRef.current.x && head.y === foodRef.current.y) {
       const addedPoints = foodRef.current.isGold ? 5 : 1;
-      setSnakeScore((prev) => {
-        const next = prev + addedPoints;
-        if (next > snakeHighScore) {
-          setSnakeHighScore(next);
-          localStorage.setItem('asosh_snake_highscore', String(next));
-        }
-        // Внутри setState нельзя обновлять App — откладываем
-        if (next >= 20) setTimeout(() => onUnlockAchievement?.('snake_master'), 0);
-        return next;
-      });
+      const nextScore = snakeScoreRef.current + addedPoints;
+      snakeScoreRef.current = nextScore;
+      setSnakeScore(nextScore);
+
+      if (nextScore > snakeHighScoreRef.current) {
+        snakeHighScoreRef.current = nextScore;
+        setSnakeHighScore(nextScore);
+        localStorage.setItem('asosh_snake_highscore', String(nextScore));
+      }
+      if (nextScore >= 20) {
+        onUnlockAchievement?.('snake_master');
+      }
 
       if (foodRef.current.isGold) {
         playSound('star', soundProfile);
@@ -303,7 +308,12 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
   };
 
   const resetDuelMatch = () => {
+    if (duelTimeoutRef.current) {
+      clearTimeout(duelTimeoutRef.current);
+      duelTimeoutRef.current = null;
+    }
     setDuelScore({ p1: 0, p2: 0 });
+    setDuelRoundWinner(null);
     setDuelState('idle');
     setDuelStatusText('Новый матч: до 3 побед!');
     playSound('click', soundProfile);
@@ -367,23 +377,19 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
   };
 
   useEffect(() => {
-    let timer: NodeJS.Timeout | null = null;
-    if (mathPlaying && mathTimeLeft > 0) {
-      timer = setInterval(() => {
-        setMathTimeLeft((t) => {
-          if (t <= 1) {
-            setMathPlaying(false);
-            playSound('gameover', soundProfile);
-            onShowToast('Время вышло! Отличный счет!');
-            return 0;
-          }
-          return t - 1;
-        });
-      }, 1000);
+    if (!mathPlaying) return;
+    const timer = setInterval(() => {
+      setMathTimeLeft((t) => (t <= 1 ? 0 : t - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [mathPlaying]);
+
+  useEffect(() => {
+    if (mathPlaying && mathTimeLeft === 0) {
+      setMathPlaying(false);
+      playSound('gameover', soundProfile);
+      onShowToast('Время вышло! Отличный счет!');
     }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
   }, [mathPlaying, mathTimeLeft]);
 
   const handleAnswerMath = (selected: number) => {
@@ -423,6 +429,7 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
   const [tttMode, setTttMode] = useState<'pvp' | 'ai'>('ai');
   const [tttWinner, setTttWinner] = useState<string | null>(null);
   const [tttScore, setTttScore] = useState<{ x: number; o: number; draws: number }>({ x: 0, o: 0, draws: 0 });
+  const tttTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const checkWinner = (b: string[]) => {
     const lines = [
@@ -459,7 +466,9 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
 
     if (tttMode === 'ai' && tttTurn === 'X') {
       setTttTurn('O');
-      setTimeout(() => {
+      if (tttTimeoutRef.current) clearTimeout(tttTimeoutRef.current);
+      tttTimeoutRef.current = setTimeout(() => {
+        tttTimeoutRef.current = null;
         makeAiMove(next);
       }, 350);
     } else {
@@ -537,6 +546,10 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
   };
 
   const resetTttBoard = () => {
+    if (tttTimeoutRef.current) {
+      clearTimeout(tttTimeoutRef.current);
+      tttTimeoutRef.current = null;
+    }
     setTttBoard(Array(9).fill(''));
     setTttTurn('X');
     setTttWinner(null);
@@ -569,6 +582,8 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
   const [memoryBestMoves, setMemoryBestMoves] = useState<number>(() => {
     return Number(localStorage.getItem('asosh_memory_best_moves') || '0');
   });
+  const memoryBestMovesRef = useRef(memoryBestMoves);
+  const memoryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const memoryDecks: Record<MemoryCategory, Omit<MemoryCardItem, 'id' | 'flipped' | 'matched'>[]> = {
     science: [
@@ -604,6 +619,10 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
   };
 
   const initMemoryGame = (cat: MemoryCategory = memoryCategory) => {
+    if (memoryTimeoutRef.current) {
+      clearTimeout(memoryTimeoutRef.current);
+      memoryTimeoutRef.current = null;
+    }
     const rawDeck = memoryDecks[cat];
     const fullDeck = [...rawDeck, ...rawDeck]
       .sort(() => Math.random() - 0.5)
@@ -649,8 +668,7 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
     playSound('flip', soundProfile);
     doVibro(vibro, 8);
 
-    const updated = [...memoryCards];
-    updated[idx].flipped = true;
+    const updated = memoryCards.map((c, i) => (i === idx ? { ...c, flipped: true } : c));
     setMemoryCards(updated);
 
     const nextFlipped = [...flippedIndices, idx];
@@ -663,23 +681,27 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
 
       if (updated[firstIdx].key === updated[secondIdx].key) {
         // Matched!
-        setTimeout(() => {
-          const matchedCards = [...updated];
-          matchedCards[firstIdx].matched = true;
-          matchedCards[secondIdx].matched = true;
-          setMemoryCards(matchedCards);
+        if (memoryTimeoutRef.current) clearTimeout(memoryTimeoutRef.current);
+        memoryTimeoutRef.current = setTimeout(() => {
+          memoryTimeoutRef.current = null;
+          setMemoryCards((prev) =>
+            prev.map((c, i) => (i === firstIdx || i === secondIdx ? { ...c, matched: true } : c))
+          );
           setFlippedIndices([]);
           playSound('coin', soundProfile);
           doVibro(vibro, 20);
 
-          if (matchedCards.every((c) => c.matched)) {
+          const allMatched = updated.every((c, i) => c.matched || i === firstIdx || i === secondIdx);
+          if (allMatched) {
             setMemoryCompleted(true);
             setMemoryTimerRunning(false);
             playSound('victory', soundProfile);
             onShowToast(`🎉 Отличная память! Пройдено за ${newMoves} ходов!`);
             onUnlockAchievement?.('memory_master');
 
-            if (memoryBestMoves === 0 || newMoves < memoryBestMoves) {
+            const best = memoryBestMovesRef.current;
+            if (best === 0 || newMoves < best) {
+              memoryBestMovesRef.current = newMoves;
               setMemoryBestMoves(newMoves);
               localStorage.setItem('asosh_memory_best_moves', String(newMoves));
             }
@@ -687,11 +709,12 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
         }, 320);
       } else {
         // No match
-        setTimeout(() => {
-          const resetFlipped = [...updated];
-          resetFlipped[firstIdx].flipped = false;
-          resetFlipped[secondIdx].flipped = false;
-          setMemoryCards(resetFlipped);
+        if (memoryTimeoutRef.current) clearTimeout(memoryTimeoutRef.current);
+        memoryTimeoutRef.current = setTimeout(() => {
+          memoryTimeoutRef.current = null;
+          setMemoryCards((prev) =>
+            prev.map((c, i) => (i === firstIdx || i === secondIdx ? { ...c, flipped: false } : c))
+          );
           setFlippedIndices([]);
         }, 850);
       }
@@ -793,6 +816,8 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
     stars: [] as { x: number; y: number; collected?: boolean }[],
   });
   const flappyAnimRef = useRef<number | null>(null);
+  const flappyScoreRef = useRef(0);
+  const flappyHighScoreRef = useRef(flappyHighScore);
 
   const startFlappy = () => {
     flappyStateRef.current = {
@@ -805,6 +830,7 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
       frame: 0,
       stars: [{ x: 330, y: 110 }],
     };
+    flappyScoreRef.current = 0;
     setFlappyScore(0);
     setFlappyGameOver(false);
     setFlappyPlaying(true);
@@ -848,11 +874,9 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
         p.x -= 2;
         if (!p.passed && p.x < 50) {
           p.passed = true;
-          setFlappyScore((prev) => {
-            const next = prev + 1;
-            playSound('coin', soundProfile);
-            return next;
-          });
+          flappyScoreRef.current += 1;
+          setFlappyScore(flappyScoreRef.current);
+          playSound('coin', soundProfile);
         }
       }
 
@@ -861,12 +885,10 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
         s.x -= 2;
         if (!s.collected && Math.hypot(50 - s.x, state.birdY - s.y) < 20) {
           s.collected = true;
-          setFlappyScore((prev) => {
-            const next = prev + 5;
-            playSound('star', soundProfile);
-            onShowToast('⭐ Золотая пятёрка (+5)!');
-            return next;
-          });
+          flappyScoreRef.current += 5;
+          setFlappyScore(flappyScoreRef.current);
+          playSound('star', soundProfile);
+          onShowToast('⭐ Золотая пятёрка (+5)!');
         }
       }
 
@@ -900,14 +922,13 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
         playSound('gameover', soundProfile);
         doVibro(vibro, 50);
 
-        setFlappyScore((currScore) => {
-          if (currScore > flappyHighScore) {
-            setFlappyHighScore(currScore);
-            localStorage.setItem('asosh_flappy_highscore', String(currScore));
-            onShowToast('🏆 Новый рекорд во Флаппи-Дневнике!');
-          }
-          return currScore;
-        });
+        const currScore = flappyScoreRef.current;
+        if (currScore > flappyHighScoreRef.current) {
+          flappyHighScoreRef.current = currScore;
+          setFlappyHighScore(currScore);
+          localStorage.setItem('asosh_flappy_highscore', String(currScore));
+          onShowToast('🏆 Новый рекорд во Флаппи-Дневнике!');
+        }
         return;
       }
 
@@ -998,6 +1019,7 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
     dist: 0,
   });
   const planeAnimRef = useRef<number | null>(null);
+  const planeHighScoreRef = useRef(planeHighScore);
 
   const startPlane = () => {
     planeThrustRef.current = false;
@@ -1033,6 +1055,10 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
       window.removeEventListener('mouseup', handleGlobalRelease);
       window.removeEventListener('touchend', handleGlobalRelease);
       window.removeEventListener('touchcancel', handleGlobalRelease);
+      if (duelTimeoutRef.current) clearTimeout(duelTimeoutRef.current);
+      if (tttTimeoutRef.current) clearTimeout(tttTimeoutRef.current);
+      if (memoryTimeoutRef.current) clearTimeout(memoryTimeoutRef.current);
+      if (reflexTimeoutRef.current) clearTimeout(reflexTimeoutRef.current);
     };
   }, []);
 
@@ -1119,7 +1145,8 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
         doVibro(vibro, 50);
 
         const finalDist = Math.floor(state.dist);
-        if (finalDist > planeHighScore) {
+        if (finalDist > planeHighScoreRef.current) {
+          planeHighScoreRef.current = finalDist;
           setPlaneHighScore(finalDist);
           localStorage.setItem('asosh_plane_highscore', String(finalDist));
           onShowToast('🏆 Новый рекорд полета самолетика!');

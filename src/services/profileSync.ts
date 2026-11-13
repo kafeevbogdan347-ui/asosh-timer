@@ -82,7 +82,23 @@ export async function pullProfile(account: Account | null): Promise<UserProfile 
     const cloud = snap.val() as CloudProfile | null;
     const local = getMyProfile(account.name, account.cls || '');
     const keepPhoto = !isEmoji(local) && cloud?.avatar === '🎒';
-    const regAt = account.registeredAt || local.registeredAt;
+    let regAt = account.registeredAt || local.registeredAt;
+    if (!account.registeredAt) {
+      try {
+        const tSnap = await get(ref(db, `asosh_users/${account.uid}/t`));
+        const serverT = tSnap.val();
+        if (typeof serverT === 'number' && Number.isFinite(serverT) && serverT > 1_000_000_000_000) {
+          regAt = serverT;
+          try {
+            localStorage.setItem('asosh_account_v1', JSON.stringify({ ...account, registeredAt: serverT }));
+          } catch {
+            // игнорируем
+          }
+        }
+      } catch {
+        // остаёмся на локальном времени
+      }
+    }
     const next: UserProfile = {
       ...local,
       id: account.uid, // один и тот же id на всех устройствах аккаунта
@@ -154,7 +170,10 @@ function packCerts(list: CertificateItem[] | undefined): string {
 
 function buildPublicCard(p: UserProfile, account: Account): PublicCard {
   const card = cardOf(p, account.name);
-  const reg = account.registeredAt || p.registeredAt;
+  const rawReg = account.registeredAt || p.registeredAt;
+  const reg = typeof rawReg === 'number' && Number.isFinite(rawReg) && rawReg > 1_000_000_000_000
+    ? Math.min(rawReg, Date.now())
+    : undefined;
   const n = (v: unknown, max: number) => Math.max(0, Math.min(max, Math.round(Number(v) || 0)));
   return {
     name: account.name.slice(0, 60),
@@ -167,7 +186,7 @@ function buildPublicCard(p: UserProfile, account: Account): PublicCard {
     games: n(p.gamesScore, 100000000),
     friends: n(Array.isArray(p.friends) ? p.friends.length : 0, 10000),
     certs: packCerts(p.certificates),
-    ...(reg && reg <= Date.now() ? { reg } : {}),
+    ...(reg ? { reg } : {}),
     t: Date.now(),
   };
 }
@@ -221,20 +240,35 @@ export async function pushPublicProfile(p: UserProfile = getMyProfile(), force =
     publicProfileMemoryCache.set(account.uid, { profile: cardToProfile(account.uid, card), fetchedAt: Date.now() });
     localStorage.setItem(PUBPROF_SIG_KEY, sig);
   } catch {
-    // нет сети, защитный режим или старые правила — попробуем при следующем сохранении
+    // Если сервер отклонил reg из-за расхождения часов, пробуем сохранить карточку без reg
+    if ('reg' in card) {
+      try {
+        const { reg: _reg, ...withoutReg } = card;
+        await set(ref(db, `asosh_pubprof/${account.uid}`), withoutReg);
+        publicProfileMemoryCache.set(account.uid, { profile: cardToProfile(account.uid, withoutReg), fetchedAt: Date.now() });
+        localStorage.setItem(PUBPROF_SIG_KEY, sig);
+      } catch {
+        // нет сети или защитный режим — попробуем при следующем сохранении
+      }
+    }
   }
+}
+
+function withFreshAdminFlag(uid: string, prof: UserProfile): UserProfile {
+  const isAdm = isAdminUid(uid);
+  return isAdm && !prof.isDev ? { ...prof, isDev: true } : prof;
 }
 
 export function getCachedPublicProfile(idOrUid?: string): UserProfile | null {
   if (!idOrUid || idOrUid === 'anonymous') return null;
   const cached = publicProfileMemoryCache.get(idOrUid);
-  return cached ? cached.profile : null;
+  return cached ? withFreshAdminFlag(idOrUid, cached.profile) : null;
 }
 
 export async function fetchPublicProfile(uid: string, maxAgeMs = 60_000): Promise<UserProfile | null> {
   if (!uid || !validUid(uid)) return null;
   const cached = publicProfileMemoryCache.get(uid);
-  if (cached && Date.now() - cached.fetchedAt < maxAgeMs) return cached.profile;
+  if (cached && Date.now() - cached.fetchedAt < maxAgeMs) return withFreshAdminFlag(uid, cached.profile);
 
   const inflight = publicProfilePending.get(uid);
   if (inflight) return inflight;

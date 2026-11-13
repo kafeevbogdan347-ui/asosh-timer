@@ -144,6 +144,7 @@ export async function sendFirebaseMessage(
     handle?: string;
     className?: string;
     registeredAt?: number;
+    isDev?: boolean;
   }
 ): Promise<{ success: boolean; id?: string; error?: string }> {
   const isIncognito = !!options?.isIncognito;
@@ -188,6 +189,7 @@ export async function sendFirebaseMessage(
         if (options?.handle) msgPayload.handle = options.handle.trim().slice(0, 40);
         if (options?.className) msgPayload.className = options.className.trim().slice(0, 12);
         if (typeof options?.registeredAt === 'number') msgPayload.registeredAt = options.registeredAt;
+        if (options?.isDev) msgPayload.isDev = true;
       }
       // Сообщение и отметка «когда писал» уходят одной записью: сервер проверяет частоту сам
       await update(ref(db), {

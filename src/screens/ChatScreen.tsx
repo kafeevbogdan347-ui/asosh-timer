@@ -29,6 +29,7 @@ import {
 import { getMyProfile } from '../services/userService';
 import { fetchPublicProfile, getCachedPublicProfile } from '../services/profileSync';
 import { getProfileBadges } from '../utils/profileBadges';
+import { onAdminsLoaded } from '../services/admins';
 import { playSound, doVibro } from '../utils/audio';
 import { useOnline } from '../utils/useOnline';
 import { checkBeforePublish } from '../components/HumanCheck';
@@ -64,7 +65,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [inputText, setInputText] = useState('');
   const [pubProfiles, setPubProfiles] = useState<Record<string, UserProfile>>({});
   // Profile state from user service
-  const userProfile = getMyProfile();
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => getMyProfile());
+  const [, setBadgeRev] = useState(0);
+  useEffect(() => {
+    const onProfUpdate = () => setUserProfile(getMyProfile());
+    const unsubAdmins = onAdminsLoaded(() => setBadgeRev((n) => n + 1));
+    window.addEventListener('asosh-profile-updated', onProfUpdate);
+    return () => {
+      unsubAdmins();
+      window.removeEventListener('asosh-profile-updated', onProfUpdate);
+    };
+  }, []);
   const username = userProfile.username || `Ученик ${cls || 'АСОШ №2'}`;
   const selectedAvatar = userProfile.avatar || '🎒';
   // Фото-аватар в base64 слишком длинный для имени в сообщении
@@ -219,6 +230,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             handle: username,
             className: userProfile.className || classRoom,
             registeredAt: userProfile.registeredAt,
+            isDev: userProfile.isDev,
           }
     );
 

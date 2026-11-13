@@ -107,6 +107,9 @@ export function saveMyProfile(profile: UserProfile): void {
 
     // Update in all users registry
     registerOrUpdateUser(normalized);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('asosh-profile-updated'));
+    }
   } catch (e) {
     console.error('Failed to save profile:', e);
   }

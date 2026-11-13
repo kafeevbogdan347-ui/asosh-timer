@@ -8,7 +8,15 @@ interface QuarterScreenProps {
 }
 
 export const QuarterScreen: React.FC<QuarterScreenProps> = ({ lang }) => {
-  const [activeQuarterIdx, setActiveQuarterIdx] = useState(0);
+  const [activeQuarterIdx, setActiveQuarterIdx] = useState(() => {
+    const nowMs = Date.now();
+    const found = SCHOOL_QUARTERS.findIndex((q) => {
+      const s = new Date(`${q.start}T00:00:00`).getTime();
+      const e = new Date(`${q.end}T23:59:59`).getTime();
+      return nowMs >= s && nowMs <= e;
+    });
+    return found >= 0 ? found : 0;
+  });
 
   // Quarter Target Goal Tracker State
   const [goalGrades, setGoalGrades] = useState('4 4 3 5 4');

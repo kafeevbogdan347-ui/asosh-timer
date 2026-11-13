@@ -92,7 +92,7 @@ import { homeworkForTomorrow, reminderText } from './utils/hwReminder';
 import { subscribeFriends } from './services/friends';
 import { drawWeekSchedule, shareScheduleImage } from './utils/scheduleImage';
 import { updateWidget, atTime, WidgetLesson } from './services/widget';
-import { getMyProfile } from './services/userService';
+import { getMyProfile, saveMyProfile } from './services/userService';
 import { subscribeLockdown, subscribeSiteClosed, setGlobalSiteClosed, getLocalSiteClosed } from './services/lockdown';
 import { setAutoLanguage, tr as autoTr } from './i18n/auto';
 import { subscribeStudentGrades, newGrades } from './services/journal';
@@ -412,7 +412,7 @@ export default function App() {
     }
     // Не администратор: сервер не дал записать. uid нужен, чтобы добавить себя в asosh_admins
     try {
-      await navigator.clipboard?.writeText(res.uid);
+      if (res.uid) await navigator.clipboard?.writeText(res.uid);
     } catch {
       // буфер обмена недоступен
     }
@@ -785,10 +785,21 @@ export default function App() {
     setSelectedDaySchedule(currentDayName);
   }, [currentDayName]);
 
-  const getDayBells = (dayName: string) => {
-    const base = shift === '1' ? B1 : dayName === 'Пятница' ? B2F : B2;
-    return isShortDay(dayName) ? shortenBells(base, settings.shortLessonMin ?? SHORT_LESSON_MIN) : base;
+  // Дата дня недели: сегодня, завтра или день текущей недели (Пн–Вс)
+  const dateKeyForDay = (dayName: string): string => {
+    const base = new Date(activeTime.getFullYear(), activeTime.getMonth(), activeTime.getDate());
+    if (dayName === tomorrowDayName) base.setDate(base.getDate() + 1);
+    else {
+      // Прошедшие дни недели — это уже следующая неделя (в субботу «Пн» = ближайший понедельник)
+      const diff = DAYS.indexOf(dayName as (typeof DAYS)[number]) - dayIndex;
+      base.setDate(base.getDate() + (diff < 0 ? diff + 7 : diff));
+    }
+    return toDateKey(base);
   };
+
+  // На каникулах и в праздники уроков нет, хотя расписание по дням недели остаётся
+  const isDayOff = (dateKey: string) => isVacationDay(dateKey) || isHolidayDay(dateKey);
+
   // Сокращённые уроки включаются на конкретную дату (сегодня / завтра) и сами выключаются потом
   const calendarShortDates = useMemo(() => {
     try {
@@ -803,6 +814,10 @@ export default function App() {
   const isShortDay = (dayName: string) => {
     const key = dateKeyForDay(dayName);
     return (settings.shortLessonDates || []).includes(key) || calendarShortDates.includes(key);
+  };
+  const getDayBells = (dayName: string) => {
+    const base = shift === '1' ? B1 : dayName === 'Пятница' ? B2F : B2;
+    return isShortDay(dayName) ? shortenBells(base, settings.shortLessonMin ?? SHORT_LESSON_MIN) : base;
   };
 
   // Parse room based on subgroup (e.g. "301 / 302")
@@ -878,17 +893,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Дата дня недели: сегодня, завтра или день текущей недели (Пн–Вс)
-  const dateKeyForDay = (dayName: string): string => {
-    const base = new Date(activeTime.getFullYear(), activeTime.getMonth(), activeTime.getDate());
-    if (dayName === tomorrowDayName) base.setDate(base.getDate() + 1);
-    else {
-      // Прошедшие дни недели — это уже следующая неделя (в субботу «Пн» = ближайший понедельник)
-      const diff = DAYS.indexOf(dayName as (typeof DAYS)[number]) - dayIndex;
-      base.setDate(base.getDate() + (diff < 0 ? diff + 7 : diff));
-    }
-    return toDateKey(base);
-  };
+  // (verifyTeacher above)
 
   // Get active lessons for day (official base schedule + custom updates)
   const getLessonsForDay = (dayName: string): [string, string][] => {
@@ -955,8 +960,6 @@ export default function App() {
     }
   };
 
-  // На каникулах и в праздники уроков нет, хотя расписание по дням недели остаётся
-  const isDayOff = (dateKey: string) => isVacationDay(dateKey) || isHolidayDay(dateKey);
   const todayDateKey = toDateKey(activeTime);
   const vacationToday = isVacationDay(todayDateKey);
   const todayOff = isDayOff(todayDateKey);
@@ -1262,7 +1265,8 @@ export default function App() {
       setCurrentScreen('today');
       showToast('Начался урок! Игры свернуты.');
     }
-  }, [lessonStatus.remainSec, lessonStatus.type, lessonStatus.nextText, periodKey, currentScreen, settings.warn2, settings.soundProfile, settings.vibro, activeTime]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessonStatus.remainSec, lessonStatus.type, lessonStatus.nextText, lessonStatus.nowText, periodKey, currentScreen, settings.warn2, settings.bellNotifications, settings.soundProfile, settings.vibro, activeTime]);
 
   // Bell widget text & icon
   const formatSec = (s: number) => {
@@ -1416,10 +1420,11 @@ export default function App() {
 
     if (data.isDeveloperMode) {
       localStorage.setItem('asosh_dev_unlocked', 'true');
+      const cur = getMyProfile();
+      saveMyProfile({ ...cur, isDev: true });
       setIsDevOpen(true);
       showToast('🛠️ Режим разработчика активирован!');
     } else {
-      localStorage.removeItem('asosh_dev_unlocked');
       showToast(data.guest ? 'Вход как гость 👀' : 'Регистрация успешна! 🚀');
     }
 
@@ -1730,9 +1735,8 @@ export default function App() {
     }
   };
 
-  // Seed Mock Data
+  // Seed Mock Data (confirmation handled in DeveloperModal)
   const seedMockData = () => {
-    if (!window.confirm('Демо-расписание заменит все твои правки расписания. Продолжить?')) return;
     const demoUpdates: LessonUpdate[] = [
       { id: 'd1', cls: cls || '8А', day: 'Понедельник', num: 1, sub: 'Алгебра', room: '324' },
       { id: 'd2', cls: cls || '8А', day: 'Понедельник', num: 2, sub: 'Русский язык', room: '208' },
@@ -1761,9 +1765,8 @@ export default function App() {
     localStorage.setItem('asosh_updates_v105', JSON.stringify(demoUpdates));
   };
 
-  // Seed Sample Homeworks
+  // Seed Sample Homeworks (confirmation handled in DeveloperModal)
   const seedSampleHomeworks = () => {
-    if (!window.confirm('Демо-ДЗ заменят все твои домашние задания. Продолжить?')) return;
     const samples: HomeworkItem[] = [
       { id: Date.now() + 1, cls: cls || '8А', sub: 'Алгебра', text: '№ 342, 345 (а, б), подготовиться к К/Р', date: 'Завтра', done: false, pinned: true },
       { id: Date.now() + 2, cls: cls || '8А', sub: 'Физика', text: '§ 18 читать, выучить формулу давления', date: 'Четверг', done: false, pinned: true },
@@ -1937,7 +1940,10 @@ export default function App() {
         onClose={() => setIsDevPasswordPromptOpen(false)}
         onSuccess={() => {
           localStorage.setItem('asosh_dev_unlocked', 'true');
-          pushPublicProfile(getMyProfile(), true).catch(() => {});
+          const cur = getMyProfile();
+          const next = { ...cur, isDev: true };
+          saveMyProfile(next);
+          pushPublicProfile(next, true).catch(() => {});
           setIsDevPasswordPromptOpen(false);
           setIsDevOpen(true);
         }}

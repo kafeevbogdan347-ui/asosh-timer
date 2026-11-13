@@ -14,6 +14,7 @@ import {
   removeCertificateFromProfile,
 } from '../services/userService';
 import { getProfileBadges } from '../utils/profileBadges';
+import { onAdminsLoaded } from '../services/admins';
 import { playSound, doVibro } from '../utils/audio';
 import { compressImage } from '../utils/image';
 import { isHideGradesInProfile } from '../utils/privacy';
@@ -159,18 +160,33 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     isSelf: !isViewingOther,
   });
 
-  // Sync profile when opened
+  const [, setBadgeRev] = useState(0);
+
+  // Sync profile when opened and subscribe to live profile/admin badge updates
   useEffect(() => {
-    const p = getMyProfile();
-    setMyProfile(p);
-    setEditUsername(p.username);
-    setEditFullName(p.fullName);
-    setEditClassName(p.className);
-    setEditStatus(p.status);
-    setEditBio(p.bio || '');
-    setSelectedAvatar(p.avatar);
-    setAvatarType(p.avatarType || 'emoji');
-    pushPublicProfile(p).catch(() => {});
+    const sync = () => {
+      const p = getMyProfile();
+      setMyProfile(p);
+      setEditUsername(p.username);
+      setEditFullName(p.fullName);
+      setEditClassName(p.className);
+      setEditStatus(p.status);
+      setEditBio(p.bio || '');
+      setSelectedAvatar(p.avatar);
+      setAvatarType(p.avatarType || 'emoji');
+    };
+    sync();
+    pushPublicProfile(getMyProfile()).catch(() => {});
+    const onProfUpdate = () => {
+      sync();
+      setBadgeRev((n) => n + 1);
+    };
+    const unsubAdmins = onAdminsLoaded(() => setBadgeRev((n) => n + 1));
+    window.addEventListener('asosh-profile-updated', onProfUpdate);
+    return () => {
+      unsubAdmins();
+      window.removeEventListener('asosh-profile-updated', onProfUpdate);
+    };
   }, []);
 
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -1075,6 +1091,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold">
                     {selectedUserModal.className}
                   </span>
+                  {getProfileBadges({
+                    isDev: selectedUserModal.isDev,
+                    registeredAt: selectedUserModal.registeredAt,
+                    registeredDate: selectedUserModal.registeredDate,
+                    id: selectedUserModal.id,
+                    isSelf: selectedUserModal.id === myProfile.id,
+                  }).map((b) => (
+                    <span
+                      key={b.id}
+                      title={b.title}
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold inline-flex items-center gap-1 ${b.className}`}
+                    >
+                      <span>{b.icon}</span>
+                      <span>{b.label}</span>
+                    </span>
+                  ))}
                   {selectedUserModal.badge && (
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold">
                       {selectedUserModal.badge}

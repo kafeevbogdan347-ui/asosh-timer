@@ -7,6 +7,7 @@ import { ref, get, update, onValue } from 'firebase/database';
 import { initFirebase, ensureSignedIn } from './firebaseChat';
 import { Account } from './accounts';
 import { getMyProfile } from './userService';
+import { fetchPublicProfile } from './profileSync';
 
 export interface FriendCard {
   uid: string;
@@ -54,10 +55,12 @@ export async function addFriend(account: Account, target: Omit<FriendCard, 't'>)
   const db = await dbFor(account);
   if (!db || target.uid === account.uid) return 'error';
   try {
-    const theyRequested = (await get(ref(db, `asosh_friend_req/${account.uid}/${target.uid}`))).exists();
-    const changes: Record<string, unknown> = { [`asosh_friends/${account.uid}/${target.uid}`]: toCard(target) };
-    if (theyRequested) changes[`asosh_friend_req/${account.uid}/${target.uid}`] = null;
-    else changes[`asosh_friend_req/${target.uid}/${account.uid}`] = myCard(account);
+    const pub = await fetchPublicProfile(target.uid);
+    const resolvedTarget: Omit<FriendCard, 't'> = pub?.fullName ? { ...target, name: pub.fullName } : target;
+    const theyRequested = (await get(ref(db, `asosh_friend_req/${account.uid}/${resolvedTarget.uid}`))).exists();
+    const changes: Record<string, unknown> = { [`asosh_friends/${account.uid}/${resolvedTarget.uid}`]: toCard(resolvedTarget) };
+    if (theyRequested) changes[`asosh_friend_req/${account.uid}/${resolvedTarget.uid}`] = null;
+    else changes[`asosh_friend_req/${resolvedTarget.uid}/${account.uid}`] = myCard(account);
     await update(ref(db), changes);
     return theyRequested ? 'friends' : 'sent';
   } catch {

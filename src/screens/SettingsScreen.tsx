@@ -259,12 +259,27 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         } catch {}
       }
       let gradesCount = 0;
-      const gradesSaved = localStorage.getItem('asosh_marks_v105') || localStorage.getItem('asosh_grades');
-      if (gradesSaved) {
+      const gpaSaved = localStorage.getItem('asosh_gpa_subjects');
+      if (gpaSaved) {
         try {
-          const parsed = JSON.parse(gradesSaved);
-          if (typeof parsed === 'object') gradesCount = Object.keys(parsed).length;
+          const subjects = JSON.parse(gpaSaved);
+          if (Array.isArray(subjects)) {
+            gradesCount = subjects.reduce(
+              (acc, s) => acc + (Array.isArray(s?.grades) ? s.grades.length : 0),
+              0
+            );
+          }
         } catch {}
+      }
+      if (gradesCount === 0) {
+        const gradesSaved = localStorage.getItem('asosh_marks_v105') || localStorage.getItem('asosh_grades');
+        if (gradesSaved) {
+          try {
+            const parsed = JSON.parse(gradesSaved);
+            if (Array.isArray(parsed)) gradesCount = parsed.length;
+            else if (parsed && typeof parsed === 'object') gradesCount = Object.keys(parsed).length;
+          } catch {}
+        }
       }
 
       setStorageStats({
@@ -877,7 +892,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
             <div className="p-3 bg-white/5 rounded-2xl border border-white/10 space-y-1">
               <b className="text-xs text-white block">2-я Смена (Дневная):</b>
-              <p className="text-[11px] text-white/60">13:00 – 19:15 • 6, 7, 8 классы (с нулевым уроком)</p>
+              <p className="text-[11px] text-white/60">13:00 – 19:15 • 2Б, 6, 7, 8 классы (с нулевым уроком)</p>
               <span className="badge bg-amber-500/20 text-amber-300 border-amber-400/30 text-[10px] font-bold">
                 Вторая смена
               </span>

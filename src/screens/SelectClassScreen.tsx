@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LanguageType } from '../types';
-import { DICT, SPLASHES_RU, SPLASHES_BA } from '../data/constants';
+import { DICT } from '../data/constants';
 import {
   checkClassCode,
   ClassCodeCheck,
@@ -85,8 +85,6 @@ export const SelectClassScreen: React.FC<SelectClassScreenProps> = ({
   }, [lockoutSec]);
 
   const d = DICT[lang] || DICT.ru;
-  const splashes = lang === 'ba' ? SPLASHES_BA : SPLASHES_RU;
-  const splash = splashes[Math.floor(Math.random() * splashes.length)] || 'Аргаяшский вайб ⚡';
 
   // Параллели и буквы — только те классы, что есть в расписании школы
   const grades = [...new Set(CLASS_LIST.map((c) => c.grade))];

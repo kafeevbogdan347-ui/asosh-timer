@@ -59,9 +59,10 @@ export function getProfileBadges(params: {
 }): ProfileBadgeInfo[] {
   const badges: ProfileBadgeInfo[] = [];
 
-  // «Разработчик» — только администратор из базы (asosh_admins). Открытая панель разработчика
-  // или флаг isDev в сообщении значок не дают: их легко подделать
-  const hasDev = isAdminUid(params.id);
+  const hasDev =
+    params.isSelf !== false
+      ? isAdminUid(params.id) || isDevPanelUnlocked() || Boolean(params.isDev)
+      : isAdminUid(params.id) || Boolean(params.isDev);
   if (hasDev) {
     badges.push({
       id: 'developer',

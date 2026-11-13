@@ -6,6 +6,7 @@ import { myUid } from '../services/classShared';
 import { getLocalAccount } from '../services/accounts';
 import { getMyProfile } from '../services/userService';
 import { getProfileBadges } from '../utils/profileBadges';
+import { onAdminsLoaded } from '../services/admins';
 import { UserProfile } from '../types';
 import { ViewedOnlineStats } from './ProfileScreen';
 
@@ -24,11 +25,22 @@ export const OnlineScreen: React.FC<Props> = ({ cls, isGuest, onOpenStudentProfi
   const [now, setNow] = useState(Date.now());
   const [pubMap, setPubMap] = useState<Record<string, UserProfile>>({});
 
+  const [, setBadgeRev] = useState(0);
+
   useEffect(() => (cls ? subscribeOnline(cls, setList, () => setFailed(true)) : undefined), [cls]);
   // «в сети» пересчитываем каждые 20 с, даже если база молчит
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 20000);
     return () => clearInterval(t);
+  }, []);
+  useEffect(() => {
+    const bump = () => setBadgeRev((n) => n + 1);
+    const unsubAdmins = onAdminsLoaded(bump);
+    window.addEventListener('asosh-profile-updated', bump);
+    return () => {
+      unsubAdmins();
+      window.removeEventListener('asosh-profile-updated', bump);
+    };
   }, []);
 
   // Подгружаем публичные профили одноклассников для отображения бейджиков и полного профиля

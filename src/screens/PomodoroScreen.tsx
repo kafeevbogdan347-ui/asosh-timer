@@ -61,8 +61,11 @@ export const PomodoroScreen: React.FC<PomodoroScreenProps> = ({
     doVibro(vibro, 80);
 
     if (mode === 'work') {
-      const nextTomatoes = tomatoes + 1;
-      saveTomatoes(nextTomatoes);
+      setTomatoes((prev) => {
+        const next = prev + 1;
+        localStorage.setItem('asosh_tomatoes_v11', String(next));
+        return next;
+      });
       onShowToast('🍅 Помодорка завершена! Время отдохнуть 5 минут.');
       if (durationMin >= 25) onUnlockAchievement?.('pomodoro_finisher');
       setMode('break');

@@ -318,7 +318,7 @@
           ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 6000"
         },
         "reg": {
-          ".validate": "newData.isNumber() && newData.val() <= now"
+          ".validate": "newData.isNumber() && newData.val() <= now + 60000"
         },
         "t": {
           ".validate": "newData.isNumber() && newData.val() <= now + 60000"
