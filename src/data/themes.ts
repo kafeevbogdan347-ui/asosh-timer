@@ -278,6 +278,9 @@ export const THEMES: ThemeInfo[] = [
 // Светлые темы: для них включается общий светлый режим (тёмный текст на светлых панелях)
 export const LIGHT_THEME_IDS: ThemeType[] = ['light', 'nordic', ...THEMES.filter((t) => t.light).map((t) => t.id)];
 
+// Темы со своим «бумажным» или пиксельным стилем: Liquid Glass на них не включаем
+export const NO_GLASS_THEME_IDS: ThemeType[] = ['notebook', 'pixel', 'comic', 'minimal', 'amoled', 'kraft', 'terminal', 'first'];
+
 // Старые темы убрали из выбора: переводим сохранённую тему на ближайшую из нового списка
 export const migrateTheme = (id: string): ThemeType => {
   if (THEMES.some((t) => t.id === id)) return id as ThemeType;
