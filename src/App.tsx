@@ -88,6 +88,7 @@ import { startPresence } from './services/online';
 import { pullProfile, pushPublicProfile, fetchPublicProfile } from './services/profileSync';
 import { loadAdmins, onAdminsLoaded } from './services/admins';
 import { setErrorScreen } from './services/errorLog';
+import { homeworkForTomorrow, reminderText } from './utils/hwReminder';
 import { getMyProfile } from './services/userService';
 import { subscribeLockdown, subscribeSiteClosed, setGlobalSiteClosed, getLocalSiteClosed } from './services/lockdown';
 import { setAutoLanguage, tr as autoTr } from './i18n/auto';
@@ -1081,10 +1082,39 @@ export default function App() {
       .join('\n');
   };
 
+  // Вечернее напоминание о домашке: что из невыполненного задано на завтра
+  const hwReminderOn = settings.hwReminder !== false && Boolean(cls) && !isTeacher;
+  const hwReminderTime = settings.hwReminderTime || '19:00';
+  const hwTomorrow = hwReminderOn && !tomorrowOff
+    ? homeworkForTomorrow(homeworkList, classHomework, cls, dateKeyForDay(tomorrowDayName), tomorrowLessons.map((l) => l[0]))
+    : [];
+  const hwTomorrowKey = hwTomorrow.join('|');
+  // Приложение открыто в это время (браузер, компьютер): тост и системное уведомление, раз в день
+  const nowHm = activeTime.toTimeString().slice(0, 5);
+  useEffect(() => {
+    if (!hwTomorrow.length || nowHm < hwReminderTime || isNativeApp()) return;
+    try {
+      if (localStorage.getItem('asosh_hw_reminded') === todayDateKey) return;
+      localStorage.setItem('asosh_hw_reminded', todayDateKey);
+    } catch {
+      return;
+    }
+    const { title, body } = reminderText(hwTomorrow);
+    showToast(`${title}: ${body}`);
+    notifyNow(title, body, 'asosh-hw');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nowHm >= hwReminderTime, hwTomorrowKey, todayDateKey]);
+
   // APK: заранее ставим напоминания за 5 минут до каждого урока на 7 дней вперёд
+  // и вечернее напоминание о домашке на сегодня (уведомление придёт, даже если приложение закрыто)
   const nativeReminders = (() => {
-    if (!settings.bellNotifications || !cls) return [];
     const list: { at: Date; title: string; body: string }[] = [];
+    if (hwTomorrow.length) {
+      const [h, m] = hwReminderTime.split(':').map(Number);
+      const at = new Date(activeTime.getFullYear(), activeTime.getMonth(), activeTime.getDate(), h || 19, m || 0);
+      list.push({ at, ...reminderText(hwTomorrow) });
+    }
+    if (!settings.bellNotifications || !cls) return list;
     for (let d = 0; d < 7; d++) {
       const date = new Date(activeTime.getFullYear(), activeTime.getMonth(), activeTime.getDate() + d);
       if (isDayOff(toDateKey(date))) continue;
@@ -1102,13 +1132,13 @@ export default function App() {
   const nativeRemindersKey = JSON.stringify(nativeReminders.map((r) => [r.at.getTime(), r.title, r.body]));
   useEffect(() => {
     if (!isNativeApp()) return;
-    if (!settings.bellNotifications) {
+    if (!nativeReminders.length) {
       cancelNativeReminders();
       return;
     }
     scheduleNativeReminders(nativeReminders);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nativeRemindersKey, settings.bellNotifications]);
+  }, [nativeRemindersKey]);
 
   // Ключ текущего урока/перемены: предупреждение срабатывает один раз за период
   const periodKey = `${currentDayName}-${lessonStatus.type}-${lessonStatus.currentIdx}-${lessonStatus.nextIdx}`;
