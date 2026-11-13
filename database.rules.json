@@ -328,6 +328,61 @@
         }
       }
     },
+    "asosh_friends": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$other": {
+          ".read": "auth != null && (auth.uid === $uid || auth.uid === $other)",
+          ".write": "auth != null && auth.uid === $uid && $other !== $uid && root.child('asosh_users').child($uid).exists() && (!newData.exists() || root.child('asosh_users').child($other).exists()) && root.child('asosh_config').child('lockdown').val() !== true",
+          ".validate": "newData.hasChildren(['name', 'nick', 'avatar', 't']) && newData.child('name').val() === root.child('asosh_users').child($other).child('name').val()",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60"
+          },
+          "nick": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+          },
+          "avatar": {
+            ".validate": "newData.isString() && newData.val().length <= 12"
+          },
+          "cls": {
+            ".validate": "newData.isString() && newData.val().length <= 4"
+          },
+          "t": {
+            ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+          },
+          "$f": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "asosh_friend_req": {
+      "$to": {
+        ".read": "auth != null && auth.uid === $to",
+        "$from": {
+          ".write": "auth != null && $from !== $to && ((auth.uid === $from && root.child('asosh_users').child($from).exists() && (!newData.exists() || root.child('asosh_users').child($to).exists())) || (auth.uid === $to && !newData.exists())) && root.child('asosh_config').child('lockdown').val() !== true",
+          ".validate": "newData.hasChildren(['name', 'nick', 'avatar', 't']) && newData.child('name').val() === root.child('asosh_users').child($from).child('name').val()",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60"
+          },
+          "nick": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+          },
+          "avatar": {
+            ".validate": "newData.isString() && newData.val().length <= 12"
+          },
+          "cls": {
+            ".validate": "newData.isString() && newData.val().length <= 4"
+          },
+          "t": {
+            ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+          },
+          "$f": {
+            ".validate": false
+          }
+        }
+      }
+    },
     "asosh_private": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",

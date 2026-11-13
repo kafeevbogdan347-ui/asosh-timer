@@ -140,6 +140,31 @@ await check('прочитано: учитель видит список', assert
 await check('прочитано: ученик видит только своё', assertSucceeds(get(ref(stu1, 'asosh_board_read/ann1/stu1'))));
 await check('прочитано: ученик не видит весь список', assertFails(get(ref(stu1, 'asosh_board_read/ann1'))));
 
+// --- Друзья ---
+await env.withSecurityRulesDisabled(async (c) => {
+  await set(ref(c.database(), 'asosh_users/stu2'), { role: 'student', name: 'Петя С.', login: 'petya', t: 1, cls: '5А' });
+});
+const fcard = (name, extra = {}) => ({ name, nick: name, avatar: '🙂', cls: '5А', t: 1, ...extra });
+await check('друзья: ученик отправляет заявку', assertSucceeds(update(ref(stu1), {
+  'asosh_friends/stu1/stu2': fcard('Петя С.'),
+  'asosh_friend_req/stu2/stu1': fcard('Иван П.'),
+})));
+await check('друзья: заявку от чужого имени нельзя', assertFails(set(ref(stu1, 'asosh_friend_req/stu2/par1'), fcard('Мама Ивана'))));
+await check('друзья: подменить имя в заявке нельзя', assertFails(set(ref(stu1, 'asosh_friend_req/stu2/stu1'), fcard('Директор'))));
+await check('друзья: подменить имя друга нельзя', assertFails(set(ref(stu1, 'asosh_friends/stu1/stu2'), fcard('Кто-то'))));
+await check('друзья: без аккаунта нельзя', assertFails(set(ref(anonDev, 'asosh_friend_req/stu2/anon_device'), fcard('Аноним'))));
+await check('друзья: себя в друзья нельзя', assertFails(set(ref(stu1, 'asosh_friends/stu1/stu1'), fcard('Иван П.'))));
+await check('друзья: получатель видит заявки', assertSucceeds(get(ref(stu2, 'asosh_friend_req/stu2'))));
+await check('друзья: чужие заявки не видны', assertFails(get(ref(stu1, 'asosh_friend_req/stu2'))));
+await check('друзья: получатель проверяет, добавил ли его отправитель', assertSucceeds(get(ref(stu2, 'asosh_friends/stu1/stu2'))));
+await check('друзья: чужой список целиком не виден', assertFails(get(ref(stu2, 'asosh_friends/stu1'))));
+await check('друзья: получатель принимает', assertSucceeds(update(ref(stu2), {
+  'asosh_friends/stu2/stu1': fcard('Иван П.'),
+  'asosh_friend_req/stu2/stu1': null,
+})));
+await check('друзья: в чужой список не записаться', assertFails(set(ref(stu1, 'asosh_friends/stu2/par1'), fcard('Мама Ивана'))));
+await check('друзья: удаляю друга', assertSucceeds(remove(ref(stu1, 'asosh_friends/stu1/stu2'))));
+
 // --- Журнал ошибок ---
 const errRec = (extra = {}) => ({ msg: 'TypeError: x is undefined', stack: 'at App', ver: 'v16.21', scr: 'main', plat: 'apk', t: serverTimestamp(), ...extra });
 const sendErr = (d, uid, key, extra) => update(ref(d), { [`asosh_errors/${uid}/${key}`]: errRec(extra), [`asosh_rate/${uid}/err`]: serverTimestamp() });

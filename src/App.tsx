@@ -89,6 +89,7 @@ import { pullProfile, pushPublicProfile, fetchPublicProfile } from './services/p
 import { loadAdmins, onAdminsLoaded } from './services/admins';
 import { setErrorScreen } from './services/errorLog';
 import { homeworkForTomorrow, reminderText } from './utils/hwReminder';
+import { subscribeFriends } from './services/friends';
 import { getMyProfile } from './services/userService';
 import { subscribeLockdown, subscribeSiteClosed, setGlobalSiteClosed, getLocalSiteClosed } from './services/lockdown';
 import { setAutoLanguage, tr as autoTr } from './i18n/auto';
@@ -1462,6 +1463,23 @@ export default function App() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.uid, account?.cls, account?.role]);
+
+  // Новая заявка в друзья — тост и уведомление (сами заявки — в Профиле)
+  useEffect(() => {
+    if (!account || account.role === 'teacher') return;
+    let known: Set<string> | null = null;
+    return subscribeFriends(account, (st) => {
+      const ids = st.incoming.map((f) => f.uid);
+      if (known) {
+        st.incoming.filter((f) => !known!.has(f.uid)).forEach((f) => {
+          showToast(`📨 ${f.name} хочет дружить — открой Профиль`);
+          notifyNow('Заявка в друзья', `${f.name} (${f.cls}) хочет добавить тебя в друзья`, `asosh-friend-${f.uid}`);
+        });
+      }
+      known = new Set(ids);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.uid]);
 
   // Родитель: уведомление о каждой новой оценке и «Н» у каждого ребёнка (пока приложение запущено)
   useEffect(() => {
