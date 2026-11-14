@@ -28,7 +28,7 @@ const DEEP_TASK_MODEL = 'gemini-4-hydrogen';
 const FALLBACK_LITE_MODEL = 'gemini-3.1-flash-lite';
 const LIVE_MODEL = 'gemini-3.8-live';
 const STT_MODELS = ['gemini-3.5-transcribe', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
-const TTS_MODELS = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts'];
+const TTS_MODELS = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview'];
 const ALLOWED_VOICES = new Set(['Puck', 'Kore', 'Zephyr', 'Charon', 'Fenrir']);
 
 function getGeminiKey(): string {
