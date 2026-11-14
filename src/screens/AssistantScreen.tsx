@@ -4,6 +4,9 @@ import {
   FileText,
   Image as ImageIcon,
   Mic,
+  Palette,
+  PhoneCall,
+  PhoneOff,
   Send,
   Square,
   Trash2,
@@ -31,10 +34,17 @@ import {
 import { useOnline } from '../utils/useOnline';
 import { listenOnce, voiceInputSupported, voiceLang, voiceOutputSupported } from '../utils/voice';
 import {
+  GEMINI_VOICES,
+  GeminiVoiceName,
   geminiVoiceAvailable,
+  getPreferredVoice,
+  LiveCallState,
+  LiveVoiceSession,
   micSupported,
   Recording,
+  setPreferredVoice,
   speakAnswer,
+  startLiveVoiceCall,
   startRecording,
   stopVoice,
   transcribe,
@@ -131,11 +141,11 @@ export const AsoshikAvatar: React.FC<{ size?: number; thinking?: boolean; mood?:
 
 const SUGGESTIONS = [
   'Собери сводку дня и план',
+  'Нарисуй схему строения клетки',
+  'Нарисуй кота в космосе в стиле комикса',
   'Что положить в портфель на завтра?',
   'Запусти Помодоро на 25 минут',
-  'Покажи формулы по алгебре',
   'Сделай мини-тест по дробям',
-  'Какие уроки завтра и что задано?',
 ];
 
 const MODE_LABELS: { id: AssistantMode; label: string }[] = [
@@ -253,12 +263,18 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
       return false;
     }
   });
+  const [voiceName, setVoiceName] = useState<GeminiVoiceName>(getPreferredVoice);
   const [listening, setListening] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [speakingMsgIdx, setSpeakingMsgIdx] = useState<number | null>(null);
+  const [liveState, setLiveState] = useState<LiveCallState | null>(null);
+  const [liveLines, setLiveLines] = useState<{ who: 'user' | 'model'; text: string }[]>([]);
   const stopListening = useRef<() => void>(() => {});
   const recording = useRef<Recording | null>(null);
+  const liveSession = useRef<LiveVoiceSession | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const [error, setError] = useState('');
   const [used, setUsed] = useState(usedToday);
@@ -299,6 +315,7 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
     () => () => {
       stopVoice();
       recording.current?.cancel();
+      liveSession.current?.stop();
       abortRef.current?.abort();
     },
     []
@@ -307,6 +324,85 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
   const triggerHappy = () => {
     setHappyBurst(true);
     setTimeout(() => setHappyBurst(false), 2600);
+  };
+
+  const changeVoice = (v: GeminiVoiceName) => {
+    setVoiceName(v);
+    setPreferredVoice(v);
+  };
+
+  const playMsgVoice = (text: string, msgIdx: number) => {
+    unlockAudio();
+    if (speaking && speakingMsgIdx === msgIdx) {
+      stopVoice();
+      setSpeaking(false);
+      setSpeakingMsgIdx(null);
+      return;
+    }
+    setSpeaking(true);
+    setSpeakingMsgIdx(msgIdx);
+    speakAnswer(
+      text,
+      voiceLang(appLang),
+      () => {
+        setSpeaking(false);
+        setSpeakingMsgIdx(null);
+      },
+      voiceName
+    );
+  };
+
+  const toggleLiveCall = async () => {
+    unlockAudio();
+    stopVoice();
+    setSpeaking(false);
+    setSpeakingMsgIdx(null);
+    setError('');
+
+    if (liveSession.current) {
+      liveSession.current.stop();
+      liveSession.current = null;
+      setLiveState(null);
+      return;
+    }
+
+    if (recording.current) {
+      recording.current.cancel();
+      recording.current = null;
+      setListening(false);
+    }
+
+    setLiveLines([]);
+    setLiveState('connecting');
+    try {
+      const session = await startLiveVoiceCall({
+        voiceName,
+        context,
+        onState: (st) => {
+          setLiveState(st === 'closed' || st === 'error' ? null : st);
+          if (st === 'closed' || st === 'error') {
+            liveSession.current = null;
+          }
+        },
+        onTranscript: (who, chunk) => {
+          setLiveLines((prev) => {
+            const last = prev[prev.length - 1];
+            if (last && last.who === who) {
+              const joined = last.text.endsWith(' ') || chunk.startsWith(' ') ? `${last.text}${chunk}` : `${last.text} ${chunk}`;
+              return [...prev.slice(0, -1), { who, text: joined.trim() }];
+            }
+            return [...prev.slice(-5), { who, text: chunk.trim() }];
+          });
+        },
+        onError: (msg) => setError(msg),
+      });
+      liveSession.current = session;
+      if (vibro && navigator.vibrate) navigator.vibrate(20);
+    } catch (e) {
+      liveSession.current = null;
+      setLiveState(null);
+      setError((e as Error).message || 'Не удалось запустить голосовой звонок');
+    }
   };
 
   const changeMode = (next: AssistantMode) => {
@@ -474,7 +570,16 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
       if (vibro && navigator.vibrate) navigator.vibrate(15);
       if (voiceOn && answer.text) {
         setSpeaking(true);
-        speakAnswer(answer.text, voiceLang(appLang), () => setSpeaking(false));
+        setSpeakingMsgIdx(withAnswer.length - 1);
+        speakAnswer(
+          answer.text,
+          voiceLang(appLang),
+          () => {
+            setSpeaking(false);
+            setSpeakingMsgIdx(null);
+          },
+          voiceName
+        );
       }
     } catch (err) {
       if ((err as Error).name === 'AbortError') {
@@ -537,13 +642,13 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
     setError('');
   };
 
-  const currentMood: AssistantMood = listening || transcribing
+  const currentMood: AssistantMood = listening || transcribing || liveState === 'listening'
     ? 'listening'
     : busy && streamingRoute?.label.includes('фото')
     ? 'checking'
-    : busy
+    : busy || liveState === 'connecting'
     ? 'thinking'
-    : happyBurst
+    : happyBurst || speaking || liveState === 'speaking'
     ? 'happy'
     : 'idle';
 
@@ -551,24 +656,44 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
     <div className="card screen-enter asoshik-screen asoshik-glass flex flex-col">
       {/* Живая Liquid Glass шапка */}
       <div className="asoshik-header">
-        <AsoshikAvatar size={50} mood={currentMood} thinking={busy} />
+        <AsoshikAvatar size={50} mood={currentMood} thinking={busy || liveState === 'connecting'} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-1.5">
             <div className="text-lg font-black text-white leading-tight truncate">{ASSISTANT_NAME}</div>
-            {messages.length > 0 && (
-              <button
-                type="button"
-                onClick={clear}
-                className="min-w-[44px] min-h-[44px] -mr-2 flex items-center justify-center rounded-xl hover:bg-white/10 text-white/65 cursor-pointer"
-                title="Очистить диалог"
-                aria-label="Очистить диалог"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
+            <div className="flex items-center gap-1 shrink-0">
+              {geminiMic && (
+                <button
+                  type="button"
+                  onClick={toggleLiveCall}
+                  disabled={!available || !online}
+                  className={`asoshik-wbtn !min-h-[36px] ${liveState ? '!bg-rose-500 !text-white !border-rose-400' : 'accent'}`}
+                  title={liveState ? 'Завершить голосовой звонок' : 'Живой голосовой звонок Gemini Live'}
+                >
+                  {liveState ? <PhoneOff className="w-3.5 h-3.5" /> : <PhoneCall className="w-3.5 h-3.5" />}
+                  <span>{liveState ? 'Сбросить' : 'Звонок'}</span>
+                </button>
+              )}
+              {messages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clear}
+                  className="min-w-[44px] min-h-[44px] -mr-2 flex items-center justify-center rounded-xl hover:bg-white/10 text-white/65 cursor-pointer"
+                  title="Очистить диалог"
+                  aria-label="Очистить диалог"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
           <div className="text-[11px] font-semibold text-white/70 truncate tabular-nums">
-            {busy
+            {liveState
+              ? liveState === 'connecting'
+                ? 'Подключаюсь к живому голосу Gemini…'
+                : liveState === 'speaking'
+                ? `Асошик говорит (${GEMINI_VOICES.find((v) => v.id === voiceName)?.label || voiceName})…`
+                : 'Живой диалог: говори, я слушаю…'
+              : busy
               ? streamingRoute?.label || 'думает…'
               : !available
               ? 'скоро появится'
@@ -591,6 +716,33 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
         </div>
       </div>
 
+      {liveState && (
+        <div className="mb-2.5 p-3 rounded-2xl border border-cyan-400/40 bg-slate-900/85 text-white space-y-2">
+          <div className="flex items-center justify-between gap-2 text-xs font-bold text-cyan-200">
+            <span>
+              {liveState === 'connecting'
+                ? 'Подключаю Gemini Live…'
+                : liveState === 'speaking'
+                ? '🔊 Асошик отвечает голосом'
+                : '🎙 Слушаю тебя — можно перебивать в любой момент'}
+            </span>
+            <span className="text-[11px] opacity-75">
+              Голос: {GEMINI_VOICES.find((v) => v.id === voiceName)?.label || voiceName}
+            </span>
+          </div>
+          {liveLines.length > 0 && (
+            <div className="space-y-1 max-h-28 overflow-y-auto text-xs">
+              {liveLines.map((line, idx) => (
+                <div key={idx} className={line.who === 'user' ? 'text-white/75' : 'text-cyan-100 font-semibold'}>
+                  <b className="opacity-70">{line.who === 'user' ? 'Ты: ' : 'Асошик: '}</b>
+                  {line.text}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Лента сообщений */}
       <div className="asoshik-list">
         {messages.length === 0 && (
@@ -599,7 +751,7 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
               Привет! Я {ASSISTANT_NAME}
               <br />
               <span className="text-white/65 font-normal text-xs leading-relaxed">
-                Знаю расписание, время до звонка, оценки и домашку. Могу проверить решение по фото, собрать портфель, запустить Помодоро и сделать тест.
+                Знаю расписание, звонки, оценки и домашку. Умею говорить живым голосом Gemini, проверять тетради по фото, рисовать картинки и схемы, собирать портфель и делать тесты.
               </span>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
@@ -631,9 +783,21 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
               <AsoshikAvatar size={26} />
               <div className="max-w-[88%] flex-1 min-w-0 space-y-2">
                 <div className="asoshik-bubble bot">
-                  {m.routeLabel && (
-                    <div className="text-[10px] font-semibold text-white/50 mb-1">{m.routeLabel}</div>
-                  )}
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-[10px] font-semibold text-white/50 truncate">{m.routeLabel || ASSISTANT_NAME}</span>
+                    {showVoiceToggle && m.text.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => playMsgVoice(m.text, i)}
+                        className="inline-flex items-center gap-1 text-[10.5px] font-bold text-cyan-300/90 hover:text-cyan-200 cursor-pointer shrink-0 py-0.5 px-1.5 rounded-lg bg-white/5"
+                        aria-label={speaking && speakingMsgIdx === i ? 'Остановить озвучку' : 'Озвучить ответ голосом Gemini'}
+                        title="Озвучить голосом Gemini"
+                      >
+                        {speaking && speakingMsgIdx === i ? <Square className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                        <span>{speaking && speakingMsgIdx === i ? 'Стоп' : 'Голос'}</span>
+                      </button>
+                    )}
+                  </div>
                   <div className="space-y-1">{renderText(m.text)}</div>
                   {m.actions && m.actions.length > 0 && (
                     <div className="asoshik-actions">
@@ -747,6 +911,13 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
               >
                 Решить по шагам
               </button>
+              <button
+                type="button"
+                className="asoshik-wbtn"
+                onClick={() => send('Нарисуй наглядную схему по этому фото', photo)}
+              >
+                Схема по фото
+              </button>
             </div>
           )}
         </div>
@@ -771,9 +942,9 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
             className="asoshik-cam"
             onClick={() => setAttachMenu((v) => !v)}
             disabled={!available || busy || left === 0}
-            aria-label="Прикрепить фото задания"
+            aria-label="Прикрепить фото или нарисовать картинку"
             aria-expanded={attachMenu}
-            title="Фото или PDF"
+            title="Фото, PDF или нарисовать картинку"
           >
             <Camera className="w-4 h-4" />
           </button>
@@ -788,6 +959,17 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
               <button type="button" role="menuitem" onClick={() => fileRef.current?.click()}>
                 <FileText className="w-4 h-4" /> Файл (фото или PDF)
               </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAttachMenu(false);
+                  setInput((prev) => (prev.trim().toLowerCase().startsWith('нарисуй') ? prev : `Нарисуй ${prev}`));
+                  setTimeout(() => inputRef.current?.focus(), 40);
+                }}
+              >
+                <Palette className="w-4 h-4 text-[var(--accent)]" /> Нарисовать картинку
+              </button>
             </div>
           )}
         </div>
@@ -797,7 +979,7 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
             type="button"
             className={`asoshik-cam ${listening ? 'asoshik-mic-on' : ''} ${transcribing ? 'asoshik-mic-busy' : ''}`}
             onClick={micOn}
-            disabled={!available || busy || transcribing || left === 0}
+            disabled={!available || busy || transcribing || left === 0 || Boolean(liveState)}
             aria-label={listening ? 'Остановить запись' : 'Сказать голосом'}
             title={listening ? 'Слушаю… нажми, чтобы отправить' : 'Сказать голосом'}
           >
@@ -806,10 +988,11 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
         )}
 
         <input
+          ref={inputRef}
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={available ? (photo ? 'Что сделать с фото? (можно пусто)' : `Спроси ${ASSISTANT_NAME}а…`) : `${ASSISTANT_NAME} пока не подключён`}
+          placeholder={available ? (photo ? 'Что сделать с фото? (можно пусто)' : `Спроси или попроси нарисовать…`) : `${ASSISTANT_NAME} пока не подключён`}
           disabled={!available || left === 0}
           maxLength={600}
           className="text-sm min-h-[44px]"
@@ -843,24 +1026,29 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-center gap-3 mt-1.5 text-[10.5px] text-white/55">
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-1.5 text-[10.5px] text-white/55">
         {showVoiceToggle && (
-          <button type="button" onClick={toggleVoice} className="font-bold text-cyan-300 flex items-center gap-1 cursor-pointer min-h-[28px]">
-            {voiceOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-            <span>{voiceOn ? 'Озвучка вкл' : 'Озвучивать'}</span>
-            {speaking && (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  stopVoice();
-                  setSpeaking(false);
-                }}
-                className="underline ml-1"
+          <>
+            <button type="button" onClick={toggleVoice} className="font-bold text-cyan-300 flex items-center gap-1 cursor-pointer min-h-[28px]">
+              {voiceOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+              <span>{voiceOn ? 'Авто-голос вкл' : 'Авто-голос'}</span>
+            </button>
+            <label className="!m-0 !inline-flex items-center gap-1 text-[10.5px] font-bold opacity-80">
+              <span>Голос:</span>
+              <select
+                value={voiceName}
+                onChange={(e) => changeVoice(e.target.value as GeminiVoiceName)}
+                aria-label="Голос Асошика"
+                className="!w-auto !py-0.5 !px-1.5 !text-[10.5px] !rounded-lg !bg-black/25 !border-white/20 !text-white font-bold cursor-pointer"
               >
-                стоп
-              </span>
-            )}
-          </button>
+                {GEMINI_VOICES.map((v) => (
+                  <option key={v.id} value={v.id} className="bg-slate-900 text-white">
+                    {v.label} ({v.hint})
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
         )}
         <span>ИИ может ошибаться · Не передавайте личные данные</span>
       </div>

@@ -1,21 +1,35 @@
 import 'dotenv/config';
 import express, { type Request, type Response } from 'express';
+import { createServer } from 'http';
 import path from 'path';
 import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
-import { GoogleGenAI, ThinkingLevel, type GenerateContentResponse } from '@google/genai';
+import { WebSocketServer, WebSocket } from 'ws';
+import {
+  GoogleGenAI,
+  Modality,
+  ThinkingLevel,
+  Type,
+  type GenerateContentResponse,
+  type LiveServerMessage,
+} from '@google/genai';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 3000;
 
-// Модели Асошика:
-// - быстрый чат: gemini-3.8-flash (с резервом на gemini-3.1-flash-lite)
-// - сложные задачи, фото и глубокий разбор: gemini-4-hydrogen
-const FAST_CHAT_MODEL = 'gemini-3.8-flash';
-const FAST_RESERVE_MODEL = 'gemini-3.1-flash-lite';
+// Модели Асошика (v16.28):
+// - Быстрый чат и вызов инструментов: gemini-3.5-flash-lite (~0.6-1с)
+// - Сложные задачи, фото и глубокий разбор: gemini-4-hydrogen с резервом на 3.5-flash-lite и 3.1-flash-lite
+// - Голос TTS: gemini-3.8-flash-lite-tts через v1alpha
+// - Живой голосовой разговор (Live API): gemini-3.8-live через v1alpha
+// - Транскрибация речи (STT): gemini-3.5-transcribe с резервом на 3.5-flash-lite
+const FAST_CHAT_MODEL = 'gemini-3.5-flash-lite';
 const DEEP_TASK_MODEL = 'gemini-4-hydrogen';
-const STT_MODELS = ['gemini-3.5-transcribe', 'gemini-3.1-flash-lite'];
-const TTS_MODELS = ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts'];
+const FALLBACK_LITE_MODEL = 'gemini-3.1-flash-lite';
+const LIVE_MODEL = 'gemini-3.8-live';
+const STT_MODELS = ['gemini-3.5-transcribe', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
+const TTS_MODELS = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts'];
+const ALLOWED_VOICES = new Set(['Puck', 'Kore', 'Zephyr', 'Charon', 'Fenrir']);
 
 function getGeminiKey(): string {
   return (process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '').trim();
@@ -27,6 +41,20 @@ function createAI(): GoogleGenAI | null {
   return new GoogleGenAI({
     apiKey,
     httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      },
+    },
+  });
+}
+
+function createVoiceAI(): GoogleGenAI | null {
+  const apiKey = getGeminiKey();
+  if (!apiKey) return null;
+  return new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      apiVersion: 'v1alpha',
       headers: {
         'User-Agent': 'aistudio-build',
       },
@@ -48,7 +76,7 @@ function selectModelChain(modePref: ModePref, hasMedia: boolean, lastUserText: s
   const text = (lastUserText || '').trim();
   const looksComplex =
     hasMedia ||
-    text.length >= 140 ||
+    text.length >= 160 ||
     /реши|проверь|ошибк|докажи|уравнен|неравен|система|задач|сочинени|изложени|эссе|разбор|подробн|объясни|тест|викторин|карточк|повтори|формул|[=^√∫∑]|\\frac/i.test(
       text
     );
@@ -61,15 +89,15 @@ function selectModelChain(modePref: ModePref, hasMedia: boolean, lastUserText: s
         model: DEEP_TASK_MODEL,
         route: 'deep',
         label: hasMedia ? '4 Hydrogen · Разбор фото' : '4 Hydrogen · Глубокий разбор',
-        ...(hasMedia || modePref === 'tutor' ? { thinkingLevel: ThinkingLevel.LOW } : {}),
+        thinkingLevel: ThinkingLevel.LOW,
       },
       {
         model: FAST_CHAT_MODEL,
-        route: 'fast',
-        label: '3.8 Flash · Резерв',
+        route: 'deep',
+        label: hasMedia ? '3.5 Flash · Разбор фото' : '3.5 Flash · Подробно',
       },
       {
-        model: FAST_RESERVE_MODEL,
+        model: FALLBACK_LITE_MODEL,
         route: 'fast',
         label: '3.1 Flash Lite · Резерв',
         thinkingLevel: ThinkingLevel.MINIMAL,
@@ -81,24 +109,24 @@ function selectModelChain(modePref: ModePref, hasMedia: boolean, lastUserText: s
     {
       model: FAST_CHAT_MODEL,
       route: 'fast',
-      label: modePref === 'brief' ? '3.8 Flash · Кратко' : '3.8 Flash · Быстрый чат',
-    },
-    {
-      model: FAST_RESERVE_MODEL,
-      route: 'fast',
-      label: '3.1 Flash Lite · Резерв',
-      thinkingLevel: ThinkingLevel.MINIMAL,
+      label: modePref === 'brief' ? '3.5 Flash · Кратко' : '3.5 Flash · Быстрый чат',
     },
     {
       model: DEEP_TASK_MODEL,
       route: 'deep',
-      label: '4 Hydrogen · Резерв',
+      label: '4 Hydrogen · Умный ответ',
+      thinkingLevel: ThinkingLevel.LOW,
+    },
+    {
+      model: FALLBACK_LITE_MODEL,
+      route: 'fast',
+      label: '3.1 Flash Lite · Резерв',
+      thinkingLevel: ThinkingLevel.MINIMAL,
     },
   ];
 }
 
-// Кратковременный кэш таймаутов, чтобы не заставлять пользователя ждать на каждом сообщении,
-// если одна из моделей временно не отвечает в текущем окружении.
+// Кратковременный кэш недоступных моделей (429/503/504/404), чтобы не тормозить каждый запрос.
 const modelCooldownUntil = new Map<string, number>();
 
 function extractErrorInfo(err: unknown): { status: number; message: string } {
@@ -116,6 +144,33 @@ function friendlyRussianError(status: number): string {
   return 'Асошик не смог ответить. Попробуй ещё раз позже.';
 }
 
+const ASPECT_DIMENSIONS: Record<string, { w: number; h: number }> = {
+  '1:1': { w: 800, h: 800 },
+  '4:3': { w: 800, h: 600 },
+  '16:9': { w: 960, h: 540 },
+  '3:4': { w: 600, h: 800 },
+};
+
+function sanitizeSvg(rawSvg: string, width: number, height: number): string | null {
+  const match = rawSvg.match(/<svg[\s\S]*?<\/svg>/i);
+  if (!match) return null;
+  let svg = match[0]
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, '')
+    .replace(/<(iframe|object|embed|link|meta)[^>]*>[\s\S]*?<\/\1>/gi, '')
+    .replace(/<(iframe|object|embed|link|meta)[^>]*\/?>/gi, '')
+    .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/(?:href|xlink:href)\s*=\s*["']\s*javascript:[^"']*["']/gi, '');
+
+  if (!/xmlns\s*=\s*["']http:\/\/www\.w3\.org\/2000\/svg["']/i.test(svg)) {
+    svg = svg.replace(/^<svg/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+  }
+  if (!/viewBox\s*=/i.test(svg)) {
+    svg = svg.replace(/^<svg/i, `<svg viewBox="0 0 ${width} ${height}"`);
+  }
+  return svg;
+}
+
 async function startServer() {
   const app = express();
   app.use(express.json({ limit: '15mb' }));
@@ -131,12 +186,17 @@ async function startServer() {
     next();
   });
 
-  // Статус подключения ИИ без утечки ключа в браузер
+  // Статус подключения ИИ и доступных возможностей без утечки ключа в браузер
   app.get('/api/assistant/status', (_req: Request, res: Response) => {
+    const ready = Boolean(getGeminiKey());
     res.json({
-      available: Boolean(getGeminiKey()),
+      available: ready,
       fastModel: FAST_CHAT_MODEL,
       deepModel: DEEP_TASK_MODEL,
+      voiceModel: TTS_MODELS[0],
+      liveModel: LIVE_MODEL,
+      liveSupported: ready,
+      imageSupported: ready,
     });
   });
 
@@ -211,7 +271,7 @@ async function startServer() {
         if (!aborted && !res.writableEnded) res.write(': ping\n\n');
       }, 4000);
       try {
-        const timeoutMs = candidate.route === 'deep' ? 9000 : 7000;
+        const timeoutMs = candidate.model === DEEP_TASK_MODEL ? 10000 : 12000;
         const stream = await Promise.race([
           ai.models.generateContentStream({
             model: candidate.model,
@@ -279,8 +339,10 @@ async function startServer() {
         clearInterval(keepAlive);
         const info = extractErrorInfo(err);
         lastStatus = info.status;
-        if (info.status === 504 || info.status === 404) {
-          modelCooldownUntil.set(candidate.model, Date.now() + 60_000);
+        if (info.status === 429 || info.status === 503 || info.status === 504) {
+          modelCooldownUntil.set(candidate.model, Date.now() + 90_000);
+        } else if (info.status === 404) {
+          modelCooldownUntil.set(candidate.model, Date.now() + 300_000);
         }
         attempts.push({
           model: candidate.model,
@@ -289,7 +351,7 @@ async function startServer() {
           reason: info.message.slice(0, 120),
         });
         console.error(`[assistant:${candidate.model}] status=${info.status}`, info.message.slice(0, 200));
-        if (info.status === 404 || info.status === 408 || info.status === 429 || info.status === 503 || info.status === 504) {
+        if (info.status === 400 || info.status === 404 || info.status === 408 || info.status === 429 || info.status === 503 || info.status === 504) {
           continue;
         }
         break;
@@ -300,6 +362,124 @@ async function startServer() {
       sendEvent({ type: 'error', status: lastStatus, message: friendlyRussianError(lastStatus), attempts });
     }
     if (!res.writableEnded) res.end();
+  });
+
+  // Генерация иллюстраций, схем и диаграмм (векторное искусство высокой чёткости)
+  app.post('/api/assistant/image', async (req: Request, res: Response) => {
+    const ai = createAI();
+    if (!ai) {
+      res.status(503).json({ error: 'Генерация картинок пока не подключена' });
+      return;
+    }
+
+    const {
+      prompt = '',
+      style = 'illustration',
+      aspectRatio = '1:1',
+      referenceImage,
+    } = (req.body || {}) as {
+      prompt?: string;
+      style?: string;
+      aspectRatio?: string;
+      referenceImage?: string;
+    };
+
+    const cleanPrompt = String(prompt || '').trim().slice(0, 600);
+    if (!cleanPrompt) {
+      res.status(400).json({ error: 'Опиши, что нужно нарисовать' });
+      return;
+    }
+
+    const ratio = ASPECT_DIMENSIONS[aspectRatio] ? aspectRatio : '1:1';
+    const { w, h } = ASPECT_DIMENSIONS[ratio];
+
+    const styleHints: Record<string, string> = {
+      illustration: 'яркая детализированная книжная иллюстрация с мягкими градиентами, глубиной, объёмными тенями и чистым фоном',
+      diagram: 'наглядная школьная учебная схема / инфографика с чёткими стрелками, выносками, цветовой кодировкой и аккуратными русскими подписями',
+      comic: 'выразительный комикс-арт с живыми персонажами, динамичными линиями и чистыми формами',
+      poster: 'стильный образовательный постер с выразительной композицией, акцентами и сбалансированной палитрой',
+      pixel: 'аккуратный пиксель-арт / изометрическая графика с чёткими гранями и сочными цветами',
+    };
+
+    const styleDesc = styleHints[style] || styleHints.illustration;
+
+    const imgPrompt = `Нарисуй качественное изображение в формате SVG строго для viewBox="0 0 ${w} ${h}".
+Запрос пользователя: ${cleanPrompt}
+Стиль: ${styleDesc}.
+
+Требования к SVG:
+1. Корневой тег: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">.
+2. Сделай полноценную красивую композицию на весь холст: добавь фоновый <rect> с <linearGradient> или <radialGradient> в <defs>, многослойные формы (<path>, <circle>, <ellipse>, <polygon>, <g>), световые блики и мягкие тени.
+3. Если это учебная схема, график или объект с подписями — используй читаемый шрифт sans-serif на русском языке с контрастными плашками под текстом, чтобы ничего не сливалось.
+4. Не используй внешние URL, <image href="http...">, <script>, <foreignObject> и обработчики событий on*.
+5. Все элементы должны целиком помещаться внутри viewBox 0 0 ${w} ${h}.`;
+
+    const parts: Record<string, unknown>[] = [];
+    if (typeof referenceImage === 'string' && referenceImage.startsWith('data:image/')) {
+      const [head, data] = referenceImage.split(',');
+      const mimeType = head.match(/data:([^;]+)/)?.[1] || 'image/jpeg';
+      if (data) {
+        parts.push({ inlineData: { mimeType, data } });
+      }
+    }
+    parts.push({ text: imgPrompt });
+
+    const modelsToTry = [FAST_CHAT_MODEL, DEEP_TASK_MODEL, FALLBACK_LITE_MODEL];
+    let lastStatus = 500;
+
+    for (const model of modelsToTry) {
+      try {
+        const response = await Promise.race([
+          ai.models.generateContent({
+            model,
+            contents: [{ role: 'user', parts: parts as never }],
+            config: {
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  title: { type: Type.STRING, description: 'Короткий заголовок картинки по-русски (3–6 слов)' },
+                  caption: { type: Type.STRING, description: 'Короткое пояснение к изображению (1 предложение)' },
+                  svg: { type: Type.STRING, description: 'Полный валидный SVG-код от <svg...> до </svg>' },
+                },
+                required: ['title', 'caption', 'svg'],
+              },
+            },
+          }),
+          new Promise<never>((_, rej) => setTimeout(() => rej(Object.assign(new Error('Image generation timeout'), { status: 504 })), 18000)),
+        ]);
+
+        const rawJson = response.text || '';
+        const parsed = JSON.parse(rawJson) as { title?: string; caption?: string; svg?: string };
+        const cleanSvg = sanitizeSvg(String(parsed.svg || ''), w, h);
+        if (!cleanSvg) continue;
+
+        const base64 = Buffer.from(cleanSvg, 'utf8').toString('base64');
+        res.json({
+          title: String(parsed.title || cleanPrompt).slice(0, 80),
+          caption: String(parsed.caption || '').slice(0, 220),
+          imageUrl: `data:image/svg+xml;base64,${base64}`,
+          aspectRatio: ratio,
+          width: w,
+          height: h,
+          style,
+          model,
+        });
+        return;
+      } catch (err) {
+        const info = extractErrorInfo(err);
+        lastStatus = info.status;
+        console.error(`[assistant:image:${model}] status=${info.status}`, info.message.slice(0, 200));
+        if (info.status === 429 || info.status === 503 || info.status === 504 || info.status === 404 || err instanceof SyntaxError) {
+          continue;
+        }
+        break;
+      }
+    }
+
+    res.status(lastStatus >= 400 ? lastStatus : 500).json({
+      error: lastStatus === 429 ? 'Слишком много запросов на рисование, подожди немного.' : 'Не получилось нарисовать картинку. Попробуй описать проще.',
+    });
   });
 
   // Распознавание речи с микрофона
@@ -332,7 +512,7 @@ async function startServer() {
           ],
         });
         const text = (response.text || '').replace(/^["«]|["»]$/g, '').trim();
-        res.json({ text });
+        res.json({ text, model });
         return;
       } catch (err) {
         const info = extractErrorInfo(err);
@@ -346,29 +526,49 @@ async function startServer() {
     });
   });
 
-  // Озвучка ответа голосом Puck
+  // Озвучка ответа настоящим голосом Gemini TTS (через v1alpha)
   app.post('/api/assistant/tts', async (req: Request, res: Response) => {
-    const ai = createAI();
-    if (!ai) {
+    const voiceAI = createVoiceAI();
+    if (!voiceAI) {
       res.status(503).json({ error: 'TTS не подключён' });
       return;
     }
-    const { text, voiceName = 'Puck' } = (req.body || {}) as { text?: string; voiceName?: string };
+    const { text, voiceName = 'Puck', style } = (req.body || {}) as {
+      text?: string;
+      voiceName?: string;
+      style?: string;
+    };
     const clean = String(text || '').trim().slice(0, 900);
     if (!clean) {
       res.status(400).json({ error: 'Пустой текст' });
       return;
     }
+    const safeVoice = ALLOWED_VOICES.has(voiceName) ? voiceName : 'Puck';
+    const voiceStyle =
+      typeof style === 'string' && style.trim()
+        ? style.trim().slice(0, 140)
+        : 'Friendly, clear, warm Russian school assistant speaking naturally';
+
     for (const model of TTS_MODELS) {
       try {
-        const response = await ai.models.generateContent({
+        const response = await voiceAI.models.generateContent({
           model,
-          contents: [{ role: 'user', parts: [{ text: clean }] }],
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  text: clean,
+                  speechMetadata: { style: voiceStyle },
+                } as never,
+              ],
+            },
+          ],
           config: {
             responseModalities: ['AUDIO'],
             speechConfig: {
               voiceConfig: {
-                prebuiltVoiceConfig: { voiceName },
+                prebuiltVoiceConfig: { voiceName: safeVoice },
               },
             },
           },
@@ -381,16 +581,18 @@ async function startServer() {
           res.json({
             audioBase64: audioPart.inlineData.data,
             mimeType: audioPart.inlineData.mimeType || 'audio/wav',
+            model,
+            voiceName: safeVoice,
           });
           return;
         }
       } catch (err) {
         const info = extractErrorInfo(err);
-        if (info.status === 404 || info.status === 429 || info.status === 503) continue;
-        break;
+        console.error(`[assistant:tts:${model}] status=${info.status}`, info.message.slice(0, 260));
+        continue;
       }
     }
-    res.status(502).json({ error: 'Озвучка временно недоступна' });
+    res.status(502).json({ error: 'Озвучка Gemini временно недоступна' });
   });
 
   if (process.env.NODE_ENV !== 'production') {
@@ -410,7 +612,151 @@ async function startServer() {
     }
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  // HTTP-сервер + WebSocket-шлюз для живого голосового диалога Gemini Live API
+  const httpServer = createServer(app);
+  const wss = new WebSocketServer({ noServer: true });
+
+  httpServer.on('upgrade', (req, socket, head) => {
+    const url = req.url || '';
+    if (!url.startsWith('/api/assistant/live')) return;
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit('connection', ws, req);
+    });
+  });
+
+  wss.on('connection', (clientWs: WebSocket) => {
+    const voiceAI = createVoiceAI();
+    if (!voiceAI) {
+      clientWs.send(JSON.stringify({ type: 'error', message: 'Голосовой сервер не подключён.' }));
+      clientWs.close();
+      return;
+    }
+
+    let session: Awaited<ReturnType<GoogleGenAI['live']['connect']>> | null = null;
+    let connecting: Promise<void> | null = null;
+    let closed = false;
+
+    const sendWs = (payload: Record<string, unknown>) => {
+      if (!closed && clientWs.readyState === WebSocket.OPEN) {
+        clientWs.send(JSON.stringify(payload));
+      }
+    };
+
+    const connectSession = async (voiceName = 'Puck', context = '') => {
+      if (session) return;
+      if (connecting) {
+        await connecting;
+        return;
+      }
+      const safeVoice = ALLOWED_VOICES.has(voiceName) ? voiceName : 'Puck';
+      const sysText = [
+        'Ты — Асошик, дружелюбный голосовой школьный помощник и репетитор в приложении «АСОШ Таймер» для учеников МОУ АСОШ №2.',
+        'Отвечай живо, по-доброму, понятно и компактно (как в обычном устном разговоре, без длинных списков и markdown-звёздочек).',
+        'По расписанию, звонкам, оценкам и домашке опирайся строго на данные ученика ниже.',
+        context ? `\nДанные ученика:\n${String(context).slice(0, 3000)}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      connecting = (async () => {
+        try {
+          session = await voiceAI.live.connect({
+            model: LIVE_MODEL,
+            config: {
+              responseModalities: [Modality.AUDIO],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName: safeVoice },
+                },
+              },
+              inputAudioTranscription: {},
+              outputAudioTranscription: {},
+              systemInstruction: sysText,
+            },
+            callbacks: {
+              onmessage: (message: LiveServerMessage) => {
+                const content = message.serverContent;
+                if (content?.inputTranscription?.text) {
+                  sendWs({ type: 'inputTranscript', text: content.inputTranscription.text });
+                }
+                if (content?.outputTranscription?.text) {
+                  sendWs({ type: 'outputTranscript', text: content.outputTranscription.text });
+                }
+                for (const part of content?.modelTurn?.parts ?? []) {
+                  if (part.inlineData?.data) {
+                    sendWs({ type: 'audio', data: part.inlineData.data });
+                  }
+                }
+                if (content?.interrupted) {
+                  sendWs({ type: 'interrupted' });
+                }
+                if (content?.turnComplete) {
+                  sendWs({ type: 'turnComplete' });
+                }
+              },
+              onerror: (err: unknown) => {
+                console.error('[assistant:live] error:', err);
+                sendWs({ type: 'error', message: 'Связь с голосом Gemini прервалась.' });
+              },
+              onclose: () => {
+                if (!closed) {
+                  sendWs({ type: 'closed' });
+                  clientWs.close();
+                }
+              },
+            },
+          });
+          sendWs({ type: 'ready', model: LIVE_MODEL, voiceName: safeVoice });
+        } catch (err) {
+          const info = extractErrorInfo(err);
+          console.error('[assistant:live] connect failed:', info.message.slice(0, 240));
+          sendWs({ type: 'error', message: friendlyRussianError(info.status) });
+          clientWs.close();
+        }
+      })();
+
+      await connecting;
+    };
+
+    clientWs.on('message', async (raw) => {
+      try {
+        const msg = JSON.parse(raw.toString()) as {
+          type?: string;
+          voiceName?: string;
+          context?: string;
+          data?: string;
+          text?: string;
+        };
+        if (msg.type === 'setup') {
+          await connectSession(msg.voiceName, msg.context);
+          return;
+        }
+        if (!session) await connectSession(msg.voiceName, msg.context);
+        if (!session) return;
+
+        if (msg.type === 'audio' && typeof msg.data === 'string' && msg.data) {
+          session.sendRealtimeInput({
+            audio: { data: msg.data, mimeType: 'audio/pcm;rate=16000' },
+          });
+        } else if (msg.type === 'text' && typeof msg.text === 'string' && msg.text.trim()) {
+          session.sendRealtimeInput({ text: msg.text.trim() });
+        }
+      } catch (err) {
+        console.error('[assistant:live:msg]', err);
+      }
+    });
+
+    clientWs.on('close', () => {
+      closed = true;
+      try {
+        session?.close();
+      } catch {
+        // ignore
+      }
+    });
+  });
+
+  httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`ASOSH Timer server running on http://0.0.0.0:${PORT}`);
   });
 }

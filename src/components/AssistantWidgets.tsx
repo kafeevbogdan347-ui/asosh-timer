@@ -7,7 +7,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Download,
   Flame,
+  Maximize2,
+  Palette,
   Pause,
   Play,
   RotateCcw,
@@ -36,6 +39,7 @@ export const AssistantWidgetCard: React.FC<WidgetProps> = (props) => {
   if (widget.kind === 'formulas') return <FormulasWidget {...props} widget={widget} />;
   if (widget.kind === 'quiz') return <StudyQuizWidget {...props} widget={widget} />;
   if (widget.kind === 'flashcards') return <FlashcardsWidget {...props} widget={widget} />;
+  if (widget.kind === 'image') return <GeneratedImageWidget {...props} widget={widget} />;
   return null;
 };
 
@@ -590,3 +594,142 @@ const FlashcardsWidget: React.FC<WidgetProps & { widget: Extract<AssistantWidget
     </div>
   );
 };
+
+async function exportImageToPngDataUrl(imageUrl: string): Promise<string> {
+  if (!imageUrl.startsWith('data:image/svg+xml')) return imageUrl;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = 2;
+      const w = Math.max(800, (img.naturalWidth || 800) * scale);
+      const h = Math.max(600, (img.naturalHeight || 800) * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(imageUrl);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, w, h);
+      try {
+        resolve(canvas.toDataURL('image/png'));
+      } catch {
+        resolve(imageUrl);
+      }
+    };
+    img.onerror = () => resolve(imageUrl);
+    img.src = imageUrl;
+  });
+}
+
+const GeneratedImageWidget: React.FC<WidgetProps & { widget: Extract<AssistantWidget, { kind: 'image' }> }> = ({
+  widget,
+  soundProfile,
+  onAskFollowup,
+}) => {
+  const [zoomed, setZoomed] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const downloadPng = async () => {
+    if (saving) return;
+    setSaving(true);
+    playSound('click', soundProfile);
+    try {
+      const pngUrl = await exportImageToPngDataUrl(widget.imageUrl);
+      const a = document.createElement('a');
+      a.href = pngUrl;
+      const safeName = widget.title.toLowerCase().replace(/[^a-zа-яё0-9]+/gi, '-').replace(/^-|-$/g, '').slice(0, 40) || 'asoshik-art';
+      a.download = `${safeName}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="asoshik-widget space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-sm font-black text-white flex items-center gap-1.5 min-w-0">
+            <Palette className="w-4 h-4 text-[var(--accent)] shrink-0" />
+            <span className="truncate">{widget.title}</span>
+          </div>
+          <span className="text-[10.5px] font-bold text-white/55 tabular-nums shrink-0">{widget.aspectRatio}</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setZoomed(true)}
+          className="group relative w-full overflow-hidden rounded-2xl border border-white/15 bg-slate-950/60 cursor-pointer block"
+          aria-label="Увеличить картинку"
+        >
+          <img
+            src={widget.imageUrl}
+            alt={widget.title}
+            className="w-full max-h-[340px] object-contain mx-auto block"
+          />
+          <span className="absolute right-2 bottom-2 px-2 py-1 rounded-lg bg-black/65 text-white text-[11px] font-bold inline-flex items-center gap-1 opacity-85 group-hover:opacity-100">
+            <Maximize2 className="w-3.5 h-3.5" /> Открыть
+          </span>
+        </button>
+
+        {widget.caption && <div className="text-xs text-white/75 leading-snug">{widget.caption}</div>}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className="asoshik-wbtn accent" onClick={downloadPng} disabled={saving}>
+            <Download className="w-3.5 h-3.5" />
+            <span>{saving ? 'Готовлю…' : 'Скачать PNG'}</span>
+          </button>
+          {onAskFollowup && (
+            <button
+              type="button"
+              className="asoshik-wbtn"
+              onClick={() => onAskFollowup(`Нарисуй ещё один вариант: ${widget.prompt}`)}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Другой вариант</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {zoomed && (
+        <div
+          className="fixed inset-0 z-[120] bg-black/88 backdrop-blur-md flex flex-col items-center justify-center p-4"
+          onClick={() => setZoomed(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={widget.title}
+        >
+          <div className="w-full max-w-3xl flex items-center justify-between gap-3 mb-3" onClick={(e) => e.stopPropagation()}>
+            <div className="text-sm font-black text-white truncate">{widget.title}</div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button type="button" className="asoshik-wbtn accent" onClick={downloadPng} disabled={saving}>
+                <Download className="w-3.5 h-3.5" />
+                <span>PNG</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoomed(false)}
+                className="min-w-[44px] min-h-[44px] rounded-xl bg-white/10 text-white grid place-items-center cursor-pointer"
+                aria-label="Закрыть просмотр"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          <img
+            src={widget.imageUrl}
+            alt={widget.title}
+            className="max-w-full max-h-[80dvh] rounded-2xl border border-white/15 bg-slate-950 object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+    </>
+  );
+};
+

@@ -20,6 +20,13 @@ export const updatesLink = (version: string) => `${UPDATES_URL}#${version.replac
 
 export const WHATS_NEW: WhatsNewRelease[] = [
   {
+    version: 'v16.28',
+    date: '14 ноября 2026',
+    items: [
+      { icon: '✨', title: 'Обновление v16.28', text: 'Асошик 2.1: живой голос Gemini Live и озвучка, быстрый отклик без резерва, рисование картинок и схем' },
+    ],
+  },
+  {
     version: 'v16.27',
     date: '14 ноября 2026',
     items: [

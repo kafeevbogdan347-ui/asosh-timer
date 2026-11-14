@@ -50,6 +50,16 @@ export type AssistantWidget =
       kind: 'flashcards';
       topic: string;
       cards: { front: string; back: string; flipped?: boolean; known?: boolean }[];
+    }
+  | {
+      id: string;
+      kind: 'image';
+      title: string;
+      caption: string;
+      imageUrl: string;
+      aspectRatio: string;
+      style: string;
+      prompt: string;
     };
 
 export interface AssistantMessage {
@@ -259,6 +269,25 @@ const AGENT_TOOLS = [
       required: ['theme'],
     },
   },
+  {
+    name: 'generate_image',
+    description: 'Нарисовать картинку, иллюстрацию, учебную схему, диаграмму, график или постер прямо в чате. Используй, когда просят нарисовать, изобразить, сделать схему или визуально объяснить тему.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        prompt: { type: 'STRING', description: 'Подробное описание того, что должно быть изображено на картинке или схеме (на русском)' },
+        style: {
+          type: 'STRING',
+          description: '"illustration" (рисунок/иллюстрация), "diagram" (учебная схема с подписями), "comic" (комикс), "poster" (постер), "pixel" (пиксель/изометрия)',
+        },
+        aspect_ratio: {
+          type: 'STRING',
+          description: '"1:1" (квадрат, по умолчанию), "4:3" (альбомная схема), "16:9" (широкая), "3:4" (вертикальный постер)',
+        },
+      },
+      required: ['prompt'],
+    },
+  },
 ];
 
 const MAX_AGENT_STEPS = 4;
@@ -325,6 +354,7 @@ const SYSTEM_PROMPT = `Ты — ${ASSISTANT_NAME}, умный и дружелю�
 - Когда просят таймер, Помодоро, «позаниматься 25 минут» — вызывай start_pomodoro.
 - Когда спрашивают формулу или элемент таблицы Менделеева — вызывай lookup_formulas.
 - Когда просят тест, викторину, проверить знания или сделать карточки для повторения — вызывай create_study_quiz (передавая готовые качественные вопросы или карточки).
+- Когда просят нарисовать картинку, иллюстрацию, мем, схему, график или наглядно изобразить тему — вызывай generate_image с подробным описанием и подходящим стилем.
 - Для записи/выполнения ДЗ, календаря, оценок, замен, перехода по разделам и тем используй соответствующие инструменты.
 - По умолчанию scope="me". Для класса (scope="class") и объявлений — пользователь подтверждает кнопкой до выполнения, если инструмент вернул ok — значит уже опубликовано.`;
 
@@ -534,6 +564,67 @@ async function readStreamTurn(
   return { fullText, calls, modelParts, routeLabel, routeKind };
 }
 
+export async function generateAssistantImage(opts: {
+  prompt: string;
+  style?: string;
+  aspectRatio?: string;
+  referenceImage?: string;
+  signal?: AbortSignal;
+}): Promise<{
+  title: string;
+  caption: string;
+  imageUrl: string;
+  aspectRatio: string;
+  style: string;
+  model: string;
+}> {
+  if (!navigator.onLine) throw new Error('Нет интернета — не получится нарисовать картинку.');
+  const primary = assistantApiUrl('/api/assistant/image');
+  const remote = assistantApiUrl('/api/assistant/image', true);
+  const body = JSON.stringify({
+    prompt: opts.prompt,
+    style: opts.style || 'illustration',
+    aspectRatio: opts.aspectRatio || '1:1',
+    ...(opts.referenceImage ? { referenceImage: opts.referenceImage } : {}),
+  });
+
+  let res: Response;
+  try {
+    res = await fetch(primary, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      signal: opts.signal,
+    });
+    if ((res.status === 404 || res.status === 405) && primary !== remote) {
+      res = await fetch(remote, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        signal: opts.signal,
+      });
+    }
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') throw err;
+    if (primary !== remote) {
+      res = await fetch(remote, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        signal: opts.signal,
+      });
+    } else {
+      throw new Error('Не удалось связаться с сервером для генерации картинки.');
+    }
+  }
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.imageUrl) {
+    throw new Error(data.error || 'Не получилось нарисовать картинку. Попробуй другой запрос.');
+  }
+  return data;
+}
+
 export async function askAssistantStream(
   history: AssistantMessage[],
   context: string,
@@ -568,6 +659,39 @@ export async function askAssistantStream(
     return { role: m.role, parts };
   });
 
+  const builtInGenerateImage: AgentHandlers[string] = async (args) => {
+    const prompt = typeof args.prompt === 'string' ? args.prompt.trim() : '';
+    if (!prompt) return { ok: false, summary: 'Не указано описание картинки' };
+    const style = typeof args.style === 'string' ? args.style : 'illustration';
+    const aspectRatio = typeof args.aspect_ratio === 'string' ? args.aspect_ratio : '1:1';
+    const img = await generateAssistantImage({
+      prompt,
+      style,
+      aspectRatio,
+      referenceImage: photo && photo.startsWith('data:image/') ? photo : undefined,
+      signal: callbacks?.signal,
+    });
+    return {
+      ok: true,
+      summary: `Нарисовано: «${img.title}»`,
+      widget: {
+        id: `img-${Date.now()}`,
+        kind: 'image',
+        title: img.title,
+        caption: img.caption,
+        imageUrl: img.imageUrl,
+        aspectRatio: img.aspectRatio,
+        style: img.style,
+        prompt,
+      },
+    };
+  };
+
+  const mergedHandlers: AgentHandlers = {
+    generate_image: builtInGenerateImage,
+    ...(handlers || {}),
+  };
+
   const actions: string[] = [];
   const widgets: AssistantWidget[] = [];
   let text = '';
@@ -580,7 +704,7 @@ export async function askAssistantStream(
       {
         contents,
         systemInstruction,
-        tools: handlers ? AGENT_TOOLS : [],
+        tools: AGENT_TOOLS,
         modePreference: modePref,
         hasMedia: Boolean(photo),
         lastUserText,
@@ -604,14 +728,16 @@ export async function askAssistantStream(
       callbacks?.onDelta?.(text);
     }
 
-    if (!outcome.calls.length || !handlers) break;
+    if (!outcome.calls.length) break;
 
     contents.push({ role: 'model', parts: outcome.modelParts });
     const responses: Record<string, unknown>[] = [];
     for (const call of outcome.calls) {
       let result: AgentResult;
       try {
-        result = handlers[call.name] ? await handlers[call.name](call.args || {}) : { ok: false, summary: 'Такого действия нет' };
+        result = mergedHandlers[call.name]
+          ? await mergedHandlers[call.name](call.args || {})
+          : { ok: false, summary: 'Такого действия нет' };
       } catch (e) {
         result = { ok: false, summary: `Не получилось: ${(e as Error).message}` };
       }

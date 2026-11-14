@@ -1,4 +1,4 @@
-import { isAdminUid, isMeAdmin } from '../services/admins';
+import { isAdminUid } from '../services/admins';
 
 export interface ProfileBadgeInfo {
   id: 'developer' | 'newbie' | 'veteran';
@@ -61,7 +61,7 @@ export function getProfileBadges(params: {
 
   const hasDev =
     params.isSelf !== false
-      ? isMeAdmin() || isAdminUid(params.id) || isDevPanelUnlocked() || Boolean(params.isDev)
+      ? isAdminUid(params.id) || isDevPanelUnlocked() || Boolean(params.isDev)
       : isAdminUid(params.id) || Boolean(params.isDev);
   if (hasDev) {
     badges.push({
