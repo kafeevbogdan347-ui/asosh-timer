@@ -14,7 +14,7 @@ const PORT = Number(process.env.PORT) || 3000;
 const FAST_CHAT_MODEL = 'gemini-3.8-flash';
 const FAST_RESERVE_MODEL = 'gemini-3.1-flash-lite';
 const DEEP_TASK_MODEL = 'gemini-4-hydrogen';
-const STT_MODELS = ['gemini-3.5-transcribe', 'gemini-3.1-flash-lite'];
+const STT_MODELS = ['gemini-3.5-transcribe', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest'];
 const TTS_MODELS = ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts', 'gemini-2.5-flash-preview-tts'];
 
 function getGeminiKey(): string {
