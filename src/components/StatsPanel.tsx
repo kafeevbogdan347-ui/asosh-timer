@@ -97,7 +97,7 @@ export const StatsPanel: React.FC = () => {
               <Rows title="Браузер" rows={countBy(devices, (v) => v.br)} total={devices.length} />
               <Rows title="Ширина экрана" rows={countBy(devices, screenBucket)} total={devices.length} />
               <Rows title="Память телефона" rows={countBy(devices, memBucket)} total={devices.length} />
-              <Rows title="Качество графики" rows={countBy(devices, (v) => ({ eco: 'Экономия', normal: 'Обычное', ultra: 'Максимум' } as Record<string, string>)[v.q] || v.q)} total={devices.length} />
+              <Rows title="Качество графики" rows={countBy(devices, (v) => ({ eco: 'Экономия', normal: 'Обычное', ultra: 'Максимум', xultra: 'Ультра' } as Record<string, string>)[v.q] || v.q)} total={devices.length} />
             </>
           ) : (
             <p className="text-xs text-white/60 text-center">Пока никто не отметился.</p>

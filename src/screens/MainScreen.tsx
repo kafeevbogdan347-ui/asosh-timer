@@ -424,7 +424,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
                   key={item.label}
                   type="button"
                   onClick={() => (item.screen === 'calc' ? onOpenCalc() : item.screen === 'whatsnew' ? onOpenWhatsNew() : onNavigate(item.screen))}
-                  className={`relative flex flex-col items-center justify-center gap-1 p-3 min-h-[72px] lg:min-h-[96px] rounded-2xl border active:scale-95 transition-all cursor-pointer ${
+                  className={`glass-tile relative flex flex-col items-center justify-center gap-1 p-3 min-h-[72px] lg:min-h-[96px] rounded-2xl border active:scale-95 transition-all cursor-pointer ${
                     isLockedOnline
                       ? 'bg-rose-950/15 border-rose-500/35 hover:bg-rose-950/25'
                       : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-cyan-400/40'

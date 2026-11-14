@@ -183,12 +183,19 @@ export default function App() {
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('asosh_settings_v105') || localStorage.getItem('asosh_opts_v104');
+    const soundSwitched = localStorage.getItem('asosh_sound_asosh_v1');
+    localStorage.setItem('asosh_sound_asosh_v1', '1');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        // v16.25: новые звуки «АСОШ» включаются всем, у кого стоял «Классический» (один раз, вернуть можно в Опциях)
+        if ((!parsed.soundProfile || parsed.soundProfile === '1') && !soundSwitched) {
+          parsed.soundProfile = '5';
+          localStorage.setItem('asosh_settings_v105', JSON.stringify(parsed));
+        }
         return {
           ...parsed, // остальные настройки (тема как в системе, PIN, качество графики…) сохраняются как есть
-          soundProfile: parsed.soundProfile || '1',
+          soundProfile: parsed.soundProfile || '5',
           vibro: parsed.vibro !== false,
           warn2: parsed.warn2 !== false,
           anim: parsed.anim !== false,
@@ -210,7 +217,7 @@ export default function App() {
       }
     }
     return {
-      soundProfile: '1',
+      soundProfile: '5',
       vibro: true,
       warn2: true,
       anim: true,
@@ -748,9 +755,11 @@ export default function App() {
     if (settings.devicePC) body.classList.add('device-pc');
     const quality = settings.quality ?? (settings.perfLow ? 'eco' : 'normal');
     if (quality === 'eco') body.classList.add('low', 'q-eco');
-    if (quality === 'ultra') body.classList.add('q-ultra');
-    if (quality === 'ultra' && !NO_GLASS_THEME_IDS.includes(effectiveTheme)) {
+    if (quality === 'ultra' || quality === 'xultra') body.classList.add('q-ultra');
+    if (quality === 'xultra') body.classList.add('q-xultra');
+    if ((quality === 'ultra' || quality === 'xultra') && !NO_GLASS_THEME_IDS.includes(effectiveTheme)) {
       body.classList.add('lg');
+      if (quality === 'xultra') body.classList.add('lg-pro');
       // преломление фона (линза) умеет только Chromium: Android, Chrome, Edge
       if (/Chrome\//.test(navigator.userAgent)) body.classList.add('lg-refract');
     }
@@ -758,6 +767,28 @@ export default function App() {
     if (!settings.splash) body.classList.add('hide-splash');
     if (!settings.mot) body.classList.add('hide-mot');
   }, [settings, effectiveTheme]);
+
+  // «Ультра»: блик на стекле едет за пальцем или мышкой (CSS-переменные --mx/--my)
+  useEffect(() => {
+    if (settings.quality !== 'xultra') return;
+    const root = document.documentElement;
+    let raf = 0;
+    const move = (e: PointerEvent) => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        root.style.setProperty('--mx', `${e.clientX}px`);
+        root.style.setProperty('--my', `${e.clientY}px`);
+      });
+    };
+    window.addEventListener('pointermove', move, { passive: true });
+    window.addEventListener('pointerdown', move, { passive: true });
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerdown', move);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [settings.quality]);
 
   // Save settings
   const handleUpdateSettings = (newSettings: Partial<AppSettings>) => {
