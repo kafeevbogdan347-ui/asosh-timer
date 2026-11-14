@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { SystemBars, SystemBarsStyle } from '@capacitor/core';
 import {
   ScreenId,
   AppSettings,
@@ -102,7 +101,7 @@ import { RetroFirstScreen } from './screens/RetroFirstScreen';
 import { BellsScreen } from './screens/BellsScreen';
 import { MaintenanceScreen } from './screens/MaintenanceScreen';
 import { Achievement } from './types';
-import { LIGHT_THEME_IDS, HOLIDAY_THEME_EFFECTS, NO_GLASS_THEME_IDS } from './data/themes';
+import { LIGHT_THEME_IDS, HOLIDAY_THEME_EFFECTS } from './data/themes';
 import { BoardScreen } from './screens/BoardScreen';
 import { HumanCheckHost } from './components/HumanCheck';
 import { CalendarScreen } from './screens/CalendarScreen';
@@ -183,19 +182,12 @@ export default function App() {
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('asosh_settings_v105') || localStorage.getItem('asosh_opts_v104');
-    const soundSwitched = localStorage.getItem('asosh_sound_asosh_v1');
-    localStorage.setItem('asosh_sound_asosh_v1', '1');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // v16.25: новые звуки «АСОШ» включаются всем, у кого стоял «Классический» (один раз, вернуть можно в Опциях)
-        if ((!parsed.soundProfile || parsed.soundProfile === '1') && !soundSwitched) {
-          parsed.soundProfile = '5';
-          localStorage.setItem('asosh_settings_v105', JSON.stringify(parsed));
-        }
         return {
           ...parsed, // остальные настройки (тема как в системе, PIN, качество графики…) сохраняются как есть
-          soundProfile: parsed.soundProfile || '5',
+          soundProfile: parsed.soundProfile || '1',
           vibro: parsed.vibro !== false,
           warn2: parsed.warn2 !== false,
           anim: parsed.anim !== false,
@@ -217,7 +209,7 @@ export default function App() {
       }
     }
     return {
-      soundProfile: '5',
+      soundProfile: '1',
       vibro: true,
       warn2: true,
       anim: true,
@@ -660,6 +652,9 @@ export default function App() {
                 ...remote,
                 className: remote.className || fallbackProfile.className,
                 avatar: remote.avatar || fallbackProfile.avatar,
+                isDev: Boolean(remote.isDev || fallbackProfile.isDev),
+                registeredAt: remote.registeredAt ?? fallbackProfile.registeredAt,
+                registeredDate: remote.registeredDate || fallbackProfile.registeredDate,
               };
             });
           }
@@ -745,50 +740,17 @@ export default function App() {
     body.className = '';
     body.classList.add(`theme-${effectiveTheme}`);
     if (LIGHT_THEME_IDS.includes(effectiveTheme)) body.classList.add('ui-light');
-    // APK: тёмные значки статус-бара на светлых темах, светлые — на тёмных
-    if (isNativeApp()) {
-      SystemBars.setStyle({ style: LIGHT_THEME_IDS.includes(effectiveTheme) ? SystemBarsStyle.Light : SystemBarsStyle.Dark }).catch(() => {});
-    }
     body.classList.add(settings.fontSize);
     if (settings.timerStyle === 'digital') body.classList.add('timer-digital');
     if (settings.compact) body.classList.add('compact');
     if (settings.devicePC) body.classList.add('device-pc');
     const quality = settings.quality ?? (settings.perfLow ? 'eco' : 'normal');
     if (quality === 'eco') body.classList.add('low', 'q-eco');
-    if (quality === 'ultra' || quality === 'xultra') body.classList.add('q-ultra');
-    if (quality === 'xultra') body.classList.add('q-xultra');
-    if ((quality === 'ultra' || quality === 'xultra') && !NO_GLASS_THEME_IDS.includes(effectiveTheme)) {
-      body.classList.add('lg');
-      if (quality === 'xultra') body.classList.add('lg-pro');
-      // преломление фона (линза) умеет только Chromium: Android, Chrome, Edge
-      if (/Chrome\//.test(navigator.userAgent)) body.classList.add('lg-refract');
-    }
+    if (quality === 'ultra') body.classList.add('q-ultra');
     if (!settings.anim) body.classList.add('no-anim');
     if (!settings.splash) body.classList.add('hide-splash');
     if (!settings.mot) body.classList.add('hide-mot');
   }, [settings, effectiveTheme]);
-
-  // «Ультра»: блик на стекле едет за пальцем или мышкой (CSS-переменные --mx/--my)
-  useEffect(() => {
-    if (settings.quality !== 'xultra') return;
-    const root = document.documentElement;
-    let raf = 0;
-    const move = (e: PointerEvent) => {
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        raf = 0;
-        root.style.setProperty('--mx', `${e.clientX}px`);
-        root.style.setProperty('--my', `${e.clientY}px`);
-      });
-    };
-    window.addEventListener('pointermove', move, { passive: true });
-    window.addEventListener('pointerdown', move, { passive: true });
-    return () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerdown', move);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [settings.quality]);
 
   // Save settings
   const handleUpdateSettings = (newSettings: Partial<AppSettings>) => {
