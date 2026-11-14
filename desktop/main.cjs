@@ -30,6 +30,18 @@ function createWindow() {
     autoHideMenuBar: true,
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
+  // Открываем сразу на весь экран (развёрнутым окном): F11 / Ctrl+Cmd+F — полноэкранный режим
+  win.maximize();
+
+  // На больших мониторах всё крупнее, как Ctrl+«+» в браузере: масштаб под размер окна
+  const fitZoom = () => {
+    const [w, h] = win.getContentSize();
+    const z = Math.min(1.5, Math.max(1, Math.min(w / 1280, h / 800)));
+    win.webContents.setZoomFactor(Math.round(z * 20) / 20);
+  };
+  win.on('resize', fitZoom);
+  win.webContents.on('did-finish-load', fitZoom);
+
   win.loadURL('app://asosh/index.html');
   // Внешние ссылки открываем в обычном браузере
   win.webContents.setWindowOpenHandler(({ url }) => {
