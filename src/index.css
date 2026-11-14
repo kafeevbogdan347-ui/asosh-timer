@@ -1234,8 +1234,14 @@ body.theme-light .asoshik-bubble.bot { background: rgba(15, 23, 42, 0.06); borde
 @keyframes asoshik-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
 @keyframes asoshik-spark { 0%, 100% { transform: scale(0.8) rotate(0deg); opacity: 0.7; } 50% { transform: scale(1.15) rotate(45deg); opacity: 1; } }
 @keyframes asoshik-bob { from { transform: translateY(1px) scale(1); } to { transform: translateY(-2px) scale(1.04); } }
+.asoshik-avatar { overflow: visible; }
+.asoshik-avatar .asoshik-bell { transform-origin: 32px 6px; animation: asoshik-bell 3s infinite ease-in-out; }
+.asoshik-avatar .asoshik-jet { transform-origin: 32px 56px; animation: asoshik-jet 0.5s infinite alternate ease-in-out; }
+.asoshik-avatar.thinking .asoshik-bell { animation-duration: 0.7s; }
+@keyframes asoshik-bell { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
+@keyframes asoshik-jet { from { transform: scaleY(0.8); opacity: 0.45; } to { transform: scaleY(1.15); opacity: 0.7; } }
 @media (prefers-reduced-motion: reduce) {
-  .asoshik-avatar .asoshik-eyes, .asoshik-avatar .asoshik-spark, .asoshik-avatar.thinking, .asoshik-typing span { animation: none; }
+  .asoshik-avatar .asoshik-eyes, .asoshik-avatar .asoshik-spark, .asoshik-avatar.thinking, .asoshik-typing span, .asoshik-avatar .asoshik-bell, .asoshik-avatar .asoshik-jet { animation: none; }
 }
 
 /* Асошик: фото задания */

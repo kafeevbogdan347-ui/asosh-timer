@@ -176,7 +176,7 @@ function buildPublicCard(p: UserProfile, account: Account): PublicCard {
   const reg = typeof rawReg === 'number' && Number.isFinite(rawReg) && rawReg > 1_000_000_000_000
     ? Math.min(rawReg, Date.now())
     : undefined;
-  const isDev = Boolean(p.isDev || isDevPanelUnlocked() || isAdminUid(account.uid));
+  const isDev = isAdminUid(account.uid);
   const n = (v: unknown, max: number) => Math.max(0, Math.min(max, Math.round(Number(v) || 0)));
   return {
     name: account.name.slice(0, 60),

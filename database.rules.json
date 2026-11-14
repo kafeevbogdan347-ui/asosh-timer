@@ -28,7 +28,10 @@
       ".read": "auth != null",
       "$msg": {
         ".write": "auth != null && !data.exists() && newData.parent().parent().child('asosh_rate').child(auth.uid).child('chat').val() === now && root.child('asosh_config').child('lockdown').val() !== true",
-        ".validate": "newData.hasChildren(['content', 'created_at']) && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 400 && (!newData.child('username').exists() || (newData.child('username').isString() && newData.child('username').val().length <= 60)) && (!newData.child('userId').exists() || newData.child('userId').val() === auth.uid || newData.child('userId').val() === 'anonymous' || newData.child('userId').val() === '' || (newData.child('userId').isString() && newData.child('userId').val().beginsWith('user_')))"
+        ".validate": "newData.hasChildren(['content', 'created_at']) && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 400 && (!newData.child('username').exists() || (newData.child('username').isString() && newData.child('username').val().length <= 60)) && (!newData.child('userId').exists() || newData.child('userId').val() === auth.uid || newData.child('userId').val() === 'anonymous' || newData.child('userId').val() === '' || (newData.child('userId').isString() && newData.child('userId').val().beginsWith('user_')))",
+        "isDev": {
+          ".validate": "newData.isBoolean() && (newData.val() === false || root.child('asosh_admins').child(auth.uid).val() === true)"
+        }
       }
     },
     "asosh_rooms": {
@@ -36,7 +39,10 @@
         ".read": "auth != null",
         "$msg": {
           ".write": "auth != null && !data.exists() && newData.parent().parent().parent().child('asosh_rate').child(auth.uid).child('chat').val() === now && root.child('asosh_config').child('lockdown').val() !== true",
-          ".validate": "newData.hasChildren(['content', 'created_at']) && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 400 && (!newData.child('username').exists() || (newData.child('username').isString() && newData.child('username').val().length <= 60)) && (!newData.child('userId').exists() || newData.child('userId').val() === auth.uid || newData.child('userId').val() === 'anonymous' || newData.child('userId').val() === '' || (newData.child('userId').isString() && newData.child('userId').val().beginsWith('user_')))"
+          ".validate": "newData.hasChildren(['content', 'created_at']) && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 400 && (!newData.child('username').exists() || (newData.child('username').isString() && newData.child('username').val().length <= 60)) && (!newData.child('userId').exists() || newData.child('userId').val() === auth.uid || newData.child('userId').val() === 'anonymous' || newData.child('userId').val() === '' || (newData.child('userId').isString() && newData.child('userId').val().beginsWith('user_')))",
+          "isDev": {
+            ".validate": "newData.isBoolean() && (newData.val() === false || root.child('asosh_admins').child(auth.uid).val() === true)"
+          }
         }
       }
     },
@@ -321,7 +327,7 @@
           ".validate": "newData.isNumber() && newData.val() <= now + 60000"
         },
         "dev": {
-          ".validate": "newData.isBoolean()"
+          ".validate": "newData.isBoolean() && (newData.val() === false || root.child('asosh_admins').child($uid).val() === true)"
         },
         "t": {
           ".validate": "newData.isNumber() && newData.val() <= now + 60000"
