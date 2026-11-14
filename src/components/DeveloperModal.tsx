@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { APP_VERSION } from '../data/constants';
 import { ErrorsPanel } from './ErrorsPanel';
 import { StatsPanel } from './StatsPanel';
+import { SecurityPanel } from './SecurityPanel';
 import {
   Volume2,
   RefreshCw,
@@ -82,7 +83,7 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
   simulatedUpdateActive = false,
   onToggleSimulatedUpdate,
 }) => {
-  const [tab, setTab] = useState<'security' | 'stats' | 'presentation' | 'apk' | 'mobile' | 'time' | 'data' | 'audio' | 'system' | 'errors'>('security');
+  const [tab, setTab] = useState<'security' | 'aiguard' | 'stats' | 'presentation' | 'apk' | 'mobile' | 'time' | 'data' | 'audio' | 'system' | 'errors'>('security');
   const [togglingSiteClosed, setTogglingSiteClosed] = useState(false);
   const [stressResult, setStressResult] = useState<string | null>(null);
   const [simBattery, setSimBattery] = useState(88);
@@ -280,6 +281,7 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
             { id: 'audio', label: '🔊 Звуки', icon: Volume2 },
             { id: 'system', label: '⚡ HUD', icon: Terminal },
             { id: 'errors', label: '🐞 Ошибки', icon: Activity },
+            { id: 'aiguard', label: '🛡 ИИ-охрана', icon: Shield },
           ].map((t) => (
             <button
               key={t.id}
@@ -453,6 +455,8 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({
           {tab === 'stats' && <StatsPanel />}
 
           {tab === 'errors' && <ErrorsPanel />}
+
+          {tab === 'aiguard' && <SecurityPanel />}
 
           {/* 0. PRESENTATION TAB */}
           {tab === 'presentation' && (
