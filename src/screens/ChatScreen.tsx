@@ -29,7 +29,7 @@ import {
 import { getMyProfile } from '../services/userService';
 import { fetchPublicProfile, getCachedPublicProfile } from '../services/profileSync';
 import { getProfileBadges } from '../utils/profileBadges';
-import { onAdminsLoaded } from '../services/admins';
+import { onAdminsLoaded, isMeAdmin } from '../services/admins';
 import { playSound, doVibro } from '../utils/audio';
 import { useOnline } from '../utils/useOnline';
 import { checkBeforePublish } from '../components/HumanCheck';
@@ -229,7 +229,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             handle: username,
             className: userProfile.className || classRoom,
             registeredAt: userProfile.registeredAt,
-            isDev: userProfile.isDev,
+            isDev: isMeAdmin(),
           }
     );
 
@@ -471,7 +471,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             const senderBadges = isAnon
               ? []
               : getProfileBadges({
-                  isDev: isMe ? userProfile.isDev : Boolean(senderPub?.isDev || msg.isDev),
+                  isDev: isMe ? userProfile.isDev : Boolean(senderPub?.isDev),
                   registeredAt: isMe ? userProfile.registeredAt : senderPub?.registeredAt ?? msg.registeredAt,
                   registeredDate: isMe ? userProfile.registeredDate : senderPub?.registeredDate,
                   id: isMe ? userProfile.id : senderPub?.id || msg.userId,

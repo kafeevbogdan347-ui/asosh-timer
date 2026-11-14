@@ -33,19 +33,25 @@ interface AssistantScreenProps {
   appLang?: string; // язык интерфейса, от него зависит голос
 }
 
-// Маскот Асошика: градиентная капля с лицом и искоркой. Середина градиента — цвет темы (--accent)
+// Маскот Асошика: летающий робот-звонок — градиентный корпус, колокольчик сверху, реактивный след снизу
 export const AsoshikAvatar: React.FC<{ size?: number; thinking?: boolean }> = ({ size = 40, thinking = false }) => {
   const gid = `asoshik-g-${useId().replace(/:/g, '')}`;
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" className={`asoshik-avatar ${thinking ? 'thinking' : ''}`} aria-hidden="true">
+    <svg width={size} height={size} viewBox="-8 -12 80 80" className={`asoshik-avatar ${thinking ? 'thinking' : ''}`} aria-hidden="true">
       <defs>
         <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#a78bfa" />
-          <stop offset="0.5" stopColor="var(--accent)" />
-          <stop offset="1" stopColor="#38bdf8" />
+          <stop offset="0.5" stopColor="#4F46E5" />
+          <stop offset="1" stopColor="#22D3EE" />
         </linearGradient>
       </defs>
-      <path d="M32 6 C46 6 58 16 58 32 C58 47 47 58 32 58 C17 58 6 48 6 32 C6 17 18 6 32 6Z" fill={`url(#${gid})`} />
+      <ellipse className="asoshik-jet" cx="32" cy="61" rx="8" ry="7" fill="#67e8f9" opacity="0.6" />
+      <g className="asoshik-bell">
+        <path d="M24 7 q0 -13 8 -13 q8 0 8 13z" fill="#FBBF24" />
+        <rect x="22" y="5" width="20" height="4" rx="2" fill="#f59e0b" />
+        <circle cx="32" cy="-7" r="2.4" fill="#f59e0b" />
+      </g>
+      <path d="M32 6 C46 6 58 16 58 32 C58 47 47 58 32 58 C17 58 6 48 6 32 C6 17 18 6 32 6Z" fill={`url(#${gid})`} stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" />
       <path d="M18 16 C24 10 34 9 40 12" stroke="#fff" strokeOpacity="0.5" strokeWidth="3" fill="none" strokeLinecap="round" />
       <g className="asoshik-eyes">
         <rect x="21" y="27" width="6" height="10" rx="3" fill="#fff" />
