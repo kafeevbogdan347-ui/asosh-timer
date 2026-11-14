@@ -416,7 +416,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
       {groups.map((group) => (
         <div key={group.title} className="mt-4">
           <h2 className="text-xs font-black text-white/60 uppercase tracking-wide mb-2">{t(group.title, lang)}</h2>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 lg:grid-cols-6 gap-2 lg:gap-3">
             {group.items.map((item) => {
               const isLockedOnline = siteClosed && ONLINE_TILE_SCREENS.has(item.screen);
               return (
@@ -424,7 +424,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
                   key={item.label}
                   type="button"
                   onClick={() => (item.screen === 'calc' ? onOpenCalc() : item.screen === 'whatsnew' ? onOpenWhatsNew() : onNavigate(item.screen))}
-                  className={`relative flex flex-col items-center justify-center gap-1 p-3 min-h-[72px] rounded-2xl border active:scale-95 transition-all cursor-pointer ${
+                  className={`relative flex flex-col items-center justify-center gap-1 p-3 min-h-[72px] lg:min-h-[96px] rounded-2xl border active:scale-95 transition-all cursor-pointer ${
                     isLockedOnline
                       ? 'bg-rose-950/15 border-rose-500/35 hover:bg-rose-950/25'
                       : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-cyan-400/40'
@@ -440,9 +440,9 @@ export const MainScreen: React.FC<MainScreenProps> = ({
                   ) : (
                     item.screen === 'diary' && diaryBadge > 0 && <span className="tile-badge">{diaryBadge}</span>
                   )}
-                  <span className={`text-xl ${isLockedOnline ? 'opacity-55 grayscale-[35%]' : ''}`}>{item.icon}</span>
+                  <span className={`text-xl lg:text-3xl ${isLockedOnline ? 'opacity-55 grayscale-[35%]' : ''}`}>{item.icon}</span>
                   <span
-                    className={`text-[11px] font-bold text-center leading-tight ${
+                    className={`text-[11px] lg:text-[13px] font-bold text-center leading-tight ${
                       isLockedOnline ? 'line-through decoration-rose-400 decoration-2 text-rose-200/80' : 'text-white/90'
                     }`}
                   >

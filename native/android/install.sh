@@ -20,3 +20,15 @@ if ! grep -q 'LessonWidget' "$APP/AndroidManifest.xml"; then
   sed -i 's#</application>#    <receiver android:name=".LessonWidget" android:exported="false" android:label="АСОШ Таймер: урок">\n            <intent-filter>\n                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n            </intent-filter>\n            <meta-data android:name="android.appwidget.provider" android:resource="@xml/lesson_widget_info" />\n        </receiver>\n    </application>#' "$APP/AndroidManifest.xml"
 fi
 grep -c LessonWidget "$APP/AndroidManifest.xml"
+# Тёмный фон окна вместо белого: на телефонах со старым WebView (часть Samsung) приложение
+# рисуется с отступами под статус-бар и панель кнопок, и там были бы белые полосы
+cat > "$APP/res/values/asosh_colors.xml" <<'XML'
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="asosh_bg">#060d1f</color>
+</resources>
+XML
+if ! grep -q 'asosh_bg' "$APP/res/values/styles.xml"; then
+  sed -i 's#<item name="windowNoTitle">true</item>#<item name="windowNoTitle">true</item>\n        <item name="android:windowBackground">@color/asosh_bg</item>#' "$APP/res/values/styles.xml"
+fi
+grep -c asosh_bg "$APP/res/values/styles.xml"
