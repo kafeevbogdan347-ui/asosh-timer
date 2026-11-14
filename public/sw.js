@@ -33,8 +33,8 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
-  // Проверка новой версии (version.json) всегда идёт напрямую в сеть без кэша
-  if (url.pathname.endsWith('/version.json')) return;
+  // Проверка новой версии (version.json) и API-запросы всегда идут напрямую в сеть без кэша
+  if (url.pathname.endsWith('/version.json') || url.pathname.startsWith('/api/')) return;
 
   const saveCopy = (response) => {
     if (response && response.status === 200) {

@@ -270,9 +270,30 @@ let serverAvailable = true;
 
 export const assistantAvailable = () => serverAvailable;
 
+const DEFAULT_PUBLIC_API = 'https://asosh-timer.ai.studio';
+
+function resolveAssistantBase(): string {
+  const custom = (import.meta.env.VITE_ASSISTANT_API_URL || '').trim().replace(/\/+$/, '');
+  if (custom) return custom;
+  if (typeof window === 'undefined') return '';
+  const { protocol, hostname, port } = window.location;
+  if (protocol === 'file:' || protocol === 'capacitor:' || hostname.endsWith('github.io')) {
+    return DEFAULT_PUBLIC_API;
+  }
+  if ((hostname === 'localhost' || hostname === '127.0.0.1') && !port) {
+    return DEFAULT_PUBLIC_API;
+  }
+  return '';
+}
+
+function assistantApiUrl(path: string, forceRemote = false): string {
+  const base = forceRemote ? DEFAULT_PUBLIC_API : resolveAssistantBase();
+  return `${base}${path}`;
+}
+
 export async function fetchAssistantStatus(): Promise<boolean> {
   try {
-    const res = await fetch('/api/assistant/status');
+    const res = await fetch(assistantApiUrl('/api/assistant/status'));
     if (!res.ok) return serverAvailable;
     const data = (await res.json()) as { available?: boolean };
     serverAvailable = Boolean(data.available);
@@ -420,12 +441,43 @@ async function readStreamTurn(
   onMeta?: (meta: { route: 'fast' | 'deep'; model: string; label: string }) => void,
   onDelta?: (fullTextSoFar: string) => void
 ): Promise<SseOutcome> {
-  const res = await fetch('/api/assistant/stream', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-    signal,
-  });
+  const primaryUrl = assistantApiUrl('/api/assistant/stream');
+  const remoteUrl = assistantApiUrl('/api/assistant/stream', true);
+
+  let res: Response;
+  try {
+    res = await fetch(primaryUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal,
+    });
+    if ((res.status === 404 || res.status === 405) && primaryUrl !== remoteUrl) {
+      res = await fetch(remoteUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal,
+      });
+    }
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') throw err;
+    if (primaryUrl !== remoteUrl) {
+      try {
+        res = await fetch(remoteUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal,
+        });
+      } catch (err2) {
+        if (err2 instanceof DOMException && err2.name === 'AbortError') throw err2;
+        throw new Error('Не удалось связаться с сервером Асошика. Проверь интернет и попробуй ещё раз.');
+      }
+    } else {
+      throw new Error('Не удалось связаться с сервером Асошика. Проверь интернет и попробуй ещё раз.');
+    }
+  }
 
   if (!res.ok) {
     const errJson = await res.json().catch(() => ({}));

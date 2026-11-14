@@ -4,6 +4,21 @@
 
 const MAX_RECORD_SEC = 30;
 const TARGET_RATE = 16000;
+const DEFAULT_PUBLIC_API = 'https://asosh-timer.ai.studio';
+
+function voiceApiUrl(path: string): string {
+  const custom = (import.meta.env.VITE_ASSISTANT_API_URL || '').trim().replace(/\/+$/, '');
+  if (custom) return `${custom}${path}`;
+  if (typeof window === 'undefined') return path;
+  const { protocol, hostname, port } = window.location;
+  if (protocol === 'file:' || protocol === 'capacitor:' || hostname.endsWith('github.io')) {
+    return `${DEFAULT_PUBLIC_API}${path}`;
+  }
+  if ((hostname === 'localhost' || hostname === '127.0.0.1') && !port) {
+    return `${DEFAULT_PUBLIC_API}${path}`;
+  }
+  return path;
+}
 
 let serverVoiceReady = true;
 
@@ -146,7 +161,7 @@ export async function transcribe(wavBase64: string, langName: string): Promise<s
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 30000);
   try {
-    const res = await fetch('/api/assistant/stt', {
+    const res = await fetch(voiceApiUrl('/api/assistant/stt'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ wavBase64, langName }),
@@ -248,7 +263,7 @@ export async function speakAnswer(text: string, browserLang: string, onEnd: () =
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 35000);
     try {
-      const res = await fetch('/api/assistant/tts', {
+      const res = await fetch(voiceApiUrl('/api/assistant/tts'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: clean, voiceName: 'Puck' }),
