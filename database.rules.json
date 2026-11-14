@@ -145,6 +145,10 @@
         }
       }
     },
+    "asosh_security": {
+      ".read": "auth != null && root.child('asosh_admins').child(auth.uid).val() === true",
+      ".write": false
+    },
     "asosh_errors": {
       ".read": "auth != null && root.child('asosh_admins').child(auth.uid).val() === true",
       ".write": "auth != null && root.child('asosh_admins').child(auth.uid).val() === true && !newData.exists()",
