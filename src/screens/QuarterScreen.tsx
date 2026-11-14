@@ -216,7 +216,7 @@ export const QuarterScreen: React.FC<QuarterScreenProps> = ({ lang }) => {
           const count = numbers.length;
           const avg = sum / count;
           const targetNum = targetGoal === '5' ? 5 : 4;
-          const threshold = targetGoal === '5' ? 4.60 : 3.60;
+          const threshold = targetGoal === '5' ? 4.50 : 3.50;
 
           if (avg >= threshold) {
             return (

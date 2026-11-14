@@ -81,7 +81,7 @@ export const GpaCalculatorScreen: React.FC<GpaCalculatorScreenProps> = ({
     const sum = curGrades.reduce((a, b) => a + b, 0);
     const avg = sum / curGrades.length;
     // Одна пятёрка ещё не «отличник»: нужно хотя бы 5 оценок
-    if (curGrades.length >= 5 && avg >= 4.60) {
+    if (curGrades.length >= 5 && avg >= 4.50) {
       onUnlockAchievement?.('top_student');
     }
   };
@@ -154,13 +154,13 @@ export const GpaCalculatorScreen: React.FC<GpaCalculatorScreenProps> = ({
   let currentGradeEstimate = '-';
   let gradeColor = 'text-white/60';
   if (count > 0) {
-    if (average >= 4.60) {
+    if (average >= 4.50) {
       currentGradeEstimate = '5 (Отлично)';
       gradeColor = 'text-emerald-400';
-    } else if (average >= 3.60) {
+    } else if (average >= 3.50) {
       currentGradeEstimate = '4 (Хорошо)';
       gradeColor = 'text-cyan-400';
-    } else if (average >= 2.60) {
+    } else if (average >= 2.50) {
       currentGradeEstimate = '3 (Удовл.)';
       gradeColor = 'text-amber-400';
     } else {
@@ -170,9 +170,9 @@ export const GpaCalculatorScreen: React.FC<GpaCalculatorScreenProps> = ({
   }
 
   // How many 5s or 4s needed to reach target?
-  // Thresholds: to get 5 need >= 4.60, to get 4 need >= 3.60
+  // Thresholds: to get 5 need >= 4.50, to get 4 need >= 3.50
   const calculateNeededGrades = (targetGrade: 4 | 5) => {
-    const targetThreshold = targetGrade === 5 ? 4.60 : 3.60;
+    const targetThreshold = targetGrade === 5 ? 4.50 : 3.50;
     if (count === 0) return 1;
     if (average >= targetThreshold) return 0;
 
@@ -399,7 +399,7 @@ export const GpaCalculatorScreen: React.FC<GpaCalculatorScreenProps> = ({
                 <div className="p-2.5 bg-white/6 rounded-xl border border-white/10 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Award className="w-4 h-4 text-amber-400" />
-                    <span>До четвертной «5» (нужно ≥ 4.60):</span>
+                    <span>До четвертной «5» (нужно ≥ 4.50):</span>
                   </div>
                   <span className="font-mono font-black text-emerald-400 text-sm">
                     {neededFivesForFive === 0 ? '✅ Уже достигнуто!' : `+${neededFivesForFive} пятёрок ⭐️`}
@@ -410,7 +410,7 @@ export const GpaCalculatorScreen: React.FC<GpaCalculatorScreenProps> = ({
                 <div className="p-2.5 bg-white/6 rounded-xl border border-white/10 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-cyan-400" />
-                    <span>До четвертной «4» (нужно ≥ 3.60):</span>
+                    <span>До четвертной «4» (нужно ≥ 3.50):</span>
                   </div>
                   <span className="font-mono font-black text-cyan-300 text-sm">
                     {neededFivesForFour === 0 ? '✅ Уже достигнуто!' : `+${neededFivesForFour} пятёрок/четвёрок`}
@@ -418,7 +418,7 @@ export const GpaCalculatorScreen: React.FC<GpaCalculatorScreenProps> = ({
                 </div>
 
                 <p className="text-[10px] text-white/50 italic leading-tight pt-1">
-                  * Расчет базируется на официальном школьном правиле округления среднего арифметического балла (≥4.60 = 5, ≥3.60 = 4, ≥2.60 = 3).
+                  * Расчет базируется на официальном школьном правиле округления среднего арифметического балла (≥4.50 = 5, ≥3.50 = 4, ≥2.50 = 3).
                 </p>
               </div>
             )}

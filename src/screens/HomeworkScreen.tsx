@@ -161,7 +161,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   const numbers = (gradeInput.match(/[1-5]/g) || []).map(Number);
   let avgText = 'Средний балл: —';
   let need4Text = 'До 4.00 (хорошо): —';
-  let need5Text = 'До 4.60 (отлично): —';
+  let need5Text = 'До 4.50 (отлично): —';
 
   if (numbers.length > 0) {
     const curSum = numbers.reduce((a, b) => a + b, 0);
@@ -175,19 +175,19 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
     // add * (grade - T) >= T * curCount - curSum
     // add >= (T * curCount - curSum) / (grade - T)
 
-    // Target 4 (threshold >= 3.60)
-    if (avg >= 3.60) {
+    // Target 4 (threshold >= 3.50)
+    if (avg >= 3.50) {
       need4Text = '🎉 Уже выходит уверенная четвёрка!';
     } else {
-      const neededFours = Math.ceil((3.60 * curCount - curSum) / (4 - 3.60));
+      const neededFours = Math.ceil((3.50 * curCount - curSum) / (4 - 3.50));
       need4Text = `До 4-ки нужно ещё четвёрок (4): +${Math.max(1, neededFours)} шт.`;
     }
 
-    // Target 5 (threshold >= 4.60)
-    if (avg >= 4.60) {
+    // Target 5 (threshold >= 4.50)
+    if (avg >= 4.50) {
       need5Text = '🏆 Уже выходит твёрдая пятёрка!';
     } else {
-      const neededFives = Math.ceil((4.60 * curCount - curSum) / (5 - 4.60));
+      const neededFives = Math.ceil((4.50 * curCount - curSum) / (5 - 4.50));
       need5Text = `До 5-ки нужно ещё пятёрок (5): +${Math.max(1, neededFives)} шт.`;
     }
   }
