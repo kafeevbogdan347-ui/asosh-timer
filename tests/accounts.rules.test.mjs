@@ -176,6 +176,9 @@ await check('ошибки: длинный текст отклоняется', as
 await check('ошибки: ученик журнал не читает', assertFails(get(ref(stu2, 'asosh_errors'))));
 await check('ошибки: администратор читает', assertSucceeds(get(ref(admin, 'asosh_errors'))));
 await check('ошибки: ученик не очищает', assertFails(remove(ref(stu2, 'asosh_errors'))));
+await check('ИИ-охрана: ученик отчёт не читает', assertFails(get(ref(stu2, 'asosh_security'))));
+await check('ИИ-охрана: администратор читает', assertSucceeds(get(ref(admin, 'asosh_security'))));
+await check('ИИ-охрана: администратор не пишет из приложения', assertFails(set(ref(admin, 'asosh_security/latest'), { t: 1 })));
 await check('ошибки: администратор очищает', assertSucceeds(remove(ref(admin, 'asosh_errors'))));
 
 // --- Профиль аккаунта (ник, аватар, статус) — общий для всех устройств ---
