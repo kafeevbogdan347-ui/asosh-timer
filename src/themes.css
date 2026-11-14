@@ -870,11 +870,11 @@ body.q-ultra.no-anim #root::before { animation: none; }
 
 /* ---------- LIQUID GLASS (только «Максимум», класс .lg ставит App.tsx) ---------- */
 body.lg {
-  --lg-tint: rgba(255, 255, 255, 0.13);
-  --lg-tint2: rgba(255, 255, 255, 0.02);
-  --lg-rim: rgba(255, 255, 255, 0.55);
-  --lg-edge: rgba(255, 255, 255, 0.2);
-  --lg-glare: rgba(255, 255, 255, 0.16);
+  --lg-tint: rgba(255, 255, 255, 0.16);
+  --lg-tint2: rgba(255, 255, 255, 0.03);
+  --lg-rim: rgba(255, 255, 255, 0.7);
+  --lg-edge: rgba(255, 255, 255, 0.26);
+  --lg-glare: rgba(255, 255, 255, 0.24);
   --lg-shadow: 0 14px 34px rgba(0, 0, 0, 0.3);
 }
 body.lg.ui-light {
@@ -950,6 +950,44 @@ body.lg .choice:not(.active) {
 body.lg .btn:not(.darkBtn) {
   box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.55), inset 0 -2px 6px rgba(0, 0, 0, 0.12), var(--sh);
 }
+/* цветные пятна за стеклом: на ровном тёмном фоне стекло не видно */
+body.lg #root::before {
+  background:
+    radial-gradient(38% 30% at 18% 22%, rgba(var(--accent-rgb), 0.38), transparent 70%),
+    radial-gradient(34% 28% at 85% 30%, rgba(168, 85, 247, 0.3), transparent 70%),
+    radial-gradient(40% 32% at 70% 85%, rgba(236, 72, 153, 0.24), transparent 70%),
+    radial-gradient(30% 26% at 10% 80%, rgba(56, 189, 248, 0.26), transparent 70%);
+}
+body.lg.ui-light #root::before {
+  background:
+    radial-gradient(38% 30% at 18% 22%, rgba(var(--accent-rgb), 0.3), transparent 70%),
+    radial-gradient(34% 28% at 85% 30%, rgba(168, 85, 247, 0.18), transparent 70%),
+    radial-gradient(40% 32% at 70% 85%, rgba(236, 72, 153, 0.16), transparent 70%);
+}
+/* нижняя панель светлее: сквозь неё видно цветной фон */
+body.lg:not(.ui-light) .nav-bar {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05)), rgba(10, 17, 40, 0.16);
+}
+/* плитки на Главной — маленькие стёкла */
+body.lg .glass-tile {
+  background: linear-gradient(160deg, var(--lg-tint), var(--lg-tint2));
+  border: 1px solid var(--lg-edge);
+  backdrop-filter: blur(10px) saturate(1.8);
+  -webkit-backdrop-filter: blur(10px) saturate(1.8);
+  box-shadow: inset 0 1px 0.5px var(--lg-rim), inset 0 -1px 0.5px rgba(255, 255, 255, 0.08), 0 6px 18px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+body.lg .glass-tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(125deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.04) 32%, transparent 55%);
+}
+body.lg .glass-tile:hover { border-color: rgba(255, 255, 255, 0.4); }
+
 /* упругое нажатие, как у стекла в iOS */
 body.lg .btn,
 body.lg .choice { transition: transform 0.35s cubic-bezier(0.3, 1.6, 0.5, 1), filter 0.2s ease, background 0.2s ease; }
@@ -1460,3 +1498,37 @@ body.theme-hol_birthday .num { border-radius: 50%; background: linear-gradient(1
 body.theme-hol_birthday .bellWidget { border-color: #facc15; background: rgba(255, 255, 255, 0.08); }
 body.theme-hol_birthday .nav-bar { border-radius: 999px; background: rgba(46, 16, 101, 0.9); border-color: rgba(250, 204, 21, 0.45); }
 body.theme-hol_birthday .nav-bar button.active { color: #facc15; }
+
+/* ---------- УЛЬТРА (класс .lg-pro): линза, живой фон, блик за пальцем ---------- */
+body.lg-pro #root::before {
+  inset: -20%;
+  filter: saturate(1.3);
+  animation: lgDrift 14s ease-in-out infinite alternate;
+}
+@keyframes lgDrift {
+  0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  50% { transform: translate(5%, -4%) rotate(8deg) scale(1.1); }
+  100% { transform: translate(-4%, 3%) rotate(-6deg) scale(1.05); }
+}
+body.lg-pro .card,
+body.lg-pro .glass-tile {
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow:
+    inset 1px 1px 0.5px rgba(255, 255, 255, 0.75),
+    inset -1px -1px 0.5px rgba(255, 255, 255, 0.18),
+    inset 0 0 24px rgba(255, 255, 255, 0.07),
+    var(--lg-shadow);
+}
+/* блик едет за пальцем/мышкой: один источник света на весь экран */
+body.lg-pro .card::after,
+body.lg-pro .glass-tile::before {
+  background:
+    radial-gradient(260px circle at var(--mx, 30%) var(--my, 10%), rgba(255, 255, 255, 0.22), transparent 60%),
+    linear-gradient(125deg, rgba(255, 255, 255, 0.16) 0%, transparent 45%);
+  background-attachment: fixed, scroll;
+}
+/* линза на карточках — только Chromium (Android, Chrome, Edge) */
+body.lg-pro.lg-refract .card {
+  backdrop-filter: url(#lg-refract) blur(12px) saturate(2) brightness(1.06);
+}
+body.lg-pro.no-anim #root::before { animation: none; }

@@ -92,7 +92,7 @@ export type ThemeType =
   | 'ocean_morning';
 
 // Качество графики: экономия заряда, обычное или максимальное
-export type QualityType = 'eco' | 'normal' | 'ultra';
+export type QualityType = 'eco' | 'normal' | 'ultra' | 'xultra'; // ultra = «Максимум», xultra = «Ультра»
 
 export type FontSizeType = 'font-sm' | 'font-md' | 'font-lg' | 'font-xl';
 
