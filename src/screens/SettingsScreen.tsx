@@ -449,7 +449,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       ======================================================== */}
       {isSectionVisible(
         'themes',
-        'темы дизайн оформление цвет шрифты масштаб таймер помодоро цитата сплеши'
+        'темы дизайн оформление цвет шрифты масштаб таймер помодоро цитата сплеши качество графики стекло liquid glass максимум ультра экономия'
       ) && (
         <div className="p-4 bg-white/6 rounded-3xl border border-white/12 space-y-3.5 shadow-md">
           <div className="flex items-center justify-between">
@@ -533,6 +533,48 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 </button>
               );
             })}
+          </div>
+
+          {/* Качество графики */}
+          <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-2">
+            <div className="text-xs font-bold text-white">🎨 Качество графики</div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {(
+                [
+                  ['eco', '🔋', 'Экономия'],
+                  ['normal', '⚖️', 'Обычное'],
+                  ['ultra', '✨', 'Максимум'],
+                  ['xultra', '💎', 'Ультра'],
+                ] as const
+              ).map(([id, icon, label]) => {
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={quality === id}
+                    className={`choice !py-2 !px-1 flex flex-col items-center leading-tight ${quality === id ? 'active' : ''}`}
+                    onClick={() => {
+                      onUpdateSettings({ quality: id, perfLow: id === 'eco' });
+                      playSound('settings', settings.soundProfile);
+                      doVibro(settings.vibro, 15);
+                    }}
+                  >
+                    <span className="text-base">{icon}</span>
+                    <span className="text-xs font-black">{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="text-[11px] text-white/60">
+              {quality === 'eco' &&
+                'Без размытия, теней и фоновых анимаций — быстрее на слабых телефонах и бережёт батарею.'}
+              {quality === 'normal' &&
+                'Баланс красоты и скорости — подходит для большинства телефонов.'}
+              {quality === 'ultra' &&
+                'Liquid Glass: прозрачное стекло с бликами на карточках и плитках, цветное свечение и плавные переходы. Для мощных телефонов и ПК.'}
+              {quality === 'xultra' &&
+                'Всё из «Максимума», плюс линза на карточках, плавающие цветные пятна и блик, который едет за пальцем. Самый красивый и самый тяжёлый режим.'}
+            </div>
           </div>
 
           {/* МАСШТАБ ТЕКСТА И UI */}
@@ -1239,44 +1281,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               />
             </label>
 
-            {/* Качество графики */}
-            <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-2">
-              <div className="text-xs font-bold text-white">🎨 Качество графики</div>
-              <div className="grid grid-cols-3 gap-2">
-                {(
-                  [
-                    ['eco', '🔋', 'Экономия'],
-                    ['normal', '⚖️', 'Обычное'],
-                    ['ultra', '✨', 'Максимум'],
-                  ] as const
-                ).map(([id, icon, label]) => {
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      aria-pressed={quality === id}
-                      className={`choice !py-2 !px-1 flex flex-col items-center leading-tight ${quality === id ? 'active' : ''}`}
-                      onClick={() => {
-                        onUpdateSettings({ quality: id, perfLow: id === 'eco' });
-                        playSound('settings', settings.soundProfile);
-                        doVibro(settings.vibro, 15);
-                      }}
-                    >
-                      <span className="text-base">{icon}</span>
-                      <span className="text-xs font-black">{label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="text-[11px] text-white/60">
-                {quality === 'eco' &&
-                  'Без размытия, теней и фоновых анимаций — быстрее на слабых телефонах и бережёт батарею.'}
-                {quality === 'normal' &&
-                  'Баланс красоты и скорости — подходит для большинства телефонов.'}
-                {quality === 'ultra' &&
-                  'Liquid Glass: прозрачное жидкое стекло с бликами, мягкое свечение и плавные переходы. Лучше для мощных телефонов и ПК.'}
-              </div>
-            </div>
           </div>
         </div>
       )}
