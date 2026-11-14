@@ -1,5 +1,5 @@
-// Рейтинг онлайна класса. Включён у всех по умолчанию, выключается в Опциях → Приватность.
-// Видят только одноклассники (путь в базе — по классу).
+// Рейтинг онлайна класса и всей школы. Включён у всех по умолчанию, выключается в Опциях → Приватность.
+// Видят ученики школы: свой класс или вся школа (путь в базе — по классу).
 // Хранится: ник, эмодзи-аватар, статус, «о себе», минуты в приложении за неделю и время последней активности.
 // Запись — по uid входа: у аккаунта он один на всех устройствах, поэтому телефон и компьютер
 // пишут в одну строку рейтинга, а время с разных устройств складывается.
@@ -24,6 +24,7 @@ export interface OnlineEntry {
   week: string;
   sec: number; // секунды в приложении за неделю
   last: number; // последний сигнал, мс
+  cls?: string; // класс — в рейтинге всей школы
 }
 
 export const isOptedIn = () => {
@@ -233,6 +234,40 @@ export function subscribeOnline(cls: string, cb: (list: OnlineEntry[]) => void, 
     alive = false;
     unsub();
   };
+}
+
+// Рейтинг всей школы: слушаем каждый класс и складываем в один список.
+// Ученик, сменивший класс, может остаться в двух классах — берём одну запись (с большим временем).
+export function subscribeSchoolOnline(classes: string[], cb: (list: OnlineEntry[]) => void, onError?: () => void): () => void {
+  const byClass: Record<string, OnlineEntry[]> = {};
+  let ready = 0;
+  let failed = false;
+  const emit = () => {
+    const best = new Map<string, OnlineEntry>();
+    Object.values(byClass).flat().forEach((e) => {
+      const prev = best.get(e.uid);
+      if (!prev || e.sec > prev.sec || (e.sec === prev.sec && e.last > prev.last)) best.set(e.uid, e);
+    });
+    const list = [...best.values()].sort((a, b) => b.sec - a.sec || b.last - a.last);
+    cb(list);
+  };
+  const unsubs = classes.map((c) =>
+    subscribeOnline(
+      c,
+      (list) => {
+        if (!(c in byClass)) ready++;
+        byClass[c] = list.map((e) => ({ ...e, cls: c }));
+        // Ждём все классы, чтобы рейтинг не прыгал при загрузке
+        if (ready >= classes.length) emit();
+      },
+      () => {
+        if (failed) return;
+        failed = true;
+        onError?.();
+      }
+    )
+  );
+  return () => unsubs.forEach((u) => u());
 }
 
 export const myWeekSec = () => loadWeek().sec;
