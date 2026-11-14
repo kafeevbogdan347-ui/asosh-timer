@@ -24,6 +24,9 @@ import {
   MOTIVATORS_RU,
   MOTIVATORS_BA,
   SCHOOL_QUARTERS,
+  FORMULA_CARDS,
+  CHEMICAL_ELEMENTS,
+  DEFAULT_MANUAL_BACKPACK,
   isVacationDay,
   isHolidayDay,
 } from './data/constants';
@@ -107,7 +110,7 @@ import { HumanCheckHost } from './components/HumanCheck';
 import { CalendarScreen } from './screens/CalendarScreen';
 import { TeacherScreen } from './screens/TeacherScreen';
 import { TeacherInfo, BoardPost, getLocalTeacher, clearLocalTeacher, verifyTeacher, subscribeBoard, postsFor, addBoardPost } from './services/teacher';
-import type { AgentHandlers, AgentResult } from './services/assistant';
+import type { AgentHandlers, AgentResult, AssistantWidget } from './services/assistant';
 import { THEMES } from './data/themes';
 import {
   ClassReplacement,
@@ -1105,6 +1108,216 @@ export default function App() {
         handleUpdateSettings({ theme: th.id });
         return say(true, `Тема «${th.name}» включена`);
       },
+      get_day_brief: async () => {
+        const nowMs = activeTime.getTime();
+        const curQuarter = SCHOOL_QUARTERS.find((q) => {
+          const s = new Date(`${q.start}T00:00:00`).getTime();
+          const e = new Date(`${q.end}T23:59:59`).getTime();
+          return nowMs >= s && nowMs <= e;
+        });
+        const qLeft = curQuarter ? Math.max(0, Math.round((new Date(`${curQuarter.end}T23:59:59`).getTime() - nowMs) / 86400000)) : 0;
+        const remainMin = lessonStatus.remainSec > 0 ? Math.ceil(lessonStatus.remainSec / 60) : 0;
+        const nextBellText = remainMin > 0 ? `До звонка ${remainMin} мин` : '';
+        const lessons = currentLessons
+          .map(([sub, room], idx) => {
+            if (!sub || sub === '—') return null;
+            const b = currentBells[idx];
+            return {
+              num: lessonNo(shift, idx),
+              time: b ? `${b[0]}–${b[1]}` : '',
+              sub: sub.replace('🔄 ', ''),
+              room,
+              isCurrent: lessonStatus.type === 'lesson' && lessonStatus.currentIdx === idx,
+              isNext: (lessonStatus.type === 'break' || lessonStatus.type === 'before') && lessonStatus.nextIdx === idx,
+            };
+          })
+          .filter(Boolean) as Extract<AssistantWidget, { kind: 'day_plan' }>['lessons'];
+
+        const urgentHw = [
+          ...homeworkList.filter((h) => !h.done).map((h) => `${h.sub}: ${h.text}`),
+          ...classHomework.filter((h) => !h.forDate || h.forDate >= todayDateKey).map((h) => `${h.sub}: ${h.text}`),
+        ].slice(0, 5);
+
+        let tests: string[] = [];
+        try {
+          const evs = JSON.parse(localStorage.getItem('asosh_calendar_events') || '[]') as { date: string; title: string; kind?: string }[];
+          tests = evs
+            .filter((e) => e.date >= todayDateKey && e.kind === 'test')
+            .sort((a, b) => a.date.localeCompare(b.date))
+            .slice(0, 3)
+            .map((e) => `${e.date.slice(5)} · ${e.title}`);
+        } catch {
+          // ignore
+        }
+
+        let weakSubjects: string[] = [];
+        try {
+          const gpa = JSON.parse(localStorage.getItem('asosh_gpa_subjects') || '[]') as { name: string; grades: number[]; target: number }[];
+          weakSubjects = gpa
+            .filter((s) => s.grades.length > 0)
+            .map((s) => ({
+              name: s.name,
+              avg: s.grades.reduce((a, b) => a + b, 0) / s.grades.length,
+              target: s.target || 5,
+            }))
+            .filter((s) => s.avg < s.target - 0.35)
+            .sort((a, b) => a.avg - b.avg)
+            .slice(0, 3)
+            .map((s) => `${s.name} (${s.avg.toFixed(2)} → ${s.target})`);
+        } catch {
+          // ignore
+        }
+
+        const hour = activeTime.getHours();
+        const greeting = hour < 12 ? 'Доброе утро' : hour < 17 ? 'Добрый день' : 'Добрый вечер';
+        const widget: AssistantWidget = {
+          id: `day-${Date.now()}`,
+          kind: 'day_plan',
+          greeting: `${greeting}${cls ? ` · ${cls}` : ''}`,
+          nowText: lessonStatus.nowText || `${currentDayName}`,
+          nextBellText,
+          lessons,
+          urgentHw,
+          tests,
+          weakSubjects,
+          quarterNote: curQuarter ? `${curQuarter.name} · осталось ${qLeft} дн.` : '',
+        };
+        return { ok: true, summary: `Собрана сводка дня${nextBellText ? ` (${nextBellText})` : ''}`, widget };
+      },
+      check_backpack: async (a) => {
+        const reqDay = str(a.day, 20);
+        const dayName = reqDay ? dayFrom(reqDay) || tomorrowDayName : tomorrowDayName;
+        const forDate = dateKeyForDay(dayName);
+        const dayLessons = isDayOff(forDate) ? [] : getLessonsForDay(dayName);
+        const NO_BOOK = ['разговор о важном', 'россия — мои горизонты', 'классный час'];
+        const uniqueSubs = [...new Set(dayLessons.map((l) => l[0].replace('🔄 ', '').trim()))].filter(
+          (n) => n && n !== '—' && !NO_BOOK.includes(n.toLowerCase())
+        );
+
+        const checkedMap: Record<string, boolean> = {};
+        try {
+          const sameDay = localStorage.getItem('asosh_backpack_date') === forDate;
+          const saved = localStorage.getItem('asosh_backpack_items_v11');
+          if (saved && sameDay) {
+            (JSON.parse(saved) as { name: string; checked: boolean }[]).forEach((it) => {
+              checkedMap[it.name] = Boolean(it.checked);
+            });
+          }
+        } catch {
+          // ignore
+        }
+
+        const items: Extract<AssistantWidget, { kind: 'backpack' }>['items'] = [];
+        uniqueSubs.forEach((sub) => {
+          let itemName = `Учебник и тетрадь: ${sub}`;
+          const lower = sub.toLowerCase();
+          if (lower.includes('физкульт') || lower.includes('физ-ра') || lower.includes('физическая культура')) {
+            itemName = `👟 Спортивная форма и кроссовки (${sub})`;
+          } else if (lower.includes('геом') || lower.includes('черч')) {
+            itemName = `📐 Линейка, циркуль, тетрадь: ${sub}`;
+          } else if (lower.includes('информ')) {
+            itemName = `💻 Тетрадь/флешка: ${sub}`;
+          } else if (lower === 'изо' || lower.includes('изобраз')) {
+            itemName = `🎨 Альбом, карандаши и краски: ${sub}`;
+          } else if (lower.includes('технол') || lower === 'труд') {
+            itemName = `🛠 Материалы и фартук: ${sub}`;
+          } else if (lower.includes('музык')) {
+            itemName = `🎵 Тетрадь: ${sub}`;
+          } else if (lower.includes('иностр') || lower.includes('англ') || lower.includes('нем')) {
+            itemName = `📖 Учебник, тетрадь и словарь: ${sub}`;
+          } else if (lower.includes('хим') || lower.includes('физик')) {
+            itemName = `🧪 Учебник, тетрадь и калькулятор: ${sub}`;
+          }
+          items.push({ id: `auto-${sub}`, name: itemName, category: 'auto', checked: Boolean(checkedMap[itemName]) });
+        });
+        DEFAULT_MANUAL_BACKPACK.forEach((name, idx) => {
+          items.push({ id: `manual-${idx}`, name, category: 'manual', checked: Boolean(checkedMap[name]) });
+        });
+
+        const widget: AssistantWidget = {
+          id: `bp-${Date.now()}`,
+          kind: 'backpack',
+          forDate,
+          dayLabel: dayName,
+          items,
+        };
+        return {
+          ok: true,
+          summary: items.length ? `Портфель на ${dayName}: ${items.length} пунктов` : `На ${dayName} уроков нет`,
+          widget,
+        };
+      },
+      start_pomodoro: async (a) => {
+        const subject = str(a.subject, 50) || 'Учёба';
+        const rawMin = Math.round(Number(a.minutes) || 25);
+        const focusMin = Math.max(5, Math.min(90, rawMin));
+        const widget: AssistantWidget = {
+          id: `pomo-${Date.now()}`,
+          kind: 'pomodoro',
+          subject,
+          focusMin,
+          breakMin: 5,
+        };
+        return { ok: true, summary: `Таймер Помодоро: ${subject} (${focusMin} мин)`, widget };
+      },
+      lookup_formulas: async (a) => {
+        const q = str(a.query, 80).toLowerCase();
+        const sub = str(a.subject, 30).toLowerCase();
+        const cards = FORMULA_CARDS.filter((f) => {
+          const matchSub = !sub || f.subject === sub;
+          const hay = `${f.title} ${f.formula} ${f.description} ${f.note || ''} ${f.subject}`.toLowerCase();
+          return matchSub && (!q || q.split(/\s+/).some((w) => w.length >= 2 && hay.includes(w)));
+        }).slice(0, 4);
+        const elements = CHEMICAL_ELEMENTS.filter((el) => {
+          const hay = `${el.number} ${el.symbol} ${el.nameRu} ${el.category}`.toLowerCase();
+          return q && hay.includes(q);
+        }).slice(0, 3);
+        if (!cards.length && !elements.length) {
+          return say(false, 'В справочнике приложения точной карточки не нашлось — объясню словами');
+        }
+        const widget: AssistantWidget = {
+          id: `frm-${Date.now()}`,
+          kind: 'formulas',
+          query: str(a.query, 60),
+          cards,
+          ...(elements.length ? { elements } : {}),
+        };
+        return { ok: true, summary: `Найдено в справочнике: ${cards.length + elements.length}`, widget };
+      },
+      create_study_quiz: async (a) => {
+        const mode = a.mode === 'flashcards' ? 'flashcards' : 'quiz';
+        const topic = str(a.topic, 80) || 'Повторение';
+        if (mode === 'flashcards') {
+          const rawCards = Array.isArray(a.flashcards) ? a.flashcards : [];
+          const cards = rawCards
+            .map((c: any) => ({
+              front: str(c?.front, 200),
+              back: str(c?.back, 300),
+            }))
+            .filter((c) => c.front && c.back)
+            .slice(0, 8);
+          if (!cards.length) return say(false, 'Не получилось составить карточки');
+          const widget: AssistantWidget = { id: `fc-${Date.now()}`, kind: 'flashcards', topic, cards };
+          return { ok: true, summary: `Карточки «${topic}» (${cards.length} шт.)`, widget };
+        }
+        const rawQs = Array.isArray(a.questions) ? a.questions : [];
+        const questions = rawQs
+          .map((q: any) => {
+            const options = Array.isArray(q?.options) ? q.options.map((o: unknown) => str(o, 140)).filter(Boolean).slice(0, 4) : [];
+            const correct = Math.max(0, Math.min(options.length - 1, Math.round(Number(q?.correct) || 0)));
+            return {
+              q: str(q?.q, 240),
+              options,
+              correct,
+              explanation: str(q?.explanation, 260) || 'Верный вариант отмечен выше.',
+            };
+          })
+          .filter((q) => q.q && q.options.length >= 2)
+          .slice(0, 5);
+        if (!questions.length) return say(false, 'Не получилось собрать вопросы для теста');
+        const widget: AssistantWidget = { id: `qz-${Date.now()}`, kind: 'quiz', topic, questions };
+        return { ok: true, summary: `Мини-тест «${topic}» (${questions.length} вопр.)`, widget };
+      },
     };
   };
 
@@ -1123,16 +1336,58 @@ export default function App() {
     ]
       .slice(0, 12)
       .map((t) => t.slice(0, 200));
+
+    let gpaLine = '';
+    try {
+      const gpa = JSON.parse(localStorage.getItem('asosh_gpa_subjects') || '[]') as { name: string; grades: number[]; target: number }[];
+      const items = gpa
+        .filter((s) => s.grades.length > 0)
+        .map((s) => {
+          const avg = s.grades.reduce((a, b) => a + b, 0) / s.grades.length;
+          return `${s.name}: ${avg.toFixed(2)} (цель ${s.target || 5})`;
+        });
+      if (items.length) gpaLine = `Оценки (средний балл): ${items.slice(0, 8).join('; ')}.`;
+    } catch {
+      // ignore
+    }
+
+    let calLine = '';
+    try {
+      const evs = JSON.parse(localStorage.getItem('asosh_calendar_events') || '[]') as { date: string; title: string; kind?: string }[];
+      const upcoming = evs
+        .filter((e) => e.date >= todayDateKey)
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .slice(0, 5)
+        .map((e) => `${e.date} (${e.kind === 'test' ? 'контрольная' : e.kind === 'short' ? 'сокращённый день' : 'событие'}): ${e.title}`);
+      if (upcoming.length) calLine = `Ближайшие события календаря: ${upcoming.join('; ')}.`;
+    } catch {
+      // ignore
+    }
+
+    const nowMs = activeTime.getTime();
+    const curQ = SCHOOL_QUARTERS.find((q) => {
+      const s = new Date(`${q.start}T00:00:00`).getTime();
+      const e = new Date(`${q.end}T23:59:59`).getTime();
+      return nowMs >= s && nowMs <= e;
+    });
+    const qLine = curQ
+      ? `Четверть: ${curQ.name}, до конца ${Math.max(0, Math.round((new Date(`${curQ.end}T23:59:59`).getTime() - nowMs) / 86400000))} дн.`
+      : '';
+    const bellRemain = lessonStatus.remainSec > 0 ? `До звонка: ${Math.ceil(lessonStatus.remainSec / 60)} мин.` : '';
+
     return [
       `Роль: ${isTeacher ? `учитель (${teacher?.name})` : account?.role === 'parent' ? 'родитель' : 'ученик'}. Класс: ${cls || 'не выбран'}, ${shift} смена, подгруппа ${subGroup}. Может публиковать для класса: ${classVerified || isTeacher ? 'да' : 'нет'}.`,
       lang !== 'ru' ? `Язык интерфейса: ${LANGS.find((l) => l.id === lang)?.ru || lang}. Отвечай на этом языке (термины и формулы можно по-русски).` : '',
       `Сегодня: ${todayDateKey}. Темы оформления: ${THEMES.map((t) => `${t.id} («${t.name}»)`).join(', ')}.`,
-      `Сейчас: ${currentDayName}, ${activeTime.toLocaleDateString('ru-RU')} ${activeTime.toTimeString().slice(0, 5)}.`,
+      `Сейчас: ${currentDayName}, ${activeTime.toLocaleDateString('ru-RU')} ${activeTime.toTimeString().slice(0, 5)}. ${bellRemain}`,
+      qLine,
       isShortDay(currentDayName) ? 'Сегодня сокращённые уроки.' : '',
       `Сейчас идёт: ${lessonStatus.nowText}. Дальше: ${lessonStatus.nextText}.`,
       `Уроки сегодня (${currentDayName}): ${fmtDay(currentDayName, todayOff)}.`,
       `Уроки завтра (${tomorrowDayName}): ${fmtDay(tomorrowDayName, tomorrowOff)}.`,
       `Домашка: ${hw.length ? hw.join(' | ') : 'не записана'}.`,
+      gpaLine,
+      calLine,
       'Этаж кабинета — первая цифра номера (332 — 3 этаж). Актовый зал — 2 этаж, спортзал и мастерские — 1 этаж.',
     ]
       .filter(Boolean)
@@ -2267,10 +2522,12 @@ export default function App() {
           <AssistantScreen
             context={buildAssistantContext()}
             vibro={settings.vibro}
+            soundProfile={settings.soundProfile}
             appLang={lang}
             autoPrompt={assistantPrompt}
             onAutoPromptUsed={() => setAssistantPrompt(null)}
             agent={account?.role === 'parent' ? undefined : makeAgentHandlers}
+            onOpenScreen={setCurrentScreen}
           />
         )}
 

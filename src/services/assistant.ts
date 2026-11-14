@@ -1,27 +1,159 @@
-// Асошик — школьный помощник на Gemini.
-// Ключ задаётся при сборке (VITE_GEMINI_API_KEY в секрете APP_ENV) и в репозиторий не попадает.
-// Имя ученика в Google не отправляем: только класс, расписание и домашку.
+// Асошик 2.0 — потоковый школьный помощник на Gemini с гибридным роутингом моделей,
+// памятью диалога, проверкой фото тетрадей и интерактивными виджетами в чате.
+import { setGeminiVoiceReady } from './voiceGemini';
+
+export type AssistantMood = 'idle' | 'thinking' | 'listening' | 'checking' | 'happy';
+export type AssistantMode = 'auto' | 'brief' | 'tutor';
+
+export type AssistantWidget =
+  | {
+      id: string;
+      kind: 'day_plan';
+      greeting: string;
+      nowText: string;
+      nextBellText: string;
+      lessons: { num: number; time: string; sub: string; room: string; isCurrent?: boolean; isNext?: boolean }[];
+      urgentHw: string[];
+      tests: string[];
+      weakSubjects: string[];
+      quarterNote: string;
+    }
+  | {
+      id: string;
+      kind: 'backpack';
+      forDate: string;
+      dayLabel: string;
+      items: { id: string; name: string; checked: boolean; category: string }[];
+    }
+  | {
+      id: string;
+      kind: 'pomodoro';
+      subject: string;
+      focusMin: number;
+      breakMin: number;
+    }
+  | {
+      id: string;
+      kind: 'formulas';
+      query: string;
+      cards: { id: string; subject: string; title: string; formula: string; description: string; note?: string }[];
+      elements?: { number: number; symbol: string; nameRu: string; mass: string | number; period: number; group: number }[];
+    }
+  | {
+      id: string;
+      kind: 'quiz';
+      topic: string;
+      questions: { q: string; options: string[]; correct: number; explanation: string; picked?: number }[];
+    }
+  | {
+      id: string;
+      kind: 'flashcards';
+      topic: string;
+      cards: { front: string; back: string; flipped?: boolean; known?: boolean }[];
+    };
 
 export interface AssistantMessage {
   role: 'user' | 'model';
   text: string;
   at: number;
-  image?: string; // уменьшенная копия фото для истории (data:image/jpeg)
-  actions?: string[]; // что Асошик сделал в приложении по просьбе пользователя
+  image?: string;
+  hadPhoto?: boolean;
+  actions?: string[];
+  widgets?: AssistantWidget[];
+  routeLabel?: string;
+  routeKind?: 'fast' | 'deep';
 }
-
-// ---------- Действия в приложении (агент) ----------
-// Сами действия выполняет App: он знает роль, класс и права. Всё, что увидит класс или школа,
-// App выполняет только после подтверждения пользователя в чате Асошика.
 
 export interface AgentResult {
   ok: boolean;
   summary: string;
+  widget?: AssistantWidget;
 }
 
 export type AgentHandlers = Record<string, (args: Record<string, unknown>) => Promise<AgentResult>>;
 
 const AGENT_TOOLS = [
+  {
+    name: 'get_day_brief',
+    description: 'Собрать и показать интерактивную утреннюю сводку дня: ближайший звонок, расписание на сегодня, срочное ДЗ, контрольные, оценки, требующие внимания, и план подготовки.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        focus: { type: 'STRING', description: 'На чём сделать акцент: today, tomorrow или exams (необязательно)' },
+      },
+    },
+  },
+  {
+    name: 'check_backpack',
+    description: 'Показать интерактивный чек-лист портфеля (с галочками, синхронизированный с разделом Портфель) под уроки завтра или указанного дня.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        day: { type: 'STRING', description: '«Завтра» (по умолчанию), «Сегодня» или день недели' },
+      },
+    },
+  },
+  {
+    name: 'start_pomodoro',
+    description: 'Встроить в чат интерактивный таймер Помодоро для фокусировки на учёбе по предмету (по умолчанию 25 мин работа / 5 мин перерыв).',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        subject: { type: 'STRING', description: 'Предмет или задача, например «Алгебра»' },
+        minutes: { type: 'INTEGER', description: 'Длительность фокус-сессии в минутах (15, 25 или 45)' },
+      },
+    },
+  },
+  {
+    name: 'lookup_formulas',
+    description: 'Найти школьные формулы и элементы таблицы Менделеева из справочника приложения и показать их карточкой в чате.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        query: { type: 'STRING', description: 'Ключевое слово, название формулы или элемент (например «дискриминант», «Ом», «пифагор», «углерод»)' },
+        subject: { type: 'STRING', description: 'math, geometry, physics, chemistry, russian, english (необязательно)' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'create_study_quiz',
+    description: 'Создать прямо в чате интерактивный мини-тест (3–5 вопросов с выбором ответа и пояснением) ИЛИ набор переворачиваемых карточек (флеш-карточек) для повторения темы.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        mode: { type: 'STRING', description: '"quiz" — тест с вариантами, "flashcards" — карточки для запоминания' },
+        topic: { type: 'STRING', description: 'Тема, например «Квадратные уравнения» или «Неправильные глаголы»' },
+        questions: {
+          type: 'ARRAY',
+          description: 'Список вопросов для mode="quiz" (3–5 шт.)',
+          items: {
+            type: 'OBJECT',
+            properties: {
+              q: { type: 'STRING', description: 'Текст вопроса' },
+              options: { type: 'ARRAY', items: { type: 'STRING' }, description: '4 коротких варианта ответа' },
+              correct: { type: 'INTEGER', description: 'Индекс правильного ответа (0..3)' },
+              explanation: { type: 'STRING', description: 'Короткое понятное объяснение ответа' },
+            },
+            required: ['q', 'options', 'correct', 'explanation'],
+          },
+        },
+        flashcards: {
+          type: 'ARRAY',
+          description: 'Список карточек для mode="flashcards" (4–8 шт.)',
+          items: {
+            type: 'OBJECT',
+            properties: {
+              front: { type: 'STRING', description: 'Лицевая сторона: термин, формула, слово или вопрос' },
+              back: { type: 'STRING', description: 'Оборот: определение, перевод или ответ' },
+            },
+            required: ['front', 'back'],
+          },
+        },
+      },
+      required: ['mode', 'topic'],
+    },
+  },
   {
     name: 'add_homework',
     description: 'Записать домашнее задание. Себе в дневник (scope="me") или опубликовать всему классу (scope="class", нужно подтверждение).',
@@ -128,37 +260,52 @@ const AGENT_TOOLS = [
     },
   },
 ];
+
 const MAX_AGENT_STEPS = 4;
-
-const API_KEY = (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) || '';
-// Псевдоним всегда указывает на актуальную быструю и дешёвую модель
-const MODEL = 'gemini-flash-lite-latest';
-const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-
 export const ASSISTANT_NAME = 'Асошик';
-export const DAILY_LIMIT = 25; // вопросов в день с одного устройства
-const HISTORY_FOR_MODEL = 6; // сколько последних сообщений диалога отправляем модели
+export const DAILY_LIMIT = 30;
+const HISTORY_FOR_MODEL = 18;
 
-export const assistantAvailable = () => Boolean(API_KEY);
+let serverAvailable = true;
 
-const SYSTEM_PROMPT = `Ты — ${ASSISTANT_NAME}, дружелюбный помощник в приложении «АСОШ Таймер» для учеников МОУ АСОШ №2 (5–11 классы).
-Правила:
-- Отвечай по-русски, коротко и понятно: обычно 2–6 предложений или короткий список. Решения домашки могут быть длиннее.
-- Про уроки, кабинеты, звонки и домашку отвечай только по данным ниже. Если данных нет — честно скажи, что не знаешь.
-- Домашку решай полностью, если просят: задачи, примеры, упражнения по русскому, ответы на вопросы, сочинения. Решение пиши по шагам и коротко объясняй каждый шаг, чтобы ученик понял, как его получить, и смог повторить у доски.
-- В конце решения дай короткую проверку или подсказку «как запомнить», если это уместно.
-- Если условие задачи неполное или непонятное — переспроси, а не выдумывай.
-- Если прислали фото (тетрадь, доска, учебник) — сначала коротко перепиши, какое задание там видно, потом реши. Если на фото ничего не разобрать — попроси переснять ближе и при хорошем свете.
-- Будь доброжелательным, без грубости. На вопросы не для школьника (насилие, 18+, опасные действия) вежливо откажи.
-- Не спрашивай и не запоминай личные данные (ФИО, адрес, телефон).
-- Форматирование: можно **жирный** и списки с «- ». Без таблиц и заголовков.
-- Формулы пиши обычным текстом, без LaTeX и знаков $: 3/4, 15/20, 2·5, x², √16, 1 целая 3/20.
-Действия в приложении:
-- У тебя есть инструменты: записать ДЗ, отметить ДЗ выполненным, добавить событие в календарь, добавить свои оценки в калькулятор, поставить замену, открыть раздел, сменить тему, а учителю — опубликовать объявление.
-- Вызывай инструмент, только когда пользователь прямо просит что-то записать, добавить, отметить, открыть или опубликовать. Если просят просто решить или объяснить — не вызывай.
-- По умолчанию всё делай только для самого пользователя (scope="me"). Классу — только если он прямо сказал «всему классу» или «для класса».
-- Публикации для класса и объявления пользователь подтверждает кнопкой в приложении ещё до того, как ты получишь ответ инструмента. Если инструмент вернул ok — значит уже опубликовано, не пиши «ждём подтверждения». Если вернул отказ — коротко объясни причину своими словами.
-- После действия коротко подтверди, что сделано. Даты переводи в YYYY-MM-DD по сегодняшней дате из данных.`;
+export const assistantAvailable = () => serverAvailable;
+
+export async function fetchAssistantStatus(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/assistant/status');
+    if (!res.ok) return serverAvailable;
+    const data = (await res.json()) as { available?: boolean };
+    serverAvailable = Boolean(data.available);
+    setGeminiVoiceReady(serverAvailable);
+    return serverAvailable;
+  } catch {
+    return serverAvailable;
+  }
+}
+
+const SYSTEM_PROMPT = `Ты — ${ASSISTANT_NAME}, умный и дружелюбный школьный репетитор и ассистент в приложении «АСОШ Таймер» для учеников МОУ АСОШ №2 (5–11 классы).
+
+Правила общения и точности:
+- Отвечай по-русски (или на языке интерфейса из данных). В режиме краткости — 1–4 предложения без воды. В обычном/репетиторском режиме — структурировано и понятно.
+- Про уроки, время до звонка, кабинеты, четверть, оценки и домашку отвечай строго по данным пользователя ниже. Если данных нет — честно скажи.
+- Опирайся на профиль оценок и ближайшие контрольные из данных: если ученик спрашивает, что учить или на чём сфокусироваться, подсказывай предметы с низким баллом или контрольной впереди.
+- Задачи и домашку решай по шагам с короткими пояснениями и короткой проверкой в конце, чтобы ученик смог объяснить у доски.
+- Проверка решений по фото (тетрадь, доска, учебник):
+  1) Сначала перепиши условие и решение ученика по строкам/шагам.
+  2) Если ученик прислал своё решение — оцени каждый шаг с явными метками «✓ Верно» или «✕ Ошибка в шаге N».
+  3) На первой ошибке объясни, какое правило нарушено, и покажи верный ход.
+  4) Если фото размытое или обрезано — не выдумывай, попроси переснять ближе и светлее.
+- Не спрашивай и не запоминай личные данные (ФИО, адрес, телефон). На неподходящие для школы запросы вежливо откажи.
+- Форматирование: **жирный**, *курсив*, списки с «- » или «1. », формулы обычным текстом или в \`обратных кавычках\` без LaTeX и знаков $: 3/4, x², √16, 2·5.
+
+Инструменты и интерактивные виджеты:
+- Когда просят сводку дня, план на утро/вечер или «что меня сегодня ждёт» — вызывай get_day_brief.
+- Когда спрашивают «что положить в портфель» или «собери рюкзак» — вызывай check_backpack.
+- Когда просят таймер, Помодоро, «позаниматься 25 минут» — вызывай start_pomodoro.
+- Когда спрашивают формулу или элемент таблицы Менделеева — вызывай lookup_formulas.
+- Когда просят тест, викторину, проверить знания или сделать карточки для повторения — вызывай create_study_quiz (передавая готовые качественные вопросы или карточки).
+- Для записи/выполнения ДЗ, календаря, оценок, замен, перехода по разделам и тем используй соответствующие инструменты.
+- По умолчанию scope="me". Для класса (scope="class") и объявлений — пользователь подтверждает кнопкой до выполнения, если инструмент вернул ok — значит уже опубликовано.`;
 
 // Счётчик вопросов за день
 const LIMIT_KEY = 'asosh_assistant_usage';
@@ -177,12 +324,13 @@ function countQuestion() {
   try {
     localStorage.setItem(LIMIT_KEY, JSON.stringify({ day: todayKey(), count: usedToday() + 1 }));
   } catch {
-    // нет места — лимит не посчитается, не страшно
+    // ignore
   }
 }
 
-// История диалога на устройстве
+// Память диалога + сжатое саммари старых реплик
 const HISTORY_KEY = 'asosh_assistant_history';
+const SUMMARY_KEY = 'asosh_assistant_summary';
 
 export function loadHistory(): AssistantMessage[] {
   try {
@@ -193,46 +341,173 @@ export function loadHistory(): AssistantMessage[] {
   }
 }
 
+export function loadSessionSummary(): string {
+  try {
+    return localStorage.getItem(SUMMARY_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function clearSessionMemory(): void {
+  try {
+    localStorage.removeItem(HISTORY_KEY);
+    localStorage.removeItem(SUMMARY_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+function buildCondensedSummary(older: AssistantMessage[], existing: string): string {
+  const topics = older
+    .filter((m) => m.role === 'user')
+    .map((m) => m.text.replace(/\s+/g, ' ').trim().slice(0, 70))
+    .filter(Boolean);
+  const actions = older
+    .flatMap((m) => m.actions || [])
+    .map((a) => a.trim().slice(0, 60))
+    .filter(Boolean);
+  const parts = [
+    existing,
+    topics.length ? `Предыдущие темы: ${topics.slice(-6).join('; ')}` : '',
+    actions.length ? `Выполненные действия: ${actions.slice(-5).join('; ')}` : '',
+  ].filter(Boolean);
+  return parts.join(' | ').slice(-600);
+}
+
 export function saveHistory(list: AssistantMessage[]) {
   try {
-    // Фото храним только у последних сообщений, чтобы не переполнить память телефона
-    const last = list.slice(-40);
-    const slim = last.map((m, i) => (m.image && i < last.length - 6 ? { ...m, image: undefined } : m));
+    const kept = list.slice(-60);
+    if (kept.length > HISTORY_FOR_MODEL) {
+      const older = kept.slice(0, kept.length - HISTORY_FOR_MODEL);
+      const summary = buildCondensedSummary(older, loadSessionSummary());
+      if (summary) localStorage.setItem(SUMMARY_KEY, summary);
+    }
+    const slim = kept.map((m, i) => (m.image && i < kept.length - 6 ? { ...m, image: undefined } : m));
     localStorage.setItem(HISTORY_KEY, JSON.stringify(slim));
   } catch {
-    // нет места — история только до перезапуска
+    // ignore
   }
 }
 
 export interface AssistantReply {
   text: string;
   actions: string[];
+  widgets: AssistantWidget[];
+  routeLabel?: string;
+  routeKind?: 'fast' | 'deep';
 }
 
-async function callModel(body: Record<string, unknown>): Promise<{ ok: boolean; status: number; data: any }> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30000);
-  try {
-    const res = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': API_KEY },
-      signal: controller.signal,
-      body: JSON.stringify(body),
-    });
-    return { ok: res.ok, status: res.status, data: await res.json().catch(() => ({})) };
-  } finally {
-    clearTimeout(timer);
+export interface StreamCallbacks {
+  modePreference?: AssistantMode;
+  forceRoute?: 'fast' | 'deep';
+  signal?: AbortSignal;
+  onMeta?: (meta: { route: 'fast' | 'deep'; model: string; label: string }) => void;
+  onDelta?: (fullTextSoFar: string) => void;
+}
+
+interface SseOutcome {
+  fullText: string;
+  calls: { name: string; args?: Record<string, unknown>; id?: string }[];
+  modelParts: Record<string, unknown>[];
+  routeLabel?: string;
+  routeKind?: 'fast' | 'deep';
+}
+
+async function readStreamTurn(
+  payload: Record<string, unknown>,
+  signal: AbortSignal | undefined,
+  onMeta?: (meta: { route: 'fast' | 'deep'; model: string; label: string }) => void,
+  onDelta?: (fullTextSoFar: string) => void
+): Promise<SseOutcome> {
+  const res = await fetch('/api/assistant/stream', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  if (!res.ok) {
+    const errJson = await res.json().catch(() => ({}));
+    throw new Error(errJson.error || 'Асошик не смог ответить. Попробуй ещё раз.');
   }
+
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error('Браузер не поддерживает потоковый ответ.');
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullText = '';
+  let calls: { name: string; args?: Record<string, unknown>; id?: string }[] = [];
+  let modelParts: Record<string, unknown>[] = [];
+  let routeLabel: string | undefined;
+  let routeKind: 'fast' | 'deep' | undefined;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('data:')) continue;
+      const jsonStr = trimmed.slice(5).trim();
+      if (!jsonStr) continue;
+      let ev: Record<string, unknown>;
+      try {
+        ev = JSON.parse(jsonStr);
+      } catch {
+        continue;
+      }
+      if (ev.type === 'meta') {
+        routeKind = ev.route === 'deep' ? 'deep' : 'fast';
+        routeLabel = String(ev.label || '');
+        onMeta?.({ route: routeKind, model: String(ev.model || ''), label: routeLabel });
+      } else if (ev.type === 'delta' && typeof ev.text === 'string') {
+        fullText += ev.text;
+        onDelta?.(fullText);
+      } else if (ev.type === 'tool_calls') {
+        calls = (ev.calls as typeof calls) || [];
+        modelParts = (ev.modelParts as typeof modelParts) || [];
+      } else if (ev.type === 'done' && typeof ev.fullText === 'string' && ev.fullText) {
+        fullText = ev.fullText;
+        onDelta?.(fullText);
+      } else if (ev.type === 'error') {
+        throw new Error(String(ev.message || 'Ошибка ответа ИИ'));
+      }
+    }
+  }
+
+  return { fullText, calls, modelParts, routeLabel, routeKind };
 }
 
-// photo — полноразмерное фото к последнему сообщению (data:image/jpeg;base64,...)
-// handlers — действия в приложении; без них Асошик только отвечает
-export async function askAssistant(history: AssistantMessage[], context: string, photo?: string, handlers?: AgentHandlers): Promise<AssistantReply> {
-  if (!API_KEY) throw new Error(`${ASSISTANT_NAME} пока не подключён.`);
+export async function askAssistantStream(
+  history: AssistantMessage[],
+  context: string,
+  photo?: string,
+  handlers?: AgentHandlers,
+  callbacks?: StreamCallbacks
+): Promise<AssistantReply> {
   if (!navigator.onLine) throw new Error('Нет интернета. Асошику нужна сеть, чтобы ответить.');
   if (usedToday() >= DAILY_LIMIT) throw new Error(`На сегодня вопросы закончились (${DAILY_LIMIT} в день). Приходи завтра!`);
 
-  const contents: Record<string, unknown>[] = history.slice(-HISTORY_FOR_MODEL).map((m, i, arr) => {
+  const modePref = callbacks?.modePreference || 'auto';
+  const modeRule =
+    modePref === 'brief'
+      ? '\nРежим ответа сейчас: КРАТКО (максимум 2–4 коротких предложения, только суть).'
+      : modePref === 'tutor'
+      ? '\nРежим ответа сейчас: РЕПЕТИТОР (подробно объясни логику, покажи шаги, проверь понимание и предложи закрепить тестом).'
+      : '';
+
+  const summary = loadSessionSummary();
+  const fullContext = [context, summary ? `Память прошлых сообщений: ${summary}` : ''].filter(Boolean).join('\n');
+  const systemInstruction = `${SYSTEM_PROMPT}${modeRule}\n\nДанные пользователя:\n${fullContext}`;
+
+  const slice = history.slice(-HISTORY_FOR_MODEL);
+  const lastUserText = [...slice].reverse().find((m) => m.role === 'user')?.text || '';
+
+  const contents: Record<string, unknown>[] = slice.map((m, i, arr) => {
     const parts: Record<string, unknown>[] = [{ text: m.text }];
     if (photo && i === arr.length - 1) {
       const [head, data] = photo.split(',');
@@ -240,46 +515,67 @@ export async function askAssistant(history: AssistantMessage[], context: string,
     }
     return { role: m.role, parts };
   });
+
   const actions: string[] = [];
+  const widgets: AssistantWidget[] = [];
   let text = '';
-  try {
-    for (let step = 0; step < MAX_AGENT_STEPS; step++) {
-      const res = await callModel({
-        systemInstruction: { parts: [{ text: `${SYSTEM_PROMPT}\n\nДанные пользователя:\n${context}` }] },
+  let routeLabel: string | undefined;
+  let routeKind: 'fast' | 'deep' | undefined;
+  let counted = false;
+
+  for (let step = 0; step < MAX_AGENT_STEPS; step++) {
+    const outcome = await readStreamTurn(
+      {
         contents,
-        ...(handlers ? { tools: [{ functionDeclarations: AGENT_TOOLS }] } : {}),
-        generationConfig: { maxOutputTokens: 1600, temperature: 0.6 },
-      });
-      if (!res.ok) {
-        if (res.status === 429) throw new Error('Асошик сейчас перегружен. Попробуй через минуту.');
-        throw new Error('Асошик не смог ответить. Попробуй ещё раз позже.');
-      }
-      if (step === 0) countQuestion();
-      const content = res.data?.candidates?.[0]?.content;
-      const parts: any[] = content?.parts || [];
-      const stepText = parts.map((p) => p.text || '').join('').trim();
-      if (stepText) text = stepText;
-      const calls = parts.filter((p) => p?.functionCall);
-      if (!calls.length || !handlers) break;
-      contents.push({ role: 'model', parts });
-      const responses: Record<string, unknown>[] = [];
-      for (const p of calls) {
-        const { name, args, id } = p.functionCall as { name: string; args?: Record<string, unknown>; id?: string };
-        let result: AgentResult;
-        try {
-          result = handlers[name] ? await handlers[name](args || {}) : { ok: false, summary: 'Такого действия нет' };
-        } catch (e) {
-          result = { ok: false, summary: `Не получилось: ${(e as Error).message}` };
-        }
-        actions.push(`${result.ok ? '✅' : '⚠️'} ${result.summary}`);
-        responses.push({ functionResponse: { ...(id ? { id } : {}), name, response: result } });
-      }
-      contents.push({ role: 'user', parts: responses });
+        systemInstruction,
+        tools: handlers ? AGENT_TOOLS : [],
+        modePreference: modePref,
+        hasMedia: Boolean(photo),
+        lastUserText,
+        forceRoute: callbacks?.forceRoute,
+      },
+      callbacks?.signal,
+      callbacks?.onMeta,
+      (partial) => callbacks?.onDelta?.(text ? `${text}\n${partial}` : partial)
+    );
+
+    if (!counted) {
+      countQuestion();
+      counted = true;
     }
-  } catch (err) {
-    if ((err as Error).name === 'AbortError') throw new Error('Асошик долго думает. Попробуй ещё раз.');
-    throw err;
+
+    if (outcome.routeLabel) routeLabel = outcome.routeLabel;
+    if (outcome.routeKind) routeKind = outcome.routeKind;
+
+    if (outcome.fullText.trim()) {
+      text = text ? `${text}\n${outcome.fullText.trim()}` : outcome.fullText.trim();
+      callbacks?.onDelta?.(text);
+    }
+
+    if (!outcome.calls.length || !handlers) break;
+
+    contents.push({ role: 'model', parts: outcome.modelParts });
+    const responses: Record<string, unknown>[] = [];
+    for (const call of outcome.calls) {
+      let result: AgentResult;
+      try {
+        result = handlers[call.name] ? await handlers[call.name](call.args || {}) : { ok: false, summary: 'Такого действия нет' };
+      } catch (e) {
+        result = { ok: false, summary: `Не получилось: ${(e as Error).message}` };
+      }
+      actions.push(`${result.ok ? '✅' : '⚠️'} ${result.summary}`);
+      if (result.widget) widgets.push(result.widget);
+      responses.push({
+        functionResponse: {
+          ...(call.id ? { id: call.id } : {}),
+          name: call.name,
+          response: { ok: result.ok, summary: result.summary },
+        },
+      });
+    }
+    contents.push({ role: 'user', parts: responses });
   }
-  if (!text) text = actions.length ? 'Готово!' : 'Хм, не получилось ответить на это. Попробуй спросить по-другому.';
-  return { text, actions };
+
+  if (!text) text = widgets.length || actions.length ? 'Готово! Открыл нужную карточку ниже.' : 'Хм, не получилось ответить на это. Попробуй спросить по-другому.';
+  return { text, actions, widgets, routeLabel, routeKind };
 }

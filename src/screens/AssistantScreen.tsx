@@ -1,78 +1,149 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { Send, Trash2, Camera, X, Mic, Volume2, VolumeX, Image as ImageIcon, FileText } from 'lucide-react';
+import {
+  Camera,
+  FileText,
+  Image as ImageIcon,
+  Mic,
+  Send,
+  Square,
+  Trash2,
+  Volume2,
+  VolumeX,
+  X,
+} from 'lucide-react';
 import { compressImage } from '../utils/image';
 import {
-  AssistantMessage,
+  AgentHandlers,
   ASSISTANT_NAME,
-  DAILY_LIMIT,
-  askAssistant,
+  AssistantMessage,
+  AssistantMode,
+  AssistantMood,
+  AssistantWidget,
+  askAssistantStream,
   assistantAvailable,
+  clearSessionMemory,
+  DAILY_LIMIT,
+  fetchAssistantStatus,
   loadHistory,
   saveHistory,
   usedToday,
-  AgentHandlers,
 } from '../services/assistant';
 import { useOnline } from '../utils/useOnline';
 import { listenOnce, voiceInputSupported, voiceLang, voiceOutputSupported } from '../utils/voice';
-import { geminiVoiceAvailable, micSupported, speakAnswer, startRecording, stopVoice, transcribe, unlockAudio, Recording } from '../services/voiceGemini';
+import {
+  geminiVoiceAvailable,
+  micSupported,
+  Recording,
+  speakAnswer,
+  startRecording,
+  stopVoice,
+  transcribe,
+  unlockAudio,
+} from '../services/voiceGemini';
 import { LANGS } from '../i18n';
+import type { ScreenId, SoundProfileType } from '../types';
+import { AssistantWidgetCard } from '../components/AssistantWidgets';
 
-// Значок вместо превью для PDF
 const PDF_THUMB =
   'data:image/svg+xml;utf8,' +
-  encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="150"><rect width="120" height="150" rx="14" fill="#e11d48"/><text x="60" y="88" font-family="Arial" font-size="34" font-weight="700" fill="#fff" text-anchor="middle">PDF</text></svg>');
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="150"><rect width="120" height="150" rx="14" fill="#e11d48"/><text x="60" y="88" font-family="Arial" font-size="34" font-weight="700" fill="#fff" text-anchor="middle">PDF</text></svg>'
+  );
 
 interface AssistantScreenProps {
-  context: string; // класс, расписание и домашка — собирает App
+  context: string;
   vibro: boolean;
-  // Вопрос из другого раздела (кнопка «🫧 Асошик»): отправляется сразу при открытии
+  soundProfile?: SoundProfileType;
   autoPrompt?: { text: string; photo?: string } | null;
   onAutoPromptUsed?: () => void;
-  // Действия в приложении. confirm показывает в чате карточку «Опубликовать / Отмена»
   agent?: (confirm: (text: string) => Promise<boolean>) => AgentHandlers;
-  appLang?: string; // язык интерфейса, от него зависит голос
+  appLang?: string;
+  onOpenScreen?: (screen: ScreenId) => void;
 }
 
-// Маскот Асошика: летающий робот-звонок — градиентный корпус, колокольчик сверху, реактивный след снизу
-export const AsoshikAvatar: React.FC<{ size?: number; thinking?: boolean }> = ({ size = 40, thinking = false }) => {
+// Живой маскот Асошика с 5 эмоциональными состояниями: idle, thinking, listening, checking, happy
+export const AsoshikAvatar: React.FC<{ size?: number; thinking?: boolean; mood?: AssistantMood }> = ({
+  size = 40,
+  thinking = false,
+  mood,
+}) => {
   const gid = `asoshik-g-${useId().replace(/:/g, '')}`;
+  const activeMood: AssistantMood = mood || (thinking ? 'thinking' : 'idle');
+
+  const eyesOffset = activeMood === 'thinking' ? 'translate(1.5px, -2px)' : activeMood === 'checking' ? 'translate(0, 1px)' : 'none';
+
   return (
-    <svg width={size} height={size} viewBox="-8 -12 80 80" className={`asoshik-avatar ${thinking ? 'thinking' : ''}`} aria-hidden="true">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      className={`asoshik-avatar mood-${activeMood} ${thinking || activeMood === 'thinking' ? 'thinking' : ''}`}
+      aria-hidden="true"
+    >
       <defs>
         <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#a78bfa" />
-          <stop offset="0.5" stopColor="#4F46E5" />
-          <stop offset="1" stopColor="#22D3EE" />
+          <stop offset="0.5" stopColor="var(--accent)" />
+          <stop offset="1" stopColor="#38bdf8" />
         </linearGradient>
       </defs>
-      <ellipse className="asoshik-jet" cx="32" cy="61" rx="8" ry="7" fill="#67e8f9" opacity="0.6" />
-      <g className="asoshik-bell">
-        <path d="M24 7 q0 -13 8 -13 q8 0 8 13z" fill="#FBBF24" />
-        <rect x="22" y="5" width="20" height="4" rx="2" fill="#f59e0b" />
-        <circle cx="32" cy="-7" r="2.4" fill="#f59e0b" />
-      </g>
-      <path d="M32 6 C46 6 58 16 58 32 C58 47 47 58 32 58 C17 58 6 48 6 32 C6 17 18 6 32 6Z" fill={`url(#${gid})`} stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" />
-      <path d="M18 16 C24 10 34 9 40 12" stroke="#fff" strokeOpacity="0.5" strokeWidth="3" fill="none" strokeLinecap="round" />
-      <g className="asoshik-eyes">
-        <rect x="21" y="27" width="6" height="10" rx="3" fill="#fff" />
-        <rect x="37" y="27" width="6" height="10" rx="3" fill="#fff" />
-      </g>
-      <path d="M27 43 q5 4 10 0" stroke="#fff" strokeWidth="2.6" fill="none" strokeLinecap="round" />
-      <path className="asoshik-spark" d="M50 8 l1.6 3.6 3.6 1.6 -3.6 1.6 -1.6 3.6 -1.6 -3.6 -3.6 -1.6 3.6 -1.6Z" fill="#fde68a" />
+      {activeMood === 'listening' && (
+        <circle cx="32" cy="32" r="29" fill="none" stroke="var(--accent)" strokeWidth="2" strokeOpacity="0.45" className="asoshik-pulse-ring" />
+      )}
+      <path d="M32 6 C46 6 58 16 58 32 C58 47 47 58 32 58 C17 58 6 48 6 32 C6 17 18 6 32 6Z" fill={`url(#${gid})`} />
+      <path d="M18 16 C24 10 34 9 40 12" stroke="#fff" strokeOpacity="0.52" strokeWidth="3" fill="none" strokeLinecap="round" />
+
+      {activeMood === 'happy' ? (
+        <g className="asoshik-eyes">
+          <path d="M20 33 q4 -5 8 0" stroke="#fff" strokeWidth="3.2" fill="none" strokeLinecap="round" />
+          <path d="M36 33 q4 -5 8 0" stroke="#fff" strokeWidth="3.2" fill="none" strokeLinecap="round" />
+        </g>
+      ) : activeMood === 'checking' ? (
+        <g className="asoshik-eyes" style={{ transform: eyesOffset }}>
+          <rect x="20" y="29" width="8" height="6" rx="3" fill="#fff" />
+          <rect x="36" y="29" width="8" height="6" rx="3" fill="#fff" />
+        </g>
+      ) : (
+        <g className="asoshik-eyes" style={{ transform: eyesOffset }}>
+          <rect x="21" y="27" width="6" height={activeMood === 'listening' ? 11 : 10} rx="3" fill="#fff" />
+          <rect x="37" y="27" width="6" height={activeMood === 'listening' ? 11 : 10} rx="3" fill="#fff" />
+        </g>
+      )}
+
+      {activeMood === 'happy' ? (
+        <path d="M25 42 q7 6.5 14 0" stroke="#fff" strokeWidth="2.8" fill="none" strokeLinecap="round" />
+      ) : activeMood === 'thinking' ? (
+        <circle cx="32" cy="44" r="2.2" fill="#fff" fillOpacity="0.9" />
+      ) : activeMood === 'listening' ? (
+        <ellipse cx="32" cy="44" rx="3.2" ry="3.8" fill="#fff" fillOpacity="0.9" />
+      ) : (
+        <path d="M27 43 q5 4 10 0" stroke="#fff" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+      )}
+
+      <path
+        className="asoshik-spark"
+        d="M50 8 l1.6 3.6 3.6 1.6 -3.6 1.6 -1.6 3.6 -1.6 -3.6 -3.6 -1.6 3.6 -1.6Z"
+        fill={activeMood === 'happy' ? '#fef08a' : '#fde68a'}
+      />
     </svg>
   );
 };
 
 const SUGGESTIONS = [
-  'Какой у меня следующий урок?',
-  'Что задано на завтра?',
+  'Собери сводку дня и план',
   'Что положить в портфель на завтра?',
-  'Реши: 3/4 + 2/5',
-  'Объясни дроби простыми словами',
-  'Как подготовиться к контрольной?',
+  'Запусти Помодоро на 25 минут',
+  'Покажи формулы по алгебре',
+  'Сделай мини-тест по дробям',
+  'Какие уроки завтра и что задано?',
 ];
 
-// Если модель всё же прислала LaTeX — превращаем в обычный текст: \frac{3}{20} → 3/20, \cdot → ·
+const MODE_LABELS: { id: AssistantMode; label: string }[] = [
+  { id: 'auto', label: 'Авто' },
+  { id: 'brief', label: 'Кратко' },
+  { id: 'tutor', label: 'Репетитор' },
+];
+
 const cleanMath = (text: string) =>
   text
     .replace(/(\d+)\s*\\frac\{([^}]*)\}\{([^}]*)\}/g, '$1 целых $2/$3')
@@ -86,42 +157,95 @@ const cleanMath = (text: string) =>
     .replace(/\{,\}/g, ',')
     .replace(/\$+/g, '');
 
-// Лёгкая разметка ответа: **жирный** и строки-списки «- »
-const renderText = (text: string) =>
-  cleanMath(text).split('\n').map((line, i) => {
-    const isItem = /^\s*[-*•]\s+/.test(line);
-    const body = line.replace(/^\s*[-*•]\s+/, '');
-    const parts = body.split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/g).map((p, j) =>
-      p.startsWith('**') && p.endsWith('**') && p.length > 4 ? (
-        <b key={j}>{p.slice(2, -2)}</b>
-      ) : p.length > 2 && p.startsWith('*') && p.endsWith('*') ? (
-        <i key={j}>{p.slice(1, -1)}</i>
-      ) : (
-        <React.Fragment key={j}>{p}</React.Fragment>
-      )
-    );
-    if (!line.trim()) return <div key={i} className="h-1.5" />;
-    return isItem ? (
-      <div key={i} className="flex gap-1.5">
-        <span className="opacity-60">•</span>
-        <span>{parts}</span>
-      </div>
-    ) : (
-      <div key={i}>{parts}</div>
-    );
+const renderInline = (line: string) =>
+  line.split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|`[^`]+`)/g).map((p, j) => {
+    if (p.startsWith('**') && p.endsWith('**') && p.length > 4) return <b key={j}>{p.slice(2, -2)}</b>;
+    if (p.startsWith('`') && p.endsWith('`') && p.length > 2) {
+      return (
+        <code key={j} className="font-mono text-[12px] px-1.5 py-0.5 rounded-md bg-black/25 text-[var(--accent)]">
+          {p.slice(1, -1)}
+        </code>
+      );
+    }
+    if (p.length > 2 && p.startsWith('*') && p.endsWith('*')) return <i key={j}>{p.slice(1, -1)}</i>;
+    return <React.Fragment key={j}>{p}</React.Fragment>;
   });
 
-export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro, autoPrompt, onAutoPromptUsed, agent, appLang = 'ru' }) => {
+const renderText = (text: string) =>
+  cleanMath(text)
+    .split('\n')
+    .map((line, i) => {
+      if (!line.trim()) return <div key={i} className="h-1.5" />;
+      const isOk = /^\s*✓\s*/.test(line);
+      const isErr = /^\s*✕\s*/.test(line);
+      const isBullet = /^\s*[-*•]\s+/.test(line);
+      const numMatch = line.match(/^\s*(\d+[.)])\s+(.*)$/);
+      const body = isBullet ? line.replace(/^\s*[-*•]\s+/, '') : numMatch ? numMatch[2] : line;
+
+      if (isOk || isErr) {
+        return (
+          <div
+            key={i}
+            className={`px-2.5 py-1 rounded-xl text-[13px] ${
+              isOk ? 'bg-emerald-500/15 text-emerald-200' : 'bg-rose-500/15 text-rose-200'
+            }`}
+          >
+            {renderInline(body)}
+          </div>
+        );
+      }
+      if (isBullet) {
+        return (
+          <div key={i} className="flex gap-1.5">
+            <span className="opacity-60">•</span>
+            <span>{renderInline(body)}</span>
+          </div>
+        );
+      }
+      if (numMatch) {
+        return (
+          <div key={i} className="flex gap-1.5">
+            <span className="opacity-70 font-bold tabular-nums">{numMatch[1]}</span>
+            <span>{renderInline(body)}</span>
+          </div>
+        );
+      }
+      return <div key={i}>{renderInline(line)}</div>;
+    });
+
+export const AssistantScreen: React.FC<AssistantScreenProps> = ({
+  context,
+  vibro,
+  soundProfile = '1',
+  autoPrompt,
+  onAutoPromptUsed,
+  agent,
+  appLang = 'ru',
+  onOpenScreen,
+}) => {
   const [pending, setPending] = useState<{ text: string; resolve: (ok: boolean) => void } | null>(null);
   const confirm = (text: string) => new Promise<boolean>((resolve) => setPending({ text, resolve }));
   const answerPending = (ok: boolean) => {
     pending?.resolve(ok);
     setPending(null);
   };
+
   const [messages, setMessages] = useState<AssistantMessage[]>(loadHistory);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
-  // Голос: отвечать вслух и слушать микрофон. Выбор помнится на этом телефоне.
+  const [streamingText, setStreamingText] = useState('');
+  const [streamingRoute, setStreamingRoute] = useState<{ label: string; route: 'fast' | 'deep' } | null>(null);
+  const [happyBurst, setHappyBurst] = useState(false);
+  const [available, setAvailable] = useState(assistantAvailable);
+  const [mode, setMode] = useState<AssistantMode>(() => {
+    try {
+      const m = localStorage.getItem('asosh_assistant_mode');
+      return m === 'brief' || m === 'tutor' ? m : 'auto';
+    } catch {
+      return 'auto';
+    }
+  });
+
   const [voiceOn, setVoiceOn] = useState<boolean>(() => {
     try {
       return localStorage.getItem('asosh_asoshik_voice') === '1';
@@ -134,11 +258,66 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
   const [speaking, setSpeaking] = useState(false);
   const stopListening = useRef<() => void>(() => {});
   const recording = useRef<Recording | null>(null);
-  // Запись через Gemini работает везде, где есть микрофон (и в APK); встроенное распознавание — запасной вариант
+  const abortRef = useRef<AbortController | null>(null);
+
+  const [error, setError] = useState('');
+  const [used, setUsed] = useState(usedToday);
+  const [photo, setPhoto] = useState<{ full: string; thumb: string } | null>(null);
+  const [attachMenu, setAttachMenu] = useState(false);
+
+  const online = useOnline();
+  const listEnd = useRef<HTMLDivElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const attachWrap = useRef<HTMLDivElement>(null);
+
   const geminiMic = geminiVoiceAvailable() && micSupported();
   const showMic = geminiMic || voiceInputSupported();
   const showVoiceToggle = geminiVoiceAvailable() || voiceOutputSupported();
   const langName = (LANGS.find((l) => l.id === appLang)?.ru || 'Русский').toLowerCase();
+  const left = Math.max(0, DAILY_LIMIT - used);
+
+  useEffect(() => {
+    fetchAssistantStatus().then((ok) => setAvailable(ok));
+  }, []);
+
+  useEffect(() => {
+    listEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages, busy, streamingText]);
+
+  useEffect(() => {
+    if (!attachMenu) return;
+    const close = (e: PointerEvent) => {
+      if (!attachWrap.current?.contains(e.target as Node)) setAttachMenu(false);
+    };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [attachMenu]);
+
+  useEffect(
+    () => () => {
+      stopVoice();
+      recording.current?.cancel();
+      abortRef.current?.abort();
+    },
+    []
+  );
+
+  const triggerHappy = () => {
+    setHappyBurst(true);
+    setTimeout(() => setHappyBurst(false), 2600);
+  };
+
+  const changeMode = (next: AssistantMode) => {
+    setMode(next);
+    try {
+      localStorage.setItem('asosh_assistant_mode', next);
+    } catch {
+      // ignore
+    }
+  };
+
   const toggleVoice = () => {
     unlockAudio();
     const next = !voiceOn;
@@ -146,13 +325,14 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
     try {
       localStorage.setItem('asosh_asoshik_voice', next ? '1' : '0');
     } catch {
-      // без памяти голос просто не запомнится
+      // ignore
     }
     if (!next) {
       stopVoice();
       setSpeaking(false);
     }
   };
+
   const finishRecording = async () => {
     const rec = recording.current;
     recording.current = null;
@@ -174,6 +354,7 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
       setTranscribing(false);
     }
   };
+
   const micOn = async () => {
     unlockAudio();
     stopVoice();
@@ -194,7 +375,6 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
       }
       return;
     }
-    // Запасной путь: встроенное распознавание браузера
     if (listening) {
       stopListening.current();
       return;
@@ -209,42 +389,10 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
       }
     );
   };
-  useEffect(() => () => {
-    stopVoice();
-    recording.current?.cancel();
-  }, []);
-  const [error, setError] = useState('');
-  const [used, setUsed] = useState(usedToday);
-  const online = useOnline();
-  const listEnd = useRef<HTMLDivElement>(null);
-  const available = assistantAvailable();
-  const left = Math.max(0, DAILY_LIMIT - used);
 
-  useEffect(() => {
-    listEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages, busy]);
-
-  // Фото к вопросу: для отправки — крупное (читается текст), для истории — маленькое
-  const [photo, setPhoto] = useState<{ full: string; thumb: string } | null>(null);
-  // Три способа: снять камерой, выбрать из галереи или взять файл (фото или PDF)
-  const cameraRef = useRef<HTMLInputElement>(null);
-  const galleryRef = useRef<HTMLInputElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [attachMenu, setAttachMenu] = useState(false);
-  const attachWrap = useRef<HTMLDivElement>(null);
-  // Нажатие мимо меню — закрываем
-  useEffect(() => {
-    if (!attachMenu) return;
-    const close = (e: PointerEvent) => {
-      if (!attachWrap.current?.contains(e.target as Node)) setAttachMenu(false);
-    };
-    document.addEventListener('pointerdown', close);
-    return () => document.removeEventListener('pointerdown', close);
-  }, [attachMenu]);
   const pickPhoto = async (file?: File) => {
     setAttachMenu(false);
     if (!file) return;
-    // PDF отправляем как есть (Gemini читает PDF), в истории — значок
     if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
       if (file.size > 8 * 1024 * 1024) {
         setError('PDF слишком большой — до 8 МБ. Сфотографируй нужную страницу.');
@@ -277,37 +425,101 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
     }
   };
 
-  const send = async (text: string, photoOverride?: { full: string; thumb: string }) => {
+  const send = async (text: string, photoOverride?: { full: string; thumb: string }, forceRoute?: 'fast' | 'deep') => {
     const usePhoto = photoOverride || photo;
-    const q = (text.trim() || (usePhoto ? 'Реши задание на фото' : '')).slice(0, 600);
+    const q = (text.trim() || (usePhoto ? 'Проверь задание на фото: если есть моё решение — найди ошибки, иначе реши по шагам' : '')).slice(0, 600);
     if (!q || busy) return;
     setError('');
     setInput('');
     const sentPhoto = usePhoto;
     setPhoto(null);
-    const next = [...messages, { role: 'user' as const, text: q, at: Date.now(), ...(sentPhoto ? { image: sentPhoto.thumb } : {}) }];
+
+    const next: AssistantMessage[] = [
+      ...messages,
+      { role: 'user', text: q, at: Date.now(), ...(sentPhoto ? { image: sentPhoto.thumb } : {}) },
+    ];
     setMessages(next);
     saveHistory(next);
     setBusy(true);
+    setStreamingText('');
+    setStreamingRoute(null);
+
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
     try {
-      const answer = await askAssistant(next, context, sentPhoto?.full, agent ? agent(confirm) : undefined);
-      const withAnswer = [...next, { role: 'model' as const, text: answer.text, at: Date.now(), ...(answer.actions.length ? { actions: answer.actions } : {}) }];
+      const answer = await askAssistantStream(next, context, sentPhoto?.full, agent ? agent(confirm) : undefined, {
+        modePreference: mode,
+        forceRoute,
+        signal: ctrl.signal,
+        onMeta: (meta) => setStreamingRoute({ label: meta.label, route: meta.route }),
+        onDelta: (partial) => setStreamingText(partial),
+      });
+
+      const withAnswer: AssistantMessage[] = [
+        ...next,
+        {
+          role: 'model',
+          text: answer.text,
+          at: Date.now(),
+          ...(sentPhoto ? { hadPhoto: true } : {}),
+          ...(answer.actions.length ? { actions: answer.actions } : {}),
+          ...(answer.widgets.length ? { widgets: answer.widgets } : {}),
+          ...(answer.routeLabel ? { routeLabel: answer.routeLabel, routeKind: answer.routeKind } : {}),
+        },
+      ];
       setMessages(withAnswer);
       saveHistory(withAnswer);
+      triggerHappy();
       if (vibro && navigator.vibrate) navigator.vibrate(15);
       if (voiceOn && answer.text) {
         setSpeaking(true);
         speakAnswer(answer.text, voiceLang(appLang), () => setSpeaking(false));
       }
     } catch (err) {
-      setError((err as Error).message);
+      if ((err as Error).name === 'AbortError') {
+        const partial = streamingText.trim();
+        if (partial) {
+          const stoppedMsg: AssistantMessage[] = [
+            ...next,
+            {
+              role: 'model',
+              text: `${partial}\n\n_(остановлено)_`,
+              at: Date.now(),
+              ...(streamingRoute ? { routeLabel: streamingRoute.label, routeKind: streamingRoute.route } : {}),
+            },
+          ];
+          setMessages(stoppedMsg);
+          saveHistory(stoppedMsg);
+        }
+      } else {
+        setError((err as Error).message);
+      }
     } finally {
+      abortRef.current = null;
       setBusy(false);
+      setStreamingText('');
+      setStreamingRoute(null);
       setUsed(usedToday());
     }
   };
 
-  // Вопрос, пришедший из другого раздела, отправляем один раз
+  const stopGeneration = () => {
+    abortRef.current?.abort();
+  };
+
+  const updateWidgetInMessage = (msgIdx: number, wIdx: number, updated: AssistantWidget) => {
+    setMessages((prev) => {
+      const next = prev.map((m, mi) =>
+        mi !== msgIdx || !m.widgets
+          ? m
+          : { ...m, widgets: m.widgets.map((w, wi) => (wi === wIdx ? updated : w)) }
+      );
+      saveHistory(next);
+      return next;
+    });
+  };
+
   const autoSent = useRef(false);
   useEffect(() => {
     if (!autoPrompt || autoSent.current) return;
@@ -319,43 +531,86 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
   }, [autoPrompt]);
 
   const clear = () => {
+    abortRef.current?.abort();
     setMessages([]);
-    saveHistory([]);
+    clearSessionMemory();
     setError('');
   };
 
+  const currentMood: AssistantMood = listening || transcribing
+    ? 'listening'
+    : busy && streamingRoute?.label.includes('фото')
+    ? 'checking'
+    : busy
+    ? 'thinking'
+    : happyBurst
+    ? 'happy'
+    : 'idle';
+
   return (
-    <div className="card screen-enter asoshik-screen flex flex-col">
-      {/* Шапка */}
+    <div className="card screen-enter asoshik-screen asoshik-glass flex flex-col">
+      {/* Живая Liquid Glass шапка */}
       <div className="asoshik-header">
-        <AsoshikAvatar size={52} thinking={busy} />
+        <AsoshikAvatar size={50} mood={currentMood} thinking={busy} />
         <div className="flex-1 min-w-0">
-          <div className="text-lg font-black text-white leading-tight">{ASSISTANT_NAME}</div>
-          <div className="text-[11px] font-bold text-white/70">
-            {busy ? 'думает…' : !available ? 'скоро появится' : online ? 'твой школьный помощник' : 'нет интернета'}
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-lg font-black text-white leading-tight truncate">{ASSISTANT_NAME}</div>
+            {messages.length > 0 && (
+              <button
+                type="button"
+                onClick={clear}
+                className="min-w-[44px] min-h-[44px] -mr-2 flex items-center justify-center rounded-xl hover:bg-white/10 text-white/65 cursor-pointer"
+                title="Очистить диалог"
+                aria-label="Очистить диалог"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <div className="text-[11px] font-semibold text-white/70 truncate tabular-nums">
+            {busy
+              ? streamingRoute?.label || 'думает…'
+              : !available
+              ? 'скоро появится'
+              : online
+              ? `школьный помощник · осталось ${left} из ${DAILY_LIMIT}`
+              : 'нет интернета'}
+          </div>
+          <div className="asoshik-modes mt-2" role="group" aria-label="Режим ответов">
+            {MODE_LABELS.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => changeMode(m.id)}
+                className={`asoshik-mode-btn ${mode === m.id ? 'active' : ''}`}
+              >
+                {m.label}
+              </button>
+            ))}
           </div>
         </div>
-        {messages.length > 0 && (
-          <button type="button" onClick={clear} className="p-2 rounded-xl hover:bg-white/10 text-white/60 cursor-pointer" title="Очистить диалог">
-            <Trash2 className="w-4 h-4" />
-          </button>
-        )}
       </div>
 
-      {/* Сообщения */}
+      {/* Лента сообщений */}
       <div className="asoshik-list">
         {messages.length === 0 && (
           <div className="text-center py-4 space-y-3">
-            <div className="text-sm font-bold text-white/85">
-              Привет! Я {ASSISTANT_NAME} 👋
+            <div className="text-sm font-bold text-white/90">
+              Привет! Я {ASSISTANT_NAME}
               <br />
-              <span className="text-white/60 font-normal text-xs">
-                Знаю твоё расписание, кабинеты и домашку. Решу задание и объясню по шагам, как оно делается 📝
+              <span className="text-white/65 font-normal text-xs leading-relaxed">
+                Знаю расписание, время до звонка, оценки и домашку. Могу проверить решение по фото, собрать портфель, запустить Помодоро и сделать тест.
               </span>
             </div>
-            <div className="flex flex-wrap justify-center gap-1.5">
+            <div className="flex flex-wrap justify-center gap-2">
               {SUGGESTIONS.map((s) => (
-                <button key={s} type="button" className="asoshik-chip" disabled={!available || busy} onClick={() => send(s)}>
+                <button
+                  key={s}
+                  type="button"
+                  className="asoshik-chip"
+                  disabled={!available || busy}
+                  onClick={() => send(s)}
+                >
                   {s}
                 </button>
               ))}
@@ -372,14 +627,47 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
               </div>
             </div>
           ) : (
-            <div key={i} className="flex items-end gap-1.5">
+            <div key={i} className="flex items-end gap-2">
               <AsoshikAvatar size={26} />
-              <div className="asoshik-bubble bot">
-                {renderText(m.text)}
-                {m.actions && (
-                  <div className="asoshik-actions">
-                    {m.actions.map((a, k) => (
-                      <div key={k}>{a}</div>
+              <div className="max-w-[88%] flex-1 min-w-0 space-y-2">
+                <div className="asoshik-bubble bot">
+                  {m.routeLabel && (
+                    <div className="text-[10px] font-semibold text-white/50 mb-1">{m.routeLabel}</div>
+                  )}
+                  <div className="space-y-1">{renderText(m.text)}</div>
+                  {m.actions && m.actions.length > 0 && (
+                    <div className="asoshik-actions">
+                      {m.actions.map((a, k) => (
+                        <div key={k}>{a}</div>
+                      ))}
+                    </div>
+                  )}
+                  {m.hadPhoto && !busy && (
+                    <div className="mt-2.5 pt-2 border-t border-white/10">
+                      <button
+                        type="button"
+                        className="asoshik-wbtn accent"
+                        onClick={() => send('Сделай мини-тест из 3 похожих вопросов по заданию с фото, чтобы я закрепил тему')}
+                      >
+                        Закрепить тестом (3 вопроса)
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {m.widgets && m.widgets.length > 0 && (
+                  <div className="space-y-2">
+                    {m.widgets.map((w, wi) => (
+                      <AssistantWidgetCard
+                        key={w.id || wi}
+                        widget={w}
+                        soundProfile={soundProfile}
+                        vibro={vibro}
+                        onUpdateWidget={(upd) => updateWidgetInMessage(i, wi, upd)}
+                        onOpenScreen={onOpenScreen}
+                        onAskFollowup={(q) => send(q)}
+                        onHappy={triggerHappy}
+                      />
                     ))}
                   </div>
                 )}
@@ -392,10 +680,10 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
           <div className="asoshik-confirm">
             <div className="text-sm font-bold">{pending.text}</div>
             <div className="flex gap-2 mt-2">
-              <button type="button" className="btn green flex-1 justify-center !py-2 text-sm" onClick={() => answerPending(true)}>
+              <button type="button" className="btn green flex-1 justify-center !py-2 text-sm min-h-[44px]" onClick={() => answerPending(true)}>
                 Опубликовать
               </button>
-              <button type="button" className="btn darkBtn flex-1 justify-center !py-2 text-sm" onClick={() => answerPending(false)}>
+              <button type="button" className="btn darkBtn flex-1 justify-center !py-2 text-sm min-h-[44px]" onClick={() => answerPending(false)}>
                 Отмена
               </button>
             </div>
@@ -403,13 +691,25 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
         )}
 
         {busy && !pending && (
-          <div className="flex items-end gap-1.5">
-            <AsoshikAvatar size={26} thinking />
-            <div className="asoshik-bubble bot asoshik-typing">
-              <span />
-              <span />
-              <span />
-            </div>
+          <div className="flex items-end gap-2">
+            <AsoshikAvatar size={26} mood={currentMood} thinking />
+            {streamingText ? (
+              <div className="asoshik-bubble bot max-w-[88%]">
+                {streamingRoute?.label && (
+                  <div className="text-[10px] font-semibold text-white/50 mb-1">{streamingRoute.label}</div>
+                )}
+                <div className="space-y-1">
+                  {renderText(streamingText)}
+                  <span className="asoshik-caret" aria-hidden="true" />
+                </div>
+              </div>
+            ) : (
+              <div className="asoshik-bubble bot asoshik-typing">
+                <span />
+                <span />
+                <span />
+              </div>
+            )}
           </div>
         )}
 
@@ -417,16 +717,42 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
         <div ref={listEnd} />
       </div>
 
-      {/* Ввод */}
+      {/* Превью фото + быстрые сценарии проверки */}
       {photo && (
-        <div className="asoshik-attach">
-          <img src={photo.thumb} alt="Фото к вопросу" />
-          <span>{photo.thumb === PDF_THUMB ? 'Файл прикреплён. Напиши, что сделать, или просто отправь — Асошик разберёт задание из файла.' : 'Фото прикреплено. Напиши вопрос или просто отправь — Асошик решит задание с фото.'}</span>
-          <button type="button" onClick={() => setPhoto(null)} aria-label="Убрать фото">
-            <X className="w-4 h-4" />
-          </button>
+        <div className="asoshik-attach-wrap mb-2">
+          <div className="asoshik-attach !mb-0">
+            <img src={photo.thumb} alt="Фото к вопросу" />
+            <span>
+              {photo.thumb === PDF_THUMB
+                ? 'Файл прикреплён. Напиши задание или сразу отправь.'
+                : 'Фото прикреплено. Выбери режим ниже или задай свой вопрос.'}
+            </span>
+            <button type="button" onClick={() => setPhoto(null)} className="min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Убрать фото">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {photo.thumb !== PDF_THUMB && (
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              <button
+                type="button"
+                className="asoshik-wbtn accent"
+                onClick={() => send('Проверь моё решение на фото по шагам и укажи, где первая ошибка', photo, 'deep')}
+              >
+                Проверить на ошибки
+              </button>
+              <button
+                type="button"
+                className="asoshik-wbtn"
+                onClick={() => send('Реши задание на фото подробно по шагам', photo, 'deep')}
+              >
+                Решить по шагам
+              </button>
+            </div>
+          )}
         </div>
       )}
+
+      {/* Нижняя панель ввода (высота кнопок >= 44px) */}
       <form
         className="asoshik-input"
         onSubmit={(e) => {
@@ -438,6 +764,7 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { pickPhoto(e.target.files?.[0]); e.target.value = ''; }} />
         <input ref={galleryRef} type="file" accept="image/*" hidden onChange={(e) => { pickPhoto(e.target.files?.[0]); e.target.value = ''; }} />
         <input ref={fileRef} type="file" accept="image/*,application/pdf,.pdf" hidden onChange={(e) => { pickPhoto(e.target.files?.[0]); e.target.value = ''; }} />
+
         <div className="relative" ref={attachWrap}>
           <button
             type="button"
@@ -446,7 +773,7 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
             disabled={!available || busy || left === 0}
             aria-label="Прикрепить фото задания"
             aria-expanded={attachMenu}
-            title="Фото задания"
+            title="Фото или PDF"
           >
             <Camera className="w-4 h-4" />
           </button>
@@ -464,6 +791,7 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
             </div>
           )}
         </div>
+
         {showMic && (
           <button
             type="button"
@@ -476,6 +804,7 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
             <Mic className="w-4 h-4" />
           </button>
         )}
+
         <input
           type="text"
           value={input}
@@ -483,22 +812,42 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
           placeholder={available ? (photo ? 'Что сделать с фото? (можно пусто)' : `Спроси ${ASSISTANT_NAME}а…`) : `${ASSISTANT_NAME} пока не подключён`}
           disabled={!available || left === 0}
           maxLength={600}
-          className="text-sm"
+          className="text-sm min-h-[44px]"
         />
-        <button type="submit" disabled={!available || busy || (!input.trim() && !photo) || left === 0} className="asoshik-send" aria-label="Отправить">
-          <Send className="w-4 h-4" />
-        </button>
+
+        {busy ? (
+          <button
+            type="button"
+            onClick={stopGeneration}
+            className="asoshik-send stop"
+            aria-label="Остановить ответ"
+            title="Остановить"
+          >
+            <Square className="w-4 h-4" />
+          </button>
+        ) : (
+          <button
+            type="submit"
+            disabled={!available || (!input.trim() && !photo) || left === 0}
+            className="asoshik-send"
+            aria-label="Отправить"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        )}
       </form>
+
       {(listening || transcribing) && (
         <div className="text-[11px] font-bold text-rose-300 text-center mt-1.5">
-          {listening ? '🎙 Слушаю… нажми микрофон ещё раз, чтобы отправить' : '✍️ Распознаю…'}
+          {listening ? 'Слушаю… нажми микрофон ещё раз, чтобы отправить' : 'Распознаю речь…'}
         </div>
       )}
-      {showVoiceToggle && (
-        <div className="flex justify-center mt-1.5">
-          <button type="button" onClick={toggleVoice} className="text-[11px] font-bold text-cyan-300 flex items-center gap-1.5 cursor-pointer">
+
+      <div className="flex flex-wrap items-center justify-center gap-3 mt-1.5 text-[10.5px] text-white/55">
+        {showVoiceToggle && (
+          <button type="button" onClick={toggleVoice} className="font-bold text-cyan-300 flex items-center gap-1 cursor-pointer min-h-[28px]">
             {voiceOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-            {voiceOn ? 'Отвечает голосом' : 'Отвечать голосом'}
+            <span>{voiceOn ? 'Озвучка вкл' : 'Озвучивать'}</span>
             {speaking && (
               <span
                 onClick={(e) => {
@@ -506,16 +855,14 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ context, vibro
                   stopVoice();
                   setSpeaking(false);
                 }}
-                className="ml-1 underline"
+                className="underline ml-1"
               >
-                · стоп
+                стоп
               </span>
             )}
           </button>
-        </div>
-      )}
-      <div className="text-[10px] text-white/50 text-center mt-1.5">
-        Осталось вопросов сегодня: {left} из {DAILY_LIMIT} · Ответы даёт ИИ Google Gemini и могут быть с ошибками. Имя не передаётся. Не фотографируй лица и личные данные.
+        )}
+        <span>ИИ может ошибаться · Не передавайте личные данные</span>
       </div>
     </div>
   );

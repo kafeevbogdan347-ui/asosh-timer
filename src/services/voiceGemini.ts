@@ -1,17 +1,17 @@
-// Голос Асошика через Gemini: запись с микрофона → распознавание, ответ → озвучка голосом Puck.
+// Голос Асошика через серверный шлюз /api/assistant/stt и /api/assistant/tts.
 // Работает одинаково в браузере, на iPhone и в APK (там нет встроенного распознавания речи).
-// Если лимит озвучки Gemini на сегодня закончился — читает встроенный голос телефона.
+// Если серверная озвучка недоступна — читает встроенный голос телефона.
 
-const API_KEY = (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) || '';
-const BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
-const STT_MODEL = 'gemini-flash-lite-latest';
-// Порядок важен: у каждой модели свой дневной лимит, при отказе пробуем следующую
-const TTS_MODELS = ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts', 'gemini-2.5-flash-preview-tts'];
-const VOICE = 'Puck';
 const MAX_RECORD_SEC = 30;
 const TARGET_RATE = 16000;
 
-export const geminiVoiceAvailable = () => Boolean(API_KEY);
+let serverVoiceReady = true;
+
+export function setGeminiVoiceReady(ready: boolean): void {
+  serverVoiceReady = ready;
+}
+
+export const geminiVoiceAvailable = () => serverVoiceReady;
 export const micSupported = () => typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
 
 // ---------- Общий AudioContext: на iPhone звук можно включить только после нажатия ----------
@@ -28,15 +28,15 @@ function audioCtx(): AudioContext | null {
     return null;
   }
 }
-// Вызывать в обработчике нажатия (микрофон, отправка), чтобы потом ответ смог прозвучать
+
 export function unlockAudio(): void {
   const c = audioCtx();
   if (c && c.state === 'suspended') c.resume().catch(() => {});
 }
 
-// ---------- Запись в WAV 16 кГц (понимают все модели Gemini и все телефоны) ----------
+// ---------- Запись в WAV 16 кГц ----------
 export interface Recording {
-  stop: () => Promise<string | null>; // base64 WAV или null, если записи нет
+  stop: () => Promise<string | null>;
   cancel: () => void;
 }
 
@@ -57,7 +57,6 @@ export async function startRecording(onAutoStop: () => void): Promise<Recording>
     chunks.push(data);
     length += data.length;
   };
-  // Тихий выход: ScriptProcessor работает, только если подключён к выходу
   const mute = c.createGain();
   mute.gain.value = 0;
   source.connect(proc);
@@ -85,7 +84,7 @@ export async function startRecording(onAutoStop: () => void): Promise<Recording>
     cancel: cleanup,
     stop: async () => {
       cleanup();
-      if (length < c.sampleRate * 0.4) return null; // меньше 0,4 с — это не вопрос
+      if (length < c.sampleRate * 0.4) return null;
       const all = new Float32Array(length);
       let off = 0;
       for (const ch of chunks) {
@@ -141,46 +140,29 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(bin);
 }
 
-async function post(model: string, body: unknown, timeoutMs = 30000): Promise<{ ok: boolean; status: number; data: any }> {
+// ---------- Распознавание ----------
+export async function transcribe(wavBase64: string, langName: string): Promise<string> {
+  if (!navigator.onLine) throw new Error('Нет интернета');
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  const t = setTimeout(() => ctrl.abort(), 30000);
   try {
-    const res = await fetch(`${BASE}${model}:generateContent`, {
+    const res = await fetch('/api/assistant/stt', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': API_KEY },
-      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wavBase64, langName }),
       signal: ctrl.signal,
     });
-    return { ok: res.ok, status: res.status, data: await res.json().catch(() => ({})) };
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || 'Не получилось распознать. Попробуй ещё раз.');
+    }
+    return String(data.text || '').trim();
+  } catch (err) {
+    if (err instanceof Error && err.message) throw err;
+    throw new Error('Не получилось распознать. Попробуй ещё раз.');
   } finally {
     clearTimeout(t);
   }
-}
-
-// ---------- Распознавание ----------
-export async function transcribe(wavBase64: string, langName: string): Promise<string> {
-  if (!API_KEY) throw new Error('Асошик пока не подключён');
-  if (!navigator.onLine) throw new Error('Нет интернета');
-  let res;
-  try {
-    res = await post(STT_MODEL, {
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { inlineData: { mimeType: 'audio/wav', data: wavBase64 } },
-            { text: `Запиши дословно, что сказано в аудио (скорее всего ${langName}). Верни только сам текст, без кавычек и пояснений. Если речи не слышно, верни пустую строку.` },
-          ],
-        },
-      ],
-      generationConfig: { temperature: 0, maxOutputTokens: 400 },
-    });
-  } catch {
-    throw new Error('Не получилось распознать. Попробуй ещё раз.');
-  }
-  if (!res.ok) throw new Error(res.status === 429 ? 'Асошик перегружен, попробуй через минуту' : 'Не получилось распознать. Попробуй ещё раз.');
-  const text = ((res.data?.candidates?.[0]?.content?.parts || []) as { text?: string }[]).map((p) => p.text || '').join('').trim();
-  return text.replace(/^["«]|["»]$/g, '').trim();
 }
 
 // ---------- Озвучка ----------
@@ -188,27 +170,10 @@ const plain = (text: string) =>
   text
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/\$\$?[^$]*\$\$?/g, ' ')
-    .replace(/[*_`#>|]/g, '')
+    .replace(/[*_`#>|✓✕]/g, '')
     .replace(/https?:\/\/\S+/g, '')
     .replace(/\s+/g, ' ')
     .trim();
-
-const todayKey = () => new Date().toISOString().slice(0, 10);
-const offKey = (m: string) => `asosh_tts_off_${m}`;
-const modelOff = (m: string) => {
-  try {
-    return localStorage.getItem(offKey(m)) === todayKey();
-  } catch {
-    return false;
-  }
-};
-const markOff = (m: string) => {
-  try {
-    localStorage.setItem(offKey(m), todayKey());
-  } catch {
-    // не запомнится — просто попробуем снова
-  }
-};
 
 let current: { stop: () => void } | null = null;
 export function stopVoice(): void {
@@ -217,7 +182,6 @@ export function stopVoice(): void {
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 }
 
-// Новые модели отдают WAV, старая — «сырой» PCM 16 бит (audio/L16;rate=24000)
 async function playAudio(base64: string, mime: string, onEnd: () => void): Promise<boolean> {
   const c = audioCtx();
   if (!c) return false;
@@ -273,8 +237,6 @@ function speakBrowser(text: string, lang: string, onEnd: () => void): void {
   window.speechSynthesis.speak(u);
 }
 
-// Озвучивает ответ голосом Gemini; если не вышло — встроенным голосом телефона.
-// Возвращает, чем говорил: 'gemini' | 'device' | 'none'
 export async function speakAnswer(text: string, browserLang: string, onEnd: () => void): Promise<'gemini' | 'device' | 'none'> {
   stopVoice();
   const clean = plain(text).slice(0, 900);
@@ -282,28 +244,26 @@ export async function speakAnswer(text: string, browserLang: string, onEnd: () =
     onEnd();
     return 'none';
   }
-  if (API_KEY && navigator.onLine) {
-    for (const model of TTS_MODELS) {
-      if (modelOff(model)) continue;
-      try {
-        const res = await post(
-          model,
-          {
-            // Только сам текст: инструкции модель зачитывает вслух
-            contents: [{ role: 'user', parts: [{ text: clean }] }],
-            generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } } } },
-          },
-          45000
-        );
-        if (!res.ok) {
-          if (res.status === 429 || res.status === 403 || res.status === 404) markOff(model);
-          continue;
+  if (navigator.onLine && serverVoiceReady) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 35000);
+    try {
+      const res = await fetch('/api/assistant/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: clean, voiceName: 'Puck' }),
+        signal: ctrl.signal,
+      });
+      if (res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { audioBase64?: string; mimeType?: string };
+        if (data.audioBase64 && (await playAudio(data.audioBase64, data.mimeType || '', onEnd))) {
+          return 'gemini';
         }
-        const part = ((res.data?.candidates?.[0]?.content?.parts || []) as { inlineData?: { data: string; mimeType: string } }[]).find((p) => p.inlineData?.data);
-        if (part?.inlineData && (await playAudio(part.inlineData.data, part.inlineData.mimeType || '', onEnd))) return 'gemini';
-      } catch {
-        // сеть или таймаут — пробуем следующую модель
       }
+    } catch {
+      // пробуем голос устройства
+    } finally {
+      clearTimeout(timer);
     }
   }
   if ('speechSynthesis' in window) {
