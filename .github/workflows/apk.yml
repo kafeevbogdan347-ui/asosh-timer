@@ -51,6 +51,14 @@ jobs:
       - run: npx cap sync android
       # Виджет на рабочий стол и плагин для него (native/android)
       - run: bash native/android/install.sh
+      # Иконка и заставка из public/icon-*.png вместо стандартных картинок Capacitor
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: App icon
+        run: |
+          python -m pip install --quiet pillow==11.0.0
+          python native/android/icons.py
       # Микрофон для голосовых вопросов и камера для фото задания Асошику
       - name: Microphone and camera permissions
         run: |

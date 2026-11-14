@@ -1,0 +1,40 @@
+name: Security agents
+
+# Каждое утро три ИИ-агента (Gemini) ищут уязвимости: правила базы, код и сборку, изменения за сутки.
+# Плюс npm audit — известные дыры в библиотеках. Отчёт уходит в базу (asosh_security) и виден
+# только администраторам: дев-панель → «🛡 ИИ-охрана». Репозиторий публичный, поэтому
+# в этом логе находок нет — только их количество.
+# Секреты: GEMINI_API_KEY (тот же, что у Асошика) и FIREBASE_SERVICE_ACCOUNT (тот же, что публикует правила).
+on:
+  schedule:
+    - cron: '0 2 * * *' # 07:00 по Челябинску
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security
+  cancel-in-progress: false
+
+jobs:
+  agents:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 100 # нужна история за сутки для агента «Свежие изменения»
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: npm audit
+        run: npm audit --json > "$RUNNER_TEMP/audit.json" || true
+      - name: ИИ-агенты
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          AUDIT_JSON: ${{ runner.temp }}/audit.json
+        run: node scripts/security-agents.mjs
