@@ -828,6 +828,38 @@ body.device-pc .nav-bar {
   max-width: 650px;
 }
 
+/* Большие экраны (ноутбук, монитор, планшет боком): приложение на всю ширину, панель снизу крупнее.
+   Компактный режим и экран для ТВ не трогаем */
+@media (min-width: 1100px) {
+  body:not(.compact) .app-container:not(.board-mode) {
+    max-width: min(1440px, 100%);
+    padding-left: 28px;
+    padding-right: 28px;
+    padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+  }
+  body:not(.compact) .nav-bar {
+    width: min(940px, calc(100% - 48px));
+    max-width: none;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    gap: 6px;
+    padding: 8px;
+    border-radius: 30px;
+  }
+  body:not(.compact) .nav-bar button {
+    font-size: 13px;
+    padding: 9px 2px;
+    border-radius: 22px;
+  }
+  body:not(.compact) .nav-bar span {
+    font-size: 30px;
+    min-height: 38px;
+  }
+  body:not(.compact) .nav-bar span > svg {
+    width: 34px;
+    height: 34px;
+  }
+}
+
 .app-container {
   max-width: 880px;
   margin: 0 auto;

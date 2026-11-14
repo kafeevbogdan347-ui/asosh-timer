@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { SystemBars, SystemBarsStyle } from '@capacitor/core';
 import {
   ScreenId,
   AppSettings,
@@ -737,6 +738,10 @@ export default function App() {
     body.className = '';
     body.classList.add(`theme-${effectiveTheme}`);
     if (LIGHT_THEME_IDS.includes(effectiveTheme)) body.classList.add('ui-light');
+    // APK: тёмные значки статус-бара на светлых темах, светлые — на тёмных
+    if (isNativeApp()) {
+      SystemBars.setStyle({ style: LIGHT_THEME_IDS.includes(effectiveTheme) ? SystemBarsStyle.Light : SystemBarsStyle.Dark }).catch(() => {});
+    }
     body.classList.add(settings.fontSize);
     if (settings.timerStyle === 'digital') body.classList.add('timer-digital');
     if (settings.compact) body.classList.add('compact');
