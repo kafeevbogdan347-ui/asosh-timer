@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { OnlineEntry, formatDuration, isOptedIn, myWeekSec, presenceLabel, subscribeOnline } from '../services/online';
+import { OnlineEntry, formatDuration, isOptedIn, myWeekSec, presenceLabel, subscribeOnline, subscribeSchoolOnline } from '../services/online';
+import { CLASS_LIST } from '../data/classCodes';
 import { fetchPublicProfile, getCachedPublicProfile } from '../services/profileSync';
 import { myUid } from '../services/classShared';
 import { getLocalAccount } from '../services/accounts';
@@ -18,16 +19,43 @@ interface Props {
 }
 
 const MEDALS = ['🥇', '🥈', '🥉'];
+const SCOPE_KEY = 'asosh_online_scope';
+const SCHOOL_LIMIT = 100; // в рейтинге школы показываем первые 100
 
 export const OnlineScreen: React.FC<Props> = ({ cls, isGuest, onOpenStudentProfile }) => {
   const [list, setList] = useState<OnlineEntry[] | null>(null);
   const [failed, setFailed] = useState(false);
+  // Свой класс или вся школа; выбор запоминаем
+  const [scope, setScope] = useState<'class' | 'school'>(() => {
+    try {
+      return localStorage.getItem(SCOPE_KEY) === 'school' ? 'school' : 'class';
+    } catch {
+      return 'class';
+    }
+  });
+  const pickScope = (s: 'class' | 'school') => {
+    setScope(s);
+    try {
+      localStorage.setItem(SCOPE_KEY, s);
+    } catch {
+      // не запомнится — не страшно
+    }
+  };
   const [now, setNow] = useState(Date.now());
   const [pubMap, setPubMap] = useState<Record<string, UserProfile>>({});
 
   const [, setBadgeRev] = useState(0);
 
-  useEffect(() => (cls ? subscribeOnline(cls, setList, () => setFailed(true)) : undefined), [cls]);
+  useEffect(() => {
+    if (!cls) return;
+    setList(null);
+    setFailed(false);
+    if (scope === 'school') {
+      const classes = [...new Set([...CLASS_LIST.map((c) => c.className), cls])];
+      return subscribeSchoolOnline(classes, setList, () => setFailed(true));
+    }
+    return subscribeOnline(cls, setList, () => setFailed(true));
+  }, [cls, scope]);
   // «в сети» пересчитываем каждые 20 с, даже если база молчит
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 20000);
@@ -67,6 +95,7 @@ export const OnlineScreen: React.FC<Props> = ({ cls, isGuest, onOpenStudentProfi
   // Время аккаунта со всех устройств — из рейтинга; пока он не загрузился — с этого устройства
   const mySec = list?.find((e) => e.uid === me)?.sec ?? myWeekSec();
   const onlineCount = (list || []).filter((e) => presenceLabel(e.last, now).online).length;
+  const myPlace = (list || []).findIndex((e) => e.uid === me) + 1;
 
   const handleSelectStudent = (e: OnlineEntry, rank: number, presence: { online: boolean; text: string }) => {
     if (!onOpenStudentProfile) return;
@@ -78,7 +107,7 @@ export const OnlineScreen: React.FC<Props> = ({ cls, isGuest, onOpenStudentProfi
           id: pub?.id || e.uid,
           username: pub?.username || e.nick,
           fullName: pub?.fullName || e.nick,
-          className: pub?.className || cls,
+          className: pub?.className || e.cls || cls,
           avatar: pub?.avatar || e.avatar || '🎒',
           avatarType: pub?.avatarType || 'emoji',
           status: pub?.status ?? e.status ?? '',
@@ -107,8 +136,8 @@ export const OnlineScreen: React.FC<Props> = ({ cls, isGuest, onOpenStudentProfi
   if (isGuest) {
     return (
       <div className="card screen-enter space-y-3">
-        <h2 className="text-xl font-black text-cyan-300">🏆 Онлайн класса</h2>
-        <p className="text-sm text-white/75">Рейтинг виден только одноклассникам. Войди с кодом класса, чтобы его открыть.</p>
+        <h2 className="text-xl font-black text-cyan-300">🏆 Онлайн</h2>
+        <p className="text-sm text-white/75">Рейтинг виден только ученикам школы. Войди с кодом класса, чтобы его открыть.</p>
       </div>
     );
   }
@@ -116,26 +145,38 @@ export const OnlineScreen: React.FC<Props> = ({ cls, isGuest, onOpenStudentProfi
   return (
     <div className="card screen-enter space-y-4">
       <div>
-        <h2 className="text-xl font-black text-cyan-300">🏆 Онлайн класса {cls}</h2>
+        <h2 className="text-xl font-black text-cyan-300">{scope === 'school' ? '🏆 Онлайн школы' : `🏆 Онлайн класса ${cls}`}</h2>
         <p className="text-xs text-white/60">Кто больше всех в АСОШ Таймере на этой неделе. Сейчас в сети: {onlineCount}. Нажми на ученика, чтобы открыть его профиль.</p>
       </div>
 
+      <div className="grid grid-cols-2 gap-2">
+        <button type="button" className={`choice !py-2 !text-xs font-black ${scope === 'class' ? 'active' : ''}`} onClick={() => pickScope('class')}>
+          🎒 Мой класс {cls}
+        </button>
+        <button type="button" className={`choice !py-2 !text-xs font-black ${scope === 'school' ? 'active' : ''}`} onClick={() => pickScope('school')}>
+          🏫 Вся школа
+        </button>
+      </div>
+
       <div className="p-3 rounded-2xl bg-white/5 border border-white/15 space-y-1">
-        <div className="text-[11px] text-white/60">Твоё время на этой неделе: <b className="text-cyan-300">{formatDuration(mySec)}</b></div>
+        <div className="text-[11px] text-white/60">
+          Твоё время на этой неделе: <b className="text-cyan-300">{formatDuration(mySec)}</b>
+          {myPlace > 0 && <> · <b className="text-cyan-300">{myPlace}-е место</b> {scope === 'school' ? 'в школе' : 'в классе'}</>}
+        </div>
         <div className="text-[11px] text-white/50">
           {getLocalAccount()?.role !== 'student'
             ? 'Чтобы попасть в рейтинг, войди в аккаунт ученика: Опции → Аккаунт.'
-            : `${isOptedIn() ? 'Одноклассники видят твой ник, аватар, статус и время в приложении.' : 'Ты скрыт из рейтинга.'} Скрыть или показать себя — в Опциях → Приватность.`}
+            : `${isOptedIn() ? 'Ученики школы видят твой ник, аватар, статус, класс и время в приложении.' : 'Ты скрыт из рейтинга.'} Скрыть или показать себя — в Опциях → Приватность.`}
         </div>
       </div>
 
       {failed && <div className="text-xs text-amber-300 font-bold">Не получилось загрузить рейтинг. Проверь интернет.</div>}
       {!failed && list === null && <div className="text-xs text-white/60">Загружаю…</div>}
-      {list && list.length === 0 && <div className="text-sm text-white/60">Пока в рейтинге никого — скоро появятся одноклассники.</div>}
+      {list && list.length === 0 && <div className="text-sm text-white/60">{scope === 'school' ? 'Пока в рейтинге никого.' : 'Пока в рейтинге никого — скоро появятся одноклассники.'}</div>}
 
       {list && list.length > 0 && (
         <div className="space-y-1.5">
-          {list.map((e, i) => {
+          {(scope === 'school' ? list.slice(0, SCHOOL_LIMIT) : list).map((e, i) => {
             const p = presenceLabel(e.last, now);
             const pub = pubMap[e.uid];
             const isMe = e.uid === me;
@@ -181,6 +222,9 @@ export const OnlineScreen: React.FC<Props> = ({ cls, isGuest, onOpenStudentProfi
                         <span>{b.label}</span>
                       </span>
                     ))}
+                    {scope === 'school' && e.cls && (
+                      <span className="text-[10px] font-bold text-amber-200 bg-amber-500/15 border border-amber-400/30 px-1.5 py-0.5 rounded-full">{e.cls}</span>
+                    )}
                     {isMe && <span className="text-cyan-300 font-bold text-[11px]">· ты</span>}
                   </span>
                   <span className={`text-[11px] block mt-0.5 ${p.online ? 'text-emerald-300 font-bold' : 'text-white/50'}`}>{p.text}</span>
@@ -198,6 +242,9 @@ export const OnlineScreen: React.FC<Props> = ({ cls, isGuest, onOpenStudentProfi
         </div>
       )}
 
+      {scope === 'school' && list && list.length > SCHOOL_LIMIT && (
+        <p className="text-[11px] text-white/50">Показаны первые {SCHOOL_LIMIT} из {list.length}.</p>
+      )}
       <p className="text-[11px] text-white/50">Время считается, только пока приложение открыто на экране. Неделя начинается в понедельник.</p>
     </div>
   );
