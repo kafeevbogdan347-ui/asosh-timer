@@ -51,9 +51,8 @@ export const OnlineScreen: React.FC<Props> = ({ cls, isGuest, onOpenStudentProfi
       const cached = getCachedPublicProfile(entry.uid);
       if (cached) {
         setPubMap((prev) => (prev[entry.uid] ? prev : { ...prev, [entry.uid]: cached }));
-        return;
       }
-      fetchPublicProfile(entry.uid).then((prof) => {
+      fetchPublicProfile(entry.uid, 20_000).then((prof) => {
         if (alive && prof) {
           setPubMap((prev) => ({ ...prev, [entry.uid]: prof }));
         }

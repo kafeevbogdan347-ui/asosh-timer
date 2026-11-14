@@ -320,6 +320,9 @@
         "reg": {
           ".validate": "newData.isNumber() && newData.val() <= now + 60000"
         },
+        "dev": {
+          ".validate": "newData.isBoolean()"
+        },
         "t": {
           ".validate": "newData.isNumber() && newData.val() <= now + 60000"
         },

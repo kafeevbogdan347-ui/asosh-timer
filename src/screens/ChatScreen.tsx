@@ -177,9 +177,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       const cached = getCachedPublicProfile(uid);
       if (cached) {
         setPubProfiles((prev) => (prev[uid] ? prev : { ...prev, [uid]: cached }));
-        return;
       }
-      fetchPublicProfile(uid).then((prof) => {
+      fetchPublicProfile(uid, 20_000).then((prof) => {
         if (alive && prof) {
           setPubProfiles((prev) => ({ ...prev, [uid]: prof }));
         }
@@ -472,7 +471,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             const senderBadges = isAnon
               ? []
               : getProfileBadges({
-                  isDev: isMe ? userProfile.isDev : senderPub?.isDev ?? msg.isDev,
+                  isDev: isMe ? userProfile.isDev : Boolean(senderPub?.isDev || msg.isDev),
                   registeredAt: isMe ? userProfile.registeredAt : senderPub?.registeredAt ?? msg.registeredAt,
                   registeredDate: isMe ? userProfile.registeredDate : senderPub?.registeredDate,
                   id: isMe ? userProfile.id : senderPub?.id || msg.userId,
@@ -489,7 +488,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               }
               if (!onOpenStudentProfile) return;
               const fallbackProfile: UserProfile = senderPub
-                ? senderPub
+                ? { ...senderPub, isDev: Boolean(senderPub.isDev || msg.isDev) }
                 : {
                     id: msg.userId || `chat_${senderHandle}`,
                     username: senderHandle,

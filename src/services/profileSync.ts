@@ -11,6 +11,7 @@ import { initFirebase, ensureSignedIn } from './firebaseChat';
 import { Account, getLocalAccount } from './accounts';
 import { getMyProfile, saveMyProfile, getRealHwDoneCount } from './userService';
 import { isAdminUid } from './admins';
+import { isDevPanelUnlocked } from '../utils/profileBadges';
 import { UserProfile, CertificateItem } from '../types';
 
 export interface CloudProfile {
@@ -147,6 +148,7 @@ interface PublicCard {
   friends: number;
   certs: string;
   reg?: number;
+  dev?: boolean;
   t: number;
 }
 
@@ -174,6 +176,7 @@ function buildPublicCard(p: UserProfile, account: Account): PublicCard {
   const reg = typeof rawReg === 'number' && Number.isFinite(rawReg) && rawReg > 1_000_000_000_000
     ? Math.min(rawReg, Date.now())
     : undefined;
+  const isDev = Boolean(p.isDev || isDevPanelUnlocked() || isAdminUid(account.uid));
   const n = (v: unknown, max: number) => Math.max(0, Math.min(max, Math.round(Number(v) || 0)));
   return {
     name: account.name.slice(0, 60),
@@ -187,6 +190,7 @@ function buildPublicCard(p: UserProfile, account: Account): PublicCard {
     friends: n(Array.isArray(p.friends) ? p.friends.length : 0, 10000),
     certs: packCerts(p.certificates),
     ...(reg ? { reg } : {}),
+    ...(isDev ? { dev: true } : {}),
     t: Date.now(),
   };
 }
@@ -217,7 +221,7 @@ function cardToProfile(uid: string, c: PublicCard): UserProfile {
     friendsCount: Number(c.friends) || 0,
     registeredAt: c.reg,
     registeredDate: c.reg ? new Date(c.reg).toLocaleDateString('ru-RU') : '',
-    isDev: isAdminUid(uid),
+    isDev: isAdminUid(uid) || Boolean(c.dev),
     verifiedClass: true,
   };
 }
@@ -235,21 +239,36 @@ export async function pushPublicProfile(p: UserProfile = getMyProfile(), force =
   } catch {
     // продолжаем
   }
-  try {
-    await set(ref(db, `asosh_pubprof/${account.uid}`), card);
-    publicProfileMemoryCache.set(account.uid, { profile: cardToProfile(account.uid, card), fetchedAt: Date.now() });
-    localStorage.setItem(PUBPROF_SIG_KEY, sig);
-  } catch {
-    // Если сервер отклонил reg из-за расхождения часов, пробуем сохранить карточку без reg
-    if ('reg' in card) {
-      try {
-        const { reg: _reg, ...withoutReg } = card;
-        await set(ref(db, `asosh_pubprof/${account.uid}`), withoutReg);
-        publicProfileMemoryCache.set(account.uid, { profile: cardToProfile(account.uid, withoutReg), fetchedAt: Date.now() });
-        localStorage.setItem(PUBPROF_SIG_KEY, sig);
-      } catch {
-        // нет сети или защитный режим — попробуем при следующем сохранении
+
+  const attempts: PublicCard[] = [card];
+  if ('reg' in card) {
+    const { reg: _reg, ...noReg } = card;
+    attempts.push(noReg);
+  }
+  if ('dev' in card) {
+    const { dev: _dev, ...noDev } = card;
+    attempts.push(noDev);
+  }
+  if ('reg' in card && 'dev' in card) {
+    const { reg: _reg, dev: _dev, ...minimal } = card;
+    attempts.push(minimal);
+  }
+
+  for (let i = 0; i < attempts.length; i++) {
+    const payload = attempts[i];
+    try {
+      await set(ref(db, `asosh_pubprof/${account.uid}`), payload);
+      publicProfileMemoryCache.set(account.uid, { profile: cardToProfile(account.uid, payload), fetchedAt: Date.now() });
+      if (i === 0) {
+        try {
+          localStorage.setItem(PUBPROF_SIG_KEY, sig);
+        } catch {
+          // игнорируем переполнение localStorage
+        }
       }
+      return;
+    } catch {
+      // Старые правила базы или расхождение часов: пробуем следующий облегчённый вариант
     }
   }
 }
