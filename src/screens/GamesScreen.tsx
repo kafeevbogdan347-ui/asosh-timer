@@ -861,6 +861,7 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
 
     let localPlaying = true;
 
+    // Один шаг игры; кадры экрана бывают 60, 90 и 120 Гц, а шагов всегда 60 в секунду
     const loop = () => {
       const state = flappyStateRef.current;
       state.frame++;
@@ -987,12 +988,22 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
       ctx.fillText('АСОШ', -5, 4);
       ctx.restore();
 
-      if (localPlaying) {
-        flappyAnimRef.current = requestAnimationFrame(loop);
-      }
     };
 
-    flappyAnimRef.current = requestAnimationFrame(loop);
+    const STEP = 1000 / 60;
+    let last = performance.now();
+    let acc = 0;
+    const frame = (now: number) => {
+      acc += Math.min(100, now - last);
+      last = now;
+      while (acc >= STEP * 0.9 && localPlaying) {
+        acc -= STEP;
+        loop();
+      }
+      if (localPlaying) flappyAnimRef.current = requestAnimationFrame(frame);
+    };
+
+    flappyAnimRef.current = requestAnimationFrame(frame);
     return () => {
       if (flappyAnimRef.current) cancelAnimationFrame(flappyAnimRef.current);
     };
@@ -1076,6 +1087,7 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
 
     let localPlaying = true;
 
+    // Один шаг игры; кадры экрана бывают 60, 90 и 120 Гц, а шагов всегда 60 в секунду
     const loop = () => {
       const state = planeStateRef.current;
 
@@ -1213,12 +1225,22 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
 
       ctx.restore();
 
-      if (localPlaying) {
-        planeAnimRef.current = requestAnimationFrame(loop);
-      }
     };
 
-    planeAnimRef.current = requestAnimationFrame(loop);
+    const STEP = 1000 / 60;
+    let last = performance.now();
+    let acc = 0;
+    const frame = (now: number) => {
+      acc += Math.min(100, now - last);
+      last = now;
+      while (acc >= STEP * 0.9 && localPlaying) {
+        acc -= STEP;
+        loop();
+      }
+      if (localPlaying) planeAnimRef.current = requestAnimationFrame(frame);
+    };
+
+    planeAnimRef.current = requestAnimationFrame(frame);
     return () => {
       if (planeAnimRef.current) cancelAnimationFrame(planeAnimRef.current);
     };

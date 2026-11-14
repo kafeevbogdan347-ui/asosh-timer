@@ -3,6 +3,7 @@ import { ArrowLeft, Bell, Volume2, Clock, Sparkles, Coffee, AlertCircle, Play, S
 import { LanguageType, SoundProfileType } from '../types';
 import { B1, B2, B2F, shortenBells, SHORT_LESSON_MIN } from '../data/constants';
 import { playBellSimulatorSound, doVibro, playSound } from '../utils/audio';
+import { lessonNo } from '../utils/lessonStatus';
 
 interface BellsScreenProps {
   onBack: () => void;
@@ -63,6 +64,8 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
   };
 
   const schedule = buildSchedule(selectedShift, isFriday, shortLessonMin);
+  // Номер урока, как на стенде: во 2-й смене первая позиция — нулевой урок
+  const num = (i: number) => lessonNo(selectedShift.endsWith('2') ? '2' : '1', i);
 
   // Update live clock and active lesson countdown
   useEffect(() => {
@@ -89,7 +92,7 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
         setActiveLessonInfo({
           status: 'before',
           lessonNum: 1,
-          title: `До 1-го урока (${liveSchedule[0][0]})`,
+          title: `До ${num(0)}-го урока (${liveSchedule[0][0]})`,
           remainSec: diff,
           progress: 0,
         });
@@ -120,7 +123,7 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
           setActiveLessonInfo({
             status: 'lesson',
             lessonNum: i + 1,
-            title: `Идет ${i + 1}-й урок (${startStr} – ${endStr})`,
+            title: `Идет ${num(i)}-й урок (${startStr} – ${endStr})`,
             remainSec: remain,
             progress: Math.min(100, Math.round((elapsed / total) * 100)),
           });
@@ -138,7 +141,7 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
             setActiveLessonInfo({
               status: 'break',
               lessonNum: i + 1,
-              title: `Перемена перед ${i + 2}-м уроком ${isBreakfast ? '🥪 (Завтрак/Обед)' : '🔔'}`,
+              title: `Перемена перед ${num(i + 1)}-м уроком ${isBreakfast ? '🥪 (Завтрак/Обед)' : '🔔'}`,
               remainSec: breakRemain,
               progress: Math.min(100, Math.round((breakElapsed / breakTotal) * 100)),
             });
@@ -454,7 +457,7 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
                           : 'bg-white/10 text-white'
                       }`}
                     >
-                      {idx + 1}
+                      {num(idx)}
                     </div>
 
                     <div>
@@ -467,7 +470,7 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
                         )}
                       </div>
                       <div className="text-[11px] text-white/50">
-                        {idx + 1}-й академический урок
+                        {num(idx)}-й академический урок
                       </div>
                     </div>
                   </div>
