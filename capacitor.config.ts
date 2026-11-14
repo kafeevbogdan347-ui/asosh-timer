@@ -10,6 +10,11 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
   },
   plugins: {
+    // На весь экран под статус-бар; светлые значки, т.к. фон тёмный (для светлых тем меняет App.tsx)
+    SystemBars: {
+      style: 'DARK',
+      initialViewportFitValueHint: 'cover',
+    },
     LocalNotifications: {
       iconColor: '#22d3ee',
     },
