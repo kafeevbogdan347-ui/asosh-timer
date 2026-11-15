@@ -32,7 +32,7 @@ import {
   usedToday,
 } from '../services/assistant';
 import { useOnline } from '../utils/useOnline';
-import { listenOnce, voiceInputSupported, voiceLang } from '../utils/voice';
+import { listenOnce, voiceInputSupported, voiceLang, voiceOutputSupported } from '../utils/voice';
 import {
   GEMINI_VOICES,
   GeminiVoiceName,
@@ -290,7 +290,7 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
 
   const geminiMic = geminiVoiceAvailable() && micSupported();
   const showMic = geminiMic || voiceInputSupported();
-  const showVoiceToggle = geminiVoiceAvailable();
+  const showVoiceToggle = geminiVoiceAvailable() || voiceOutputSupported();
   const langName = (LANGS.find((l) => l.id === appLang)?.ru || 'Русский').toLowerCase();
   const left = Math.max(0, DAILY_LIMIT - used);
 

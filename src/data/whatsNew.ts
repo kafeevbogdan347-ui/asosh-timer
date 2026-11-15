@@ -20,6 +20,13 @@ export const updatesLink = (version: string) => `${UPDATES_URL}#${version.replac
 
 export const WHATS_NEW: WhatsNewRelease[] = [
   {
+    version: 'v17.1',
+    date: '15 ноября 2026',
+    items: [
+      { icon: '🏃', title: 'Игра «Беги со звонка» на Windows', text: 'Исправлены пустые квадратики вместо препятствий и полупрозрачный бегун: ученик и все препятствия теперь рисуются чёткой графикой на любом устройстве.' },
+    ],
+  },
+  {
     version: 'v17.0',
     date: '15 ноября 2026',
     items: [

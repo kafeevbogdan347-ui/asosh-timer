@@ -21,21 +21,22 @@
     "@capacitor/local-notifications": "^8.3.1",
     "@capacitor/share": "^8.0.3",
     "@google/genai": "^3.3.0",
-    "@tailwindcss/vite": "^4.1.14",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/express": "^5.0.6",
     "@types/ws": "^8.18.2",
-    "@vitejs/plugin-react": "^5.0.4",
-    "dotenv": "^18.0.10",
-    "express": "^5.3.0",
-    "firebase": "^12.18.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "firebase": "^13.1.0",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "qrcode": "^1.5.4",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "tsx": "^4.23.15",
-    "vite": "^6.2.3",
-    "ws": "^8.23.0"
+    "vite": "^8.3.0",
+    "ws": "^8.23.0",
+    "@types/qrcode": "^1.5.6"
   },
   "devDependencies": {
     "@capacitor/android": "^8.5.3",
@@ -44,9 +45,13 @@
     "@types/qrcode": "^1.5.6",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
-    "tailwindcss": "^4.1.14",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^6.2.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "tsx": "^4.21.0",
+    "@types/express": "^4.17.21"
   },
   "engines": {
     "node": ">=20"

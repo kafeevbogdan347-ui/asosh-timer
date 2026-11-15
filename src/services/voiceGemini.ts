@@ -333,12 +333,26 @@ async function playAudio(base64: string, mime: string, onEnd: () => void): Promi
   return false;
 }
 
+function speakBrowser(text: string, lang: string, onEnd: () => void): void {
+  if (!('speechSynthesis' in window)) {
+    onEnd();
+    return;
+  }
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang;
+  const v = window.speechSynthesis.getVoices().find((x) => x.lang.toLowerCase().startsWith(lang.slice(0, 2).toLowerCase()));
+  if (v) u.voice = v;
+  u.onend = onEnd;
+  u.onerror = onEnd;
+  window.speechSynthesis.speak(u);
+}
+
 export async function speakAnswer(
   text: string,
   browserLang: string,
   onEnd: () => void,
   voiceName?: GeminiVoiceName
-): Promise<'gemini' | 'none'> {
+): Promise<'gemini' | 'device' | 'none'> {
   stopVoice();
   const clean = plain(text).slice(0, 900);
   if (!clean) {
@@ -377,6 +391,10 @@ export async function speakAnswer(
     } finally {
       clearTimeout(timer);
     }
+  }
+  if ('speechSynthesis' in window) {
+    speakBrowser(clean, browserLang, onEnd);
+    return 'device';
   }
   onEnd();
   return 'none';

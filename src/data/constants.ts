@@ -1,5 +1,5 @@
 // Версия приложения: одна на всё приложение
-export const APP_VERSION = 'v17.0';
+export const APP_VERSION = 'v17.1';
 
 import { FormulaCard, ChemicalElement, ThemeType } from '../types';
 
