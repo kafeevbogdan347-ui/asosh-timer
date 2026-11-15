@@ -1499,3 +1499,16 @@ body.q-eco .holiday-garland i { animation: none; }
   color: #fde68a; background: rgba(69, 26, 3, 0.94); border: 1px solid rgba(251, 191, 36, 0.6);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
+
+/* Игра 2048: новая или слитая плитка мягко «выпрыгивает» */
+.tile-pop {
+  animation: tile-pop 0.16s ease-out;
+}
+@keyframes tile-pop {
+  from {
+    transform: scale(0.6);
+  }
+  to {
+    transform: scale(1);
+  }
+}
