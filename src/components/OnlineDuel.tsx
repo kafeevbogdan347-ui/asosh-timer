@@ -14,11 +14,13 @@ interface OnlineDuelProps {
   onShowToast: (msg: string) => void;
   playerName: string;
   cls: string;
+  hasAccount: boolean; // онлайн только с аккаунтом: вход гостей в Firebase выключен
+  onOpenAccount?: () => void;
 }
 
 type Phase = 'menu' | 'room' | 'countdown' | 'play' | 'result';
 
-export const OnlineDuel: React.FC<OnlineDuelProps> = ({ soundProfile, vibro, onShowToast, playerName, cls }) => {
+export const OnlineDuel: React.FC<OnlineDuelProps> = ({ soundProfile, vibro, onShowToast, playerName, cls, hasAccount, onOpenAccount }) => {
   const name = playerName.trim() || 'Ученик';
   const [level, setLevel] = useState<Level>('easy');
   const [codeInput, setCodeInput] = useState('');
@@ -206,6 +208,21 @@ export const OnlineDuel: React.FC<OnlineDuelProps> = ({ soundProfile, vibro, onS
       <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${(n / DUEL_TASKS) * 100}%` }} />
     </div>
   );
+
+  if (phase === 'menu' && !hasAccount) {
+    return (
+      <div className="space-y-3">
+        <p className="text-xs text-white/70">
+          Онлайн-дуэль работает после входа в аккаунт — у тебя и у соперника. Без аккаунта играй вдвоём «На одном телефоне».
+        </p>
+        {onOpenAccount && (
+          <button type="button" onClick={onOpenAccount} className="btn orange w-full justify-center text-xs py-2.5">
+            Войти или создать аккаунт
+          </button>
+        )}
+      </div>
+    );
+  }
 
   if (phase === 'menu') {
     return (
