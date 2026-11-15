@@ -89,7 +89,7 @@ import { HolidayLayer } from './components/HolidayLayer';
 import { OnlineScreen } from './screens/OnlineScreen';
 import { startPresence } from './services/online';
 import { pullProfile, pushPublicProfile, fetchPublicProfile } from './services/profileSync';
-import { loadAdmins, onAdminsLoaded } from './services/admins';
+import { loadAdmins, onAdminsLoaded, isAdminUid } from './services/admins';
 import { setErrorScreen } from './services/errorLog';
 import { homeworkForTomorrow, reminderText } from './utils/hwReminder';
 import { subscribeFriends } from './services/friends';
@@ -162,6 +162,8 @@ export default function App() {
     []
   );
   const prevOfflineScreenRef = useRef<ScreenId>('main');
+  // Заглушка закрывает всё приложение; администраторы (asosh_admins) заходят, чтобы её выключить
+  const siteClosedForMe = siteClosed && !isAdminUid(myUid());
 
   // Онлайн класса: считаем время в приложении и отмечаемся «в сети» (выключается в Опциях → Приватность).
   // Только с аккаунтом ученика: так один человек — одна строка рейтинга на всех его устройствах
@@ -2264,7 +2266,12 @@ export default function App() {
 
       {/* Main Screen Router */}
       <main className="mt-1">
-        {siteClosed && LOCKED_ONLINE_SCREENS.has(currentScreen) ? (
+        {siteClosed && !siteClosedForMe && (
+          <div className="mx-2 mb-2 p-2.5 rounded-2xl bg-rose-500/15 border border-rose-400/40 text-xs text-rose-200 text-center">
+            🔴 Заглушка включена: у всех пользователей приложение закрыто. Ты администратор, поэтому видишь приложение.
+          </div>
+        )}
+        {siteClosed && (siteClosedForMe || LOCKED_ONLINE_SCREENS.has(currentScreen)) ? (
           <div className="card screen-enter max-w-lg mx-auto text-center space-y-4 py-8 px-5 border border-rose-500/40 bg-slate-900/90">
             <div className="w-16 h-16 mx-auto rounded-2xl bg-rose-500/15 border border-rose-400/40 flex items-center justify-center text-3xl shadow-lg relative">
               <span>🛠️</span>
@@ -2276,8 +2283,11 @@ export default function App() {
               АСОШ Таймер временно недоступен. Попробуйте позже.
             </h2>
             <p className="text-xs sm:text-sm text-white/65 leading-relaxed max-w-md mx-auto">
-              Серверы сейчас остановлены на технические работы, поэтому эта функция временно отключена. Расписание, таймер звонков и игры работают оффлайн.
+              {siteClosedForMe
+                ? 'Серверы сейчас остановлены на технические работы. Приложение откроется само, как только работы закончатся.'
+                : 'Серверы сейчас остановлены на технические работы, поэтому эта функция временно отключена. Расписание, таймер звонков и игры работают оффлайн.'}
             </p>
+            {!siteClosedForMe && (
             <div className="pt-2 flex flex-col gap-2 max-w-xs mx-auto">
               <button
                 type="button"
@@ -2295,6 +2305,7 @@ export default function App() {
                 ← Вернуться обратно
               </button>
             </div>
+            )}
           </div>
         ) : (
           <>
