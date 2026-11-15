@@ -20,6 +20,13 @@ export const updatesLink = (version: string) => `${UPDATES_URL}#${version.replac
 
 export const WHATS_NEW: WhatsNewRelease[] = [
   {
+    version: 'v16.30.2',
+    date: '15 ноября 2026',
+    items: [
+      { icon: '🏃', title: 'Новая игра «Беги со звонка»', text: 'Раннер по школьному коридору: перепрыгивай портфели, учебники и завуча, пробегай под мячом с физры и собирай пятёрки. Чем дальше, тем быстрее. Теперь в «Играх» 9 игр.' },
+    ],
+  },
+  {
     version: 'v16.30.1',
     date: '15 ноября 2026',
     items: [
