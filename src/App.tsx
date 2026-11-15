@@ -2719,6 +2719,8 @@ export default function App() {
             onUnlockAchievement={handleUnlockAchievement}
             playerName={(account?.name || studentName || '').split(' ')[0]}
             cls={cls}
+            hasAccount={Boolean(account)}
+            onOpenAccount={() => setCurrentScreen('account')}
           />
         )}
 
