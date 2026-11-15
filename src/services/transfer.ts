@@ -1,4 +1,5 @@
-import { ref, set, get, remove } from 'firebase/database';
+import { ref, get, remove, update, serverTimestamp } from 'firebase/database';
+import { getAuth } from 'firebase/auth';
 import { Capacitor } from '@capacitor/core';
 import { initFirebase, ensureSignedIn } from './firebaseChat';
 
@@ -63,7 +64,13 @@ export async function createTransfer(): Promise<TransferResult> {
 
   const id = randomId();
   try {
-    await set(ref(db, `asosh_transfer/${id}`), { payload, created_at: Date.now() });
+    // Перенос и отметка «когда отправлял» — одной записью: сервер пускает не чаще раза в минуту
+    const { app } = initFirebase();
+    const uid = (app && getAuth(app).currentUser?.uid) || '';
+    await update(ref(db), {
+      [`asosh_transfer/${id}`]: { payload, created_at: Date.now() },
+      [`asosh_rate/${uid}/xfer`]: serverTimestamp(),
+    });
   } catch {
     return { ok: false, error: 'Не удалось отправить данные. Проверь интернет.' };
   }

@@ -1,6 +1,7 @@
 // Асошик 2.0 — потоковый школьный помощник на Gemini с гибридным роутингом моделей,
 // памятью диалога, проверкой фото тетрадей и интерактивными виджетами в чате.
 import { setGeminiVoiceReady } from './voiceGemini';
+import { authJsonHeaders } from './assistantAuth';
 
 export type AssistantMood = 'idle' | 'thinking' | 'listening' | 'checking' | 'happy';
 export type AssistantMode = 'auto' | 'brief' | 'tutor';
@@ -478,14 +479,14 @@ async function readStreamTurn(
   try {
     res = await fetch(primaryUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authJsonHeaders(),
       body: JSON.stringify(payload),
       signal,
     });
     if ((res.status === 404 || res.status === 405) && primaryUrl !== remoteUrl) {
       res = await fetch(remoteUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authJsonHeaders(),
         body: JSON.stringify(payload),
         signal,
       });
@@ -496,7 +497,7 @@ async function readStreamTurn(
       try {
         res = await fetch(remoteUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await authJsonHeaders(),
           body: JSON.stringify(payload),
           signal,
         });
@@ -592,14 +593,14 @@ export async function generateAssistantImage(opts: {
   try {
     res = await fetch(primary, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authJsonHeaders(),
       body,
       signal: opts.signal,
     });
     if ((res.status === 404 || res.status === 405) && primary !== remote) {
       res = await fetch(remote, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authJsonHeaders(),
         body,
         signal: opts.signal,
       });
@@ -609,7 +610,7 @@ export async function generateAssistantImage(opts: {
     if (primary !== remote) {
       res = await fetch(remote, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authJsonHeaders(),
         body,
         signal: opts.signal,
       });

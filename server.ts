@@ -13,6 +13,18 @@ import {
   type GenerateContentResponse,
   type LiveServerMessage,
 } from '@google/genai';
+import {
+  MAX_REFERENCE_IMAGE_CHARS,
+  MAX_WAV_CHARS,
+  bearerToken,
+  clampStreamBody,
+  cleanLangName,
+  firebaseApiKey,
+  isAllowedOrigin,
+  rateLimit,
+  sanitizeSvg,
+  verifyIdToken,
+} from './serverSecurity.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 3000;
@@ -151,40 +163,52 @@ const ASPECT_DIMENSIONS: Record<string, { w: number; h: number }> = {
   '3:4': { w: 600, h: 800 },
 };
 
-function sanitizeSvg(rawSvg: string, width: number, height: number): string | null {
-  const match = rawSvg.match(/<svg[\s\S]*?<\/svg>/i);
-  if (!match) return null;
-  let svg = match[0]
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, '')
-    .replace(/<(iframe|object|embed|link|meta)[^>]*>[\s\S]*?<\/\1>/gi, '')
-    .replace(/<(iframe|object|embed|link|meta)[^>]*\/?>/gi, '')
-    .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-    .replace(/(?:href|xlink:href)\s*=\s*["']\s*javascript:[^"']*["']/gi, '');
-
-  if (!/xmlns\s*=\s*["']http:\/\/www\.w3\.org\/2000\/svg["']/i.test(svg)) {
-    svg = svg.replace(/^<svg/i, '<svg xmlns="http://www.w3.org/2000/svg"');
-  }
-  if (!/viewBox\s*=/i.test(svg)) {
-    svg = svg.replace(/^<svg/i, `<svg viewBox="0 0 ${width} ${height}"`);
-  }
-  return svg;
-}
-
 async function startServer() {
   const app = express();
-  app.use(express.json({ limit: '15mb' }));
+  // За прокси (Google AI Studio и т.п.) берём настоящий адрес клиента из X-Forwarded-For
+  app.set('trust proxy', 1);
+  // Тело запроса: фото-вопрос и запись голоса укладываются в 8 МБ, больше не принимаем
+  app.use(express.json({ limit: '8mb' }));
 
+  // CORS только для своих сайтов (раньше было «*» — любой чужой сайт мог тратить ключ ИИ)
   app.use('/api/assistant', (req: Request, res: Response, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    const origin = req.headers.origin;
+    res.setHeader('Vary', 'Origin');
+    if (origin && isAllowedOrigin(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.setHeader('Access-Control-Max-Age', '600');
+    }
     if (req.method === 'OPTIONS') {
-      res.status(204).end();
+      res.status(origin && isAllowedOrigin(origin) ? 204 : 403).end();
       return;
     }
     next();
   });
+
+  // Все запросы к ИИ (кроме статуса) — только от вошедшего в приложение пользователя и не чаще лимита
+  const requireUser = (scope: string, perMinute: number) => async (req: Request, res: Response, next: () => void) => {
+    if (!rateLimit(`ip:${req.ip}`, 120)) {
+      res.status(429).json({ error: 'Слишком много запросов. Подожди минуту.' });
+      return;
+    }
+    if (!firebaseApiKey()) {
+      console.error('[assistant] не задан FIREBASE_API_KEY (или VITE_FIREBASE_API_KEY) — проверить пользователя нечем');
+      res.status(503).json({ error: 'Асошик временно недоступен.' });
+      return;
+    }
+    const uid = await verifyIdToken(bearerToken(req.headers.authorization));
+    if (!uid) {
+      res.status(401).json({ error: 'Нужно войти в приложение, чтобы говорить с Асошиком.' });
+      return;
+    }
+    if (!rateLimit(`${scope}:${uid}`, perMinute)) {
+      res.status(429).json({ error: 'Слишком часто. Подожди минуту.' });
+      return;
+    }
+    next();
+  };
 
   // Статус подключения ИИ и доступных возможностей без утечки ключа в браузер
   app.get('/api/assistant/status', (_req: Request, res: Response) => {
@@ -201,30 +225,20 @@ async function startServer() {
   });
 
   // Потоковый SSE-ответ Асошика с гибридной маршрутизацией моделей и вызовом инструментов
-  app.post('/api/assistant/stream', async (req: Request, res: Response) => {
+  app.post('/api/assistant/stream', requireUser('stream', 30), async (req: Request, res: Response) => {
     const ai = createAI();
     if (!ai) {
       res.status(503).json({ error: 'Асошик пока не подключён.' });
       return;
     }
 
-    const {
-      contents = [],
-      systemInstruction = '',
-      tools = [],
-      modePreference = 'auto',
-      hasMedia = false,
-      lastUserText = '',
-      forceRoute,
-    } = (req.body || {}) as {
-      contents?: unknown[];
-      systemInstruction?: string;
-      tools?: unknown[];
-      modePreference?: ModePref;
-      hasMedia?: boolean;
-      lastUserText?: string;
-      forceRoute?: RouteKind;
-    };
+    // Тело запроса приводим к безопасному виду: свои инструменты и правила подсунуть нельзя
+    const clamped = clampStreamBody(req.body);
+    if (typeof clamped === 'string') {
+      res.status(400).json({ error: clamped });
+      return;
+    }
+    const { contents, systemInstruction, tools, modePreference, hasMedia, lastUserText, forceRoute } = clamped;
 
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -243,7 +257,7 @@ async function startServer() {
       if (!res.writableFinished) aborted = true;
     });
 
-    let candidates = selectModelChain(modePreference, Boolean(hasMedia), String(lastUserText || ''));
+    let candidates = selectModelChain(modePreference, hasMedia, lastUserText);
     if (forceRoute === 'deep') {
       candidates = [
         {
@@ -365,7 +379,7 @@ async function startServer() {
   });
 
   // Генерация иллюстраций, схем и диаграмм (векторное искусство высокой чёткости)
-  app.post('/api/assistant/image', async (req: Request, res: Response) => {
+  app.post('/api/assistant/image', requireUser('image', 8), async (req: Request, res: Response) => {
     const ai = createAI();
     if (!ai) {
       res.status(503).json({ error: 'Генерация картинок пока не подключена' });
@@ -390,6 +404,10 @@ async function startServer() {
       return;
     }
 
+    if (typeof referenceImage === 'string' && referenceImage.length > MAX_REFERENCE_IMAGE_CHARS) {
+      res.status(413).json({ error: 'Картинка слишком большая' });
+      return;
+    }
     const ratio = ASPECT_DIMENSIONS[aspectRatio] ? aspectRatio : '1:1';
     const { w, h } = ASPECT_DIMENSIONS[ratio];
 
@@ -483,17 +501,22 @@ async function startServer() {
   });
 
   // Распознавание речи с микрофона
-  app.post('/api/assistant/stt', async (req: Request, res: Response) => {
+  app.post('/api/assistant/stt', requireUser('stt', 20), async (req: Request, res: Response) => {
     const ai = createAI();
     if (!ai) {
       res.status(503).json({ error: 'Асошик пока не подключён' });
       return;
     }
-    const { wavBase64, langName = 'русский' } = (req.body || {}) as { wavBase64?: string; langName?: string };
-    if (!wavBase64) {
+    const { wavBase64, langName: rawLang } = (req.body || {}) as { wavBase64?: string; langName?: string };
+    if (!wavBase64 || typeof wavBase64 !== 'string') {
       res.status(400).json({ error: 'Пустая запись' });
       return;
     }
+    if (wavBase64.length > MAX_WAV_CHARS) {
+      res.status(413).json({ error: 'Запись слишком длинная' });
+      return;
+    }
+    const langName = cleanLangName(rawLang);
     let lastStatus = 500;
     for (const model of STT_MODELS) {
       try {
@@ -527,7 +550,7 @@ async function startServer() {
   });
 
   // Озвучка ответа настоящим голосом Gemini TTS (через v1alpha)
-  app.post('/api/assistant/tts', async (req: Request, res: Response) => {
+  app.post('/api/assistant/tts', requireUser('tts', 30), async (req: Request, res: Response) => {
     const voiceAI = createVoiceAI();
     if (!voiceAI) {
       res.status(503).json({ error: 'TTS не подключён' });
@@ -614,17 +637,27 @@ async function startServer() {
 
   // HTTP-сервер + WebSocket-шлюз для живого голосового диалога Gemini Live API
   const httpServer = createServer(app);
-  const wss = new WebSocketServer({ noServer: true });
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 1_000_000 });
 
   httpServer.on('upgrade', (req, socket, head) => {
     const url = req.url || '';
     if (!url.startsWith('/api/assistant/live')) return;
+    // Браузер всегда присылает Origin: чужие сайты не пускаем. Без Origin — не браузер, но токен всё равно нужен.
+    const origin = req.headers.origin;
+    if (origin && !isAllowedOrigin(origin)) {
+      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+      socket.destroy();
+      return;
+    }
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit('connection', ws, req);
     });
   });
 
-  wss.on('connection', (clientWs: WebSocket) => {
+  wss.on('connection', (clientWs: WebSocket, req) => {
+    const clientIp = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+    let authedUid = '';
+    let authing = false;
     const voiceAI = createVoiceAI();
     if (!voiceAI) {
       clientWs.send(JSON.stringify({ type: 'error', message: 'Голосовой сервер не подключён.' }));
@@ -726,12 +759,24 @@ async function startServer() {
           context?: string;
           data?: string;
           text?: string;
+          token?: string;
         };
+        // Первое сообщение — setup с токеном входа; до проверки всё остальное игнорируем
+        if (!authedUid) {
+          if (msg.type !== 'setup' || authing) return;
+          authing = true;
+          const uid = await verifyIdToken(String(msg.token || ''));
+          if (!uid || !rateLimit(`live:${uid}`, 6) || !rateLimit(`liveip:${clientIp}`, 20)) {
+            sendWs({ type: 'error', message: uid ? 'Слишком часто. Подожди минуту.' : 'Нужно войти в приложение.' });
+            clientWs.close();
+            return;
+          }
+          authedUid = uid;
+        }
         if (msg.type === 'setup') {
           await connectSession(msg.voiceName, msg.context);
           return;
         }
-        if (!session) await connectSession(msg.voiceName, msg.context);
         if (!session) return;
 
         if (msg.type === 'audio' && typeof msg.data === 'string' && msg.data) {
@@ -746,7 +791,11 @@ async function startServer() {
       }
     });
 
+    // Звонок не дольше 15 минут, чтобы один ученик не держал соединение вечно
+    const maxCall = setTimeout(() => clientWs.close(), 15 * 60_000);
+
     clientWs.on('close', () => {
+      clearTimeout(maxCall);
       closed = true;
       try {
         session?.close();

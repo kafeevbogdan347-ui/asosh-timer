@@ -30,18 +30,19 @@ jobs:
       - name: Write .env from secret
         run: |
           printf '%s\n' "$APP_ENV" > .env
-          # Ключ Асошика — отдельным секретом, чтобы не трогать APP_ENV
-          if [ -n "$GEMINI_API_KEY" ]; then printf 'VITE_GEMINI_API_KEY=%s\n' "$GEMINI_API_KEY" >> .env; fi
           # Коды классов отдельным секретом: строка ниже важнее CLASS_CODES из APP_ENV
           if [ -n "$CLASS_CODES" ]; then printf 'CLASS_CODES="%s"\n' "$CLASS_CODES" >> .env; fi
           # Настройки Firebase отдельным секретом: строки ниже важнее VITE_FIREBASE_* из APP_ENV
           if [ -n "$FIREBASE_ENV" ]; then printf '%s\n' "$FIREBASE_ENV" >> .env; fi
         env:
           APP_ENV: ${{ secrets.APP_ENV }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLASS_CODES: ${{ secrets.CLASS_CODES }}
           FIREBASE_ENV: ${{ secrets.FIREBASE_ENV }}
       # В APK приложение открывается с корня, поэтому BASE_PATH не задаём
+      - name: Check DEV_PASSWORD
+        run: |
+          # Без DEV_PASSWORD в сборке работает запасной отпечаток пароля из кода — это слабое место
+          if ! grep -q '^DEV_PASSWORD=.' .env; then echo "::warning::DEV_PASSWORD не задан в секретах: пароль разработчика проверяется по запасному отпечатку из кода. Добавьте DEV_PASSWORD в APP_ENV."; fi
       - run: npm run build
       - uses: actions/setup-java@v4
         with:
@@ -98,12 +99,15 @@ jobs:
             "$BT/apksigner" sign --ks ~/.android/debug.keystore --ks-pass pass:android --ks-key-alias androiddebugkey --out asosh-timer.apk aligned.apk
           fi
           "$BT/apksigner" verify --print-certs asosh-timer.apk | head -3
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: apk-latest
-          name: АСОШ Таймер для Android
-          body: |
-            Последняя сборка приложения для Android. Обновляется автоматически при каждом изменении.
-            Скачай asosh-timer.apk и открой его на телефоне. Android попросит разрешить установку из этого источника.
-          files: asosh-timer.apk
-          make_latest: true
+      # Релиз через встроенный gh вместо стороннего действия (его подключали по изменяемому тегу @v2)
+      - name: Publish APK release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES='Последняя сборка приложения для Android. Обновляется автоматически при каждом изменении.
+          Скачай asosh-timer.apk и открой его на телефоне. Android попросит разрешить установку из этого источника.'
+          if ! gh release view apk-latest >/dev/null 2>&1; then
+            gh release create apk-latest --target "$GITHUB_SHA" --title 'АСОШ Таймер для Android' --notes "$NOTES"
+          fi
+          gh release upload apk-latest asosh-timer.apk --clobber
+          gh release edit apk-latest --title 'АСОШ Таймер для Android' --notes "$NOTES" --latest
