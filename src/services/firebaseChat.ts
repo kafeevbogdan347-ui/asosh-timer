@@ -6,6 +6,7 @@ import {
   ref,
   push,
   update,
+  remove,
   onValue,
   query,
   limitToLast,
@@ -31,7 +32,7 @@ export const DEFAULT_FIREBASE_CONFIG = {
 
 const FIREBASE_STORAGE_KEY = 'asosh_custom_firebase_config';
 export const GLOBAL_CHAT_PATH = 'asosh_timer';
-// Правила базы запрещают удаление, поэтому «самоуничтожение» — это скрытие в приложении
+// «Самоуничтожение»: через 5 минут сообщение скрывается у всех, а устройство автора ещё и стирает его из базы
 export const SELF_DESTRUCT_MS = 5 * 60 * 1000;
 
 export function getChatRoomPath(room: string = 'global') {
@@ -195,6 +196,8 @@ export async function sendFirebaseMessage(
       await update(ref(db), {
         [`${path}/${key}`]: msgPayload,
         [`asosh_rate/${uid}/chat`]: serverTimestamp(),
+        // Ключ сообщения: по одной отметке времени сервер принимает только это сообщение
+        [`asosh_rate/${uid}/chatKey`]: key,
       });
       lastChatSentAt = Date.now();
       firebaseSuccess = true;
@@ -302,6 +305,22 @@ export function subscribeToFirebaseMessages(
                   isDev: Boolean(item.isDev),
                 });
               });
+            }
+            // Своё самоуничтожающееся сообщение, срок которого вышел, стираем из базы совсем
+            try {
+              const myId = getAuth(getApp()).currentUser?.uid;
+              if (myId && snapshot.exists()) {
+                const data = snapshot.val();
+                Object.keys(data).forEach((key) => {
+                  const item = data[key];
+                  const born = item.created_at ? new Date(item.created_at).getTime() : 0;
+                  if (item.isSelfDestruct && item.userId === myId && born && Date.now() - born >= SELF_DESTRUCT_MS) {
+                    remove(ref(db, `${getChatRoomPath(room)}/${key}`)).catch(() => {});
+                  }
+                });
+              }
+            } catch {
+              // не получилось стереть — сообщение всё равно скрыто в приложении
             }
             // Пустая комната — тоже ответ: сообщаем экрану, что подключение есть
             saveCache();

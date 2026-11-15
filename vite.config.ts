@@ -76,8 +76,8 @@ export default defineConfig(({ mode }) => {
       __CLASS_CODE_HASHES__: JSON.stringify(classCodeHashes),
       __DEV_PASSWORD_HASH__: JSON.stringify(devPassword ? slowHash(devPassword) : ''),
       __KDF__: JSON.stringify({ salt: KDF_SALT, iter: KDF_ITER }),
-      // Ключ Асошика: VITE_GEMINI_API_KEY (сборка на GitHub) или GEMINI_API_KEY (Google AI Studio)
-      'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || ''),
+      // Ключ ИИ (Gemini) в клиентскую сборку НЕ попадает: он живёт только на сервере (server.ts).
+      // Раньше сюда подставлялся VITE_GEMINI_API_KEY, и ключ был виден в коде сайта и APK.
     },
     resolve: {
       alias: {

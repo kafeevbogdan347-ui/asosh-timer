@@ -3,6 +3,8 @@
 // 2) Живой голосовой разговор в реальном времени (Gemini Live API по WebSocket)
 // 3) Распознавание речи с микрофона (/api/assistant/stt) + запасной голос устройства при отсутствии сети
 
+import { assistantIdToken, authJsonHeaders } from './assistantAuth';
+
 const MAX_RECORD_SEC = 30;
 const TARGET_RATE = 16000;
 const DEFAULT_PUBLIC_API = 'https://asosh-timer.ai.studio';
@@ -223,14 +225,14 @@ export async function transcribe(wavBase64: string, langName: string): Promise<s
   try {
     let res = await fetch(primary, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authJsonHeaders(),
       body: JSON.stringify({ wavBase64, langName }),
       signal: ctrl.signal,
     });
     if ((res.status === 404 || res.status === 405) && primary !== remote) {
       res = await fetch(remote, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authJsonHeaders(),
         body: JSON.stringify({ wavBase64, langName }),
         signal: ctrl.signal,
       });
@@ -354,14 +356,14 @@ export async function speakAnswer(
     try {
       let res = await fetch(primary, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authJsonHeaders(),
         body: JSON.stringify({ text: clean, voiceName: chosenVoice }),
         signal: ctrl.signal,
       });
       if ((res.status === 404 || res.status === 405) && primary !== remote) {
         res = await fetch(remote, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await authJsonHeaders(),
           body: JSON.stringify({ text: clean, voiceName: chosenVoice }),
           signal: ctrl.signal,
         });
@@ -518,8 +520,9 @@ export async function startLiveVoiceCall(opts: {
     if (notify) opts.onState('closed');
   };
 
-  ws.onopen = () => {
-    ws.send(JSON.stringify({ type: 'setup', voiceName, context: opts.context }));
+  ws.onopen = async () => {
+    const token = await assistantIdToken();
+    ws.send(JSON.stringify({ type: 'setup', voiceName, context: opts.context, token }));
   };
 
   ws.onmessage = (ev) => {

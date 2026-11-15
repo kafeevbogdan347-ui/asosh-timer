@@ -59,10 +59,9 @@ export function getProfileBadges(params: {
 }): ProfileBadgeInfo[] {
   const badges: ProfileBadgeInfo[] = [];
 
-  const hasDev =
-    params.isSelf !== false
-      ? isAdminUid(params.id) || isDevPanelUnlocked() || Boolean(params.isDev)
-      : isAdminUid(params.id) || Boolean(params.isDev);
+  // Значок «Разработчик» даёт только база (список админов и отметка isDev, которую правила пускают лишь админам).
+  // Раньше для своего профиля хватало записи в localStorage — её можно было подделать.
+  const hasDev = isAdminUid(params.id) || Boolean(params.isDev);
   if (hasDev) {
     badges.push({
       id: 'developer',
