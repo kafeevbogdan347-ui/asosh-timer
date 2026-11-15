@@ -47,6 +47,8 @@ interface GamesScreenProps {
   onUnlockAchievement?: (id: string) => void;
   playerName?: string; // для онлайн-дуэли
   cls?: string;
+  hasAccount?: boolean;
+  onOpenAccount?: () => void;
 }
 
 type ActiveGameId =
@@ -70,9 +72,12 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
   onUnlockAchievement,
   playerName = '',
   cls = '',
+  hasAccount = false,
+  onOpenAccount,
 }) => {
   const [activeGame, setActiveGame] = useState<ActiveGameId>('runner');
-  const [duelMode, setDuelMode] = useState<'online' | 'local'>('online');
+  // без аккаунта онлайн-дуэль недоступна — сразу открываем игру на одном телефоне
+  const [duelMode, setDuelMode] = useState<'online' | 'local'>(hasAccount ? 'online' : 'local');
 
   // ==========================================
   // 1. SNAKE STATE & LOGIC
@@ -1344,7 +1349,7 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
             <Swords className="w-4 h-4" />
             <span>Онлайн-дуэль: таблица на скорость</span>
           </div>
-          <OnlineDuel soundProfile={soundProfile} vibro={vibro} onShowToast={onShowToast} playerName={playerName} cls={cls} />
+          <OnlineDuel soundProfile={soundProfile} vibro={vibro} onShowToast={onShowToast} playerName={playerName} cls={cls} hasAccount={hasAccount} onOpenAccount={onOpenAccount} />
         </div>
       )}
 
