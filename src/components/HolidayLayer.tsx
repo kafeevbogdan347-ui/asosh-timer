@@ -4,7 +4,7 @@ import { Holiday, HolidayEffect, activeHoliday, holidayById } from '../data/holi
 interface Props {
   // Праздничная тема (Опции → Тема): какой праздник рисовать эффектами — снег, салют, лепестки
   themeHoliday?: string | null;
-  quality: 'eco' | 'normal' | 'ultra';
+  quality: 'eco' | 'normal' | 'ultra' | 'xultra';
   name: string; // для поздравления с днём рождения
   mode: 'effects' | 'banner'; // эффекты — от праздничной темы, баннер — поздравление в сам праздник
 }
@@ -129,7 +129,7 @@ export const HolidayLayer: React.FC<Props> = ({ themeHoliday, quality, name, mod
 
   if (!holiday) return null;
   const still = quality === 'eco' || reducedMotion();
-  const count = quality === 'ultra' ? 46 : 26;
+  const count = quality === 'ultra' || quality === 'xultra' ? 46 : 26;
 
   if (mode === 'effects') {
     return (
@@ -137,7 +137,7 @@ export const HolidayLayer: React.FC<Props> = ({ themeHoliday, quality, name, mod
         {!still &&
           (holiday.effect === 'salute' ? (
             <>
-              <Salute bursts={quality === 'ultra' ? 7 : 5} />
+              <Salute bursts={quality === 'ultra' || quality === 'xultra' ? 7 : 5} />
               <Falling effect="salute" count={Math.round(count / 3)} />
             </>
           ) : (
