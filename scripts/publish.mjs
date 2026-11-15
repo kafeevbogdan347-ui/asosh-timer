@@ -18,7 +18,7 @@ import {
 } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
-import readline from 'node:readline/promises';
+import readline from 'node:readline';
 import { stdin as input, stdout as output } from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -43,6 +43,7 @@ const PROTECTED_FILES = new Set([
   '.env',
   '.env.local',
   '.env.production',
+  'metadata.json',
   'publish-asosh.bat',
   'scripts/publish.mjs',
   'src/data/constants.ts',
@@ -193,12 +194,20 @@ export function mergePackageJsonSafe(currentRaw, incomingRaw) {
   const inc = JSON.parse(incomingRaw);
   let changed = false;
 
+  const existingAll = new Set([
+    ...Object.keys(cur.dependencies || {}),
+    ...Object.keys(cur.devDependencies || {}),
+  ]);
+
+  // Добавляем ТОЛЬКО по-настоящему новые пакеты, не трогая версии уже установленных
+  // (чтобы не ломать package-lock.json и npm ci в GitHub Actions)
   for (const field of ['dependencies', 'devDependencies']) {
     if (!inc[field]) continue;
     cur[field] = cur[field] || {};
     for (const [pkg, ver] of Object.entries(inc[field])) {
-      if (cur[field][pkg] !== ver) {
+      if (!existingAll.has(pkg)) {
         cur[field][pkg] = ver;
+        existingAll.add(pkg);
         changed = true;
       }
     }
@@ -214,13 +223,21 @@ function sha256File(filePath) {
 }
 
 function run(cmd, args, cwd, opts = {}) {
-  const res = spawnSync(cmd, args, {
+  if (process.platform === 'win32' && /\.(cmd|bat)$/i.test(cmd)) {
+    const q = (s) => (/[\s"&|<>^()]/.test(s) ? `"${String(s).replace(/"/g, '\\"')}"` : String(s));
+    const cmdLine = [cmd, ...args.map(q)].join(' ');
+    return spawnSync('cmd.exe', ['/d', '/s', '/c', `"${cmdLine}"`], {
+      cwd,
+      encoding: 'utf8',
+      windowsVerbatimArguments: true,
+      stdio: opts.capture ? 'pipe' : 'inherit',
+    });
+  }
+  return spawnSync(cmd, args, {
     cwd,
     encoding: 'utf8',
-    shell: process.platform === 'win32' && /\.(cmd|bat)$/i.test(cmd),
     stdio: opts.capture ? 'pipe' : 'inherit',
   });
-  return res;
 }
 
 function runCapture(cmd, args, cwd) {
@@ -341,7 +358,9 @@ function walkFiles(dir, base = dir) {
 }
 
 function stripAppVersionLine(text) {
-  return String(text || '').replace(/export const APP_VERSION = '[^']*';\r?\n?/, '');
+  return String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/export const APP_VERSION = '[^']*';\n?/, '');
 }
 
 async function applyZipOverlay(rl, repoRoot, sourceDir) {
@@ -352,6 +371,7 @@ async function applyZipOverlay(rl, repoRoot, sourceDir) {
 
   for (const f of files) {
     if (f.rel.startsWith('.github/')) continue;
+    if (f.rel.startsWith('public/assets/aistudio/')) continue;
     if (f.rel.endsWith('.log')) continue;
 
     const dst = path.join(repoRoot, f.rel);
@@ -360,10 +380,18 @@ async function applyZipOverlay(rl, repoRoot, sourceDir) {
       const merged = mergePackageJsonSafe(readFileSync(dst, 'utf8'), readFileSync(f.full, 'utf8'));
       if (merged.changed) {
         writeFileSync(dst, merged.nextJson, 'utf8');
-        copied.push('package.json (только зависимости)');
+        copied.push('package.json (добавлены новые пакеты)');
         depsChanged = true;
       }
       continue;
+    }
+
+    if (f.rel === 'vite.config.ts' && existsSync(dst)) {
+      const stripKeyLine = (s) =>
+        s.replace(/\r\n/g, '\n').replace(/\s*\/\/ Ключ Асошика:[^\n]*\n\s*'import\.meta\.env\.VITE_GEMINI_API_KEY':[^\n]*\n/, '\n');
+      if (stripKeyLine(readFileSync(dst, 'utf8')) === stripKeyLine(readFileSync(f.full, 'utf8'))) {
+        continue;
+      }
     }
 
     if (f.rel === 'src/data/constants.ts' && existsSync(dst)) {
@@ -633,10 +661,10 @@ function parseOriginRepo(remoteUrl) {
   return m ? { owner: m[1], repo: m[2] } : null;
 }
 
-async function pollDeployAndVersion(remoteInfo, expectedVersion) {
+async function pollDeployAndVersion(remoteInfo, expectedVersion, expectedSha = '') {
   const { owner, repo } = remoteInfo;
   const pagesVersionUrl = `https://${owner}.github.io/${repo}/version.json`;
-  const actionsUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs?branch=main&per_page=3`;
+  const actionsUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs?branch=main&per_page=8`;
 
   info(`Жду деплой на GitHub Actions (${owner}/${repo}) и появление ${expectedVersion} в ${pagesVersionUrl}...`);
   const deadline = Date.now() + 5 * 60_000;
@@ -650,7 +678,8 @@ async function pollDeployAndVersion(remoteInfo, expectedVersion) {
         });
         if (res.ok) {
           const data = await res.json();
-          const deployRun = (data.workflow_runs || []).find((r) => /deploy|pages/i.test(r.name || ''));
+          const runs = (data.workflow_runs || []).filter((r) => !expectedSha || r.head_sha === expectedSha);
+          const deployRun = runs.find((r) => /deploy|pages/i.test(r.name || ''));
           if (deployRun) {
             if (deployRun.status === 'completed') {
               if (deployRun.conclusion === 'success') {
@@ -658,10 +687,12 @@ async function pollDeployAndVersion(remoteInfo, expectedVersion) {
                 deployDone = true;
               } else {
                 errLog(`Сборка GitHub Actions завершилась со статусом: ${deployRun.conclusion}`);
+                if (deployRun.html_url) info(`Подробности: ${deployRun.html_url}`);
                 return false;
               }
             } else {
-              process.stdout.write(`  [Actions] ${deployRun.name}: ${deployRun.status}...\r`);
+              const statusLine = `  [Actions] ${deployRun.name}: ${deployRun.status}...`.slice(0, 74);
+              output.write(`${statusLine.padEnd(74, ' ')}\r`);
             }
           }
         }
@@ -732,6 +763,49 @@ async function runVerificationChecks(rl, repoRoot) {
   return true;
 }
 
+// Надёжное чтение строк без raw-режима и ANSI-сдвигов курсора:
+// исключает скачки/перемешивание текста в Windows 10 conhost.exe после вызовов git/cmd.
+function createPromptReader() {
+  const rl = readline.createInterface({ input, crlfDelay: Infinity, terminal: false });
+  const queue = [];
+  let waiter = null;
+  let closed = false;
+
+  rl.on('line', (line) => {
+    if (waiter) {
+      const resolve = waiter;
+      waiter = null;
+      rl.pause();
+      resolve(line);
+    } else {
+      queue.push(line);
+    }
+  });
+  rl.on('close', () => {
+    closed = true;
+    if (waiter) {
+      const resolve = waiter;
+      waiter = null;
+      resolve('');
+    }
+  });
+
+  return {
+    async question(promptText) {
+      output.write(promptText);
+      if (queue.length > 0) return queue.shift();
+      if (closed) return '';
+      rl.resume();
+      return new Promise((resolve) => {
+        waiter = resolve;
+      });
+    },
+    close() {
+      rl.close();
+    },
+  };
+}
+
 async function main() {
   const cwdFlagIdx = process.argv.indexOf('--cwd');
   const explicitCwd = cwdFlagIdx !== -1 ? process.argv[cwdFlagIdx + 1] : undefined;
@@ -741,7 +815,7 @@ async function main() {
     process.exit(1);
   }
 
-  const rl = readline.createInterface({ input, output });
+  const rl = createPromptReader();
   try {
     log(`${C.bold}${C.cyan}============================================${C.reset}`);
     log(`${C.bold}   АСОШ Таймер — Надёжная публикация v2.0   ${C.reset}`);
@@ -971,10 +1045,14 @@ async function main() {
     if (isBump) {
       const remoteUrl = runCapture('git', ['remote', 'get-url', 'origin'], repoRoot);
       const remoteInfo = parseOriginRepo(remoteUrl);
+      const headSha = runCapture('git', ['rev-parse', 'HEAD'], repoRoot);
       if (remoteInfo) {
-        await pollDeployAndVersion(remoteInfo, targetVer);
+        await pollDeployAndVersion(remoteInfo, targetVer, headSha);
       }
     }
+
+    log('');
+    ok('Готово! Публикация полностью завершена.');
   } finally {
     rl.close();
   }

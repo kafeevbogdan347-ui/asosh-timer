@@ -236,7 +236,11 @@ const StudentDiary: React.FC<{ account: Account; onShowToast: (m: string) => voi
                 <button
                   type="button"
                   className="text-red-300 flex items-center gap-1 cursor-pointer"
-                  onClick={async () => onShowToast((await removeParent(account.uid, p.puid)) ? 'Доступ закрыт' : 'Не получилось')}
+                  onClick={async () => {
+                    const ok = await removeParent(account.uid, p.puid);
+                    if (ok) getMyParentCode(account.uid).then(setCode);
+                    onShowToast(ok ? 'Доступ закрыт, код обновлён' : 'Не получилось');
+                  }}
                 >
                   <Trash2 className="w-3.5 h-3.5" /> Отключить
                 </button>

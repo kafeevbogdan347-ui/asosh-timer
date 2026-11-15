@@ -129,7 +129,7 @@ export const AddUpdateScreen: React.FC<AddUpdateScreenProps> = ({
         <button
           type="button"
           className={tabClass(mode === 'class')}
-          onClick={() => (canShare ? setMode('class') : onShowToast('🔒 Замены для класса — только с кодом класса'))}
+          onClick={() => (canShare ? setMode('class') : onShowToast('🔒 Замены для класса — только с аккаунтом ученика и кодом класса'))}
         >
           {canShare ? <Users className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
           <span>Замена для класса</span>

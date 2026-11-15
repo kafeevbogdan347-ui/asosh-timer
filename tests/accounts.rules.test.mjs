@@ -43,6 +43,9 @@ await check('ученик не видит весь класс', assertFails(get(
 await check('учитель видит класс', assertSucceeds(get(ref(teacher, `asosh_roster/${cls}`))));
 await check('учитель подтверждает ученика', assertSucceeds(update(ref(teacher, `asosh_roster/${cls}/stu1`), { ok: true, okBy: 'teacher1' })));
 await check('самозванец не подтверждает', assertFails(update(ref(fake, `asosh_roster/${cls}/stu1`), { ok: true, okBy: 'fake' })));
+await check('без аккаунта в список класса не записаться', assertFails(set(ref(stu2, `asosh_roster/${cls}/stu2`), { name: 'Петя С.', t: 1 })));
+await check('чужое имя в списке класса отклоняется', assertFails(set(ref(stu1, `asosh_roster/${cls}/stu1`), { name: 'Директор', t: 1 })));
+await check('ученик 2 создаёт аккаунт', assertSucceeds(set(ref(stu2, 'asosh_users/stu2'), user('student', { name: 'Петя С.', login: 'petya', cls: '5А' }))));
 await check('ученик 2 записывается (не подтверждён)', assertSucceeds(set(ref(stu2, `asosh_roster/${cls}/stu2`), { name: 'Петя С.', t: 1 })));
 
 // Журнал
@@ -97,6 +100,10 @@ await check('онлайн: без аккаунта в рейтинг не поп
 await check('онлайн: свою старую запись удалить можно', assertSucceeds(remove(ref(anonDev, `asosh_online/${cls}/anon_device`))));
 await check('онлайн: время прибавляется', assertSucceeds(set(ref(stu1, `asosh_online/${cls}/stu1`), card())));
 await check('онлайн: прибавка со второго устройства', assertSucceeds(update(ref(stu1, `asosh_online/${cls}/stu1`), { sec: 3700, last: 2 })));
+await check('онлайн: нельзя залезть в чужой класс', assertFails(set(ref(stu1, `asosh_online/${encodeURIComponent('6а')}/stu1`), card())));
+await check('онлайн: нельзя накрутить сразу больше часа', assertFails(set(ref(stu1, `asosh_online/5%D0%B0/stu1`), card({ week: '2026-11-16', sec: 10000 }))));
+await check('онлайн: нельзя прибавить больше 10 минут за раз', assertFails(update(ref(stu1, `asosh_online/${cls}/stu1`), { sec: 5000, last: 3 })));
+await check('онлайн: нельзя убавить секунды', assertFails(update(ref(stu1, `asosh_online/${cls}/stu1`), { sec: 100, last: 4 })));
 
 // --- Публичная карточка профиля (видят вошедшие, пишет только владелец) ---
 const pub = (extra = {}) => ({ name: 'Иван П.', nick: 'Ваня', avatar: '😎', status: '', bio: '', cls: '5А', hw: 3, games: 10, friends: 1, certs: '[]', t: 1, ...extra });
@@ -108,6 +115,9 @@ await check('публичный профиль: чужой не удалить',
 await check('публичный профиль: без аккаунта нельзя', assertFails(set(ref(anonDev, 'asosh_pubprof/anon_device'), pub())));
 await check('публичный профиль: фото не принимается', assertFails(set(ref(stu1, 'asosh_pubprof/stu1'), pub({ photo: 'data:image/png;base64,AAAA' }))));
 await check('публичный профиль: средний балл не принимается', assertFails(set(ref(stu1, 'asosh_pubprof/stu1'), pub({ gpa: 4.5 }))));
+await check('публичный профиль: поддельные ДЗ отклоняются', assertFails(set(ref(stu1, 'asosh_pubprof/stu1'), pub({ hw: 50000 }))));
+await check('публичный профиль: накрутка очков игр отклоняется', assertFails(set(ref(stu1, 'asosh_pubprof/stu1'), pub({ games: 9999999 }))));
+await check('публичный профиль: чужое имя отклоняется', assertFails(set(ref(stu1, 'asosh_pubprof/stu1'), pub({ name: 'Директор' }))));
 await check('публичный профиль: дата регистрации из будущего нельзя', assertFails(set(ref(stu1, 'asosh_pubprof/stu1'), pub({ reg: Date.now() + 86400000 }))));
 
 // --- Заглушка сайта и администраторы ---
@@ -205,13 +215,30 @@ await env.withSecurityRulesDisabled(async (c) => { await remove(ref(c.database()
 await check('чат: подписаться чужим uid нельзя', assertFails(update(ref(stu1), { 'asosh_timer/m10': msg({ userId: 'stu2' }), 'asosh_rate/stu1/chat': serverTimestamp() })));
 await check('чат: своим uid можно', assertSucceeds(update(ref(stu1), { 'asosh_timer/m11': msg({ userId: 'stu1' }), 'asosh_rate/stu1/chat': serverTimestamp() })));
 await check('чат: гость с user_… можно', assertSucceeds(update(ref(stu2), { 'asosh_timer/m12': msg({ userId: 'user_1700000000000_abc' }), 'asosh_rate/stu2/chat': serverTimestamp() })));
+await check('чат: лишнее поле отклоняется', assertFails(update(ref(stu1), { 'asosh_timer/m13': msg({ junk: 'x'.repeat(500) }), 'asosh_rate/stu1/chat': serverTimestamp() })));
 await check('чат: неизвестный вид лимита нельзя', assertFails(set(ref(stu1, 'asosh_rate/stu1/hack'), serverTimestamp())));
 const hw = { sub: 'Математика', text: '№ 125', uid: 'stu1', created_at: 1 };
-const share = (d, uid, key) => update(ref(d), { [`asosh_class/${cls}/homework/${key}`]: { ...hw, uid }, [`asosh_rate/${uid}/share`]: serverTimestamp() });
+const share = (d, uid, key, extra = {}) => update(ref(d), { [`asosh_class/${cls}/homework/${key}`]: { ...hw, uid, ...extra }, [`asosh_rate/${uid}/share`]: serverTimestamp() });
 await check('домашка: делюсь с отметкой', assertSucceeds(share(stu1, 'stu1', 'h1')));
 await check('домашка: вторая сразу же — отклоняется', assertFails(share(stu1, 'stu1', 'h2')));
 await check('домашка: без отметки не пишется', assertFails(set(ref(stu2, `asosh_class/${cls}/homework/h3`), { ...hw, uid: 'stu2' })));
 await check('домашка: удаляю свою', assertSucceeds(remove(ref(stu1, `asosh_class/${cls}/homework/h1`))));
+await env.withSecurityRulesDisabled(async (c) => { await remove(ref(c.database(), 'asosh_rate')); });
+await check('домашка: лишнее поле отклоняется', assertFails(share(stu1, 'stu1', 'h4', { extra: 'big' })));
+await check('домашка: посторонний не пишет в чужой класс', assertFails(share(anonDev, 'anon_device', 'h5')));
+await check('домашка: родитель не пишет ДЗ в класс', assertFails(share(par1, 'par1', 'h6')));
+await check('замены: учитель пишет замену классу', assertSucceeds(update(ref(teacher), {
+  [`asosh_class/${cls}/replacements/r1`]: { date: '2026-11-12', num: 1, sub: 'Физика', room: '205', author: 'Мария Ивановна', uid: 'teacher1', created_at: 1 },
+  'asosh_rate/teacher1/share': serverTimestamp(),
+})));
+await check('замены: лишнее поле отклоняется', assertFails(update(ref(stu1), {
+  [`asosh_class/${cls}/replacements/r2`]: { date: '2026-11-12', num: 1, sub: 'Физика', uid: 'stu1', created_at: 1, extra: 'junk' },
+  'asosh_rate/stu1/share': serverTimestamp(),
+})));
+await check('замены: посторонний не пишет в чужой класс', assertFails(update(ref(anonDev), {
+  [`asosh_class/${cls}/replacements/r3`]: { date: '2026-11-12', num: 1, sub: 'Окно', uid: 'anon_device', created_at: 1 },
+  'asosh_rate/anon_device/share': serverTimestamp(),
+})));
 
 // --- Рубильник ---
 await check('рубильник: ученик не включает и не выключает', assertFails(set(ref(stu1, 'asosh_config/lockdown'), false)));

@@ -1091,7 +1091,7 @@ export default function App() {
   const makeAgentHandlers = (confirm: (text: string) => Promise<boolean>): AgentHandlers => {
     const str = (v: unknown, max = 200) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
     const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
-    const canShareClass = classVerified || isTeacher;
+    const canShareClass = isTeacher || (account?.role === 'student' && (classVerified || account.cls === cls));
     const author = (teacher?.name || studentName || 'Ученик').slice(0, 60);
     const say = (ok: boolean, summary: string): AgentResult => ({ ok, summary });
     const SCREENS: ScreenId[] = ['main', 'schedule', 'homework', 'diary', 'gpa', 'calendar', 'bells', 'map', 'updates', 'backpack', 'pomodoro', 'formulas', 'quarter', 'games', 'settings'];
@@ -1109,7 +1109,7 @@ export default function App() {
         if (!sub || !text) return say(false, 'Не понял предмет или задание');
         if (a.scope === 'class') {
           if (!cls) return say(false, 'Сначала выбери класс');
-          if (!canShareClass) return say(false, 'Публиковать ДЗ классу можно только с кодом класса');
+          if (!canShareClass) return say(false, 'Публиковать ДЗ классу могут только учителя и ученики с аккаунтом и кодом класса');
           if (!(await confirm(`📘 Опубликовать ДЗ для ${cls}?\n${sub}: ${text}${isDate(due) ? ` (к ${due})` : ''}`))) return say(false, 'Публикацию отменили');
           const ok = await addClassHomework(cls, { sub, text, forDate: isDate(due) ? due : '', author, ...(isTeacher ? { teacher: true } : {}) });
           return say(ok, ok ? `ДЗ по предмету «${sub}» опубликовано для ${cls}` : 'Не получилось опубликовать — нет интернета?');
@@ -1167,7 +1167,7 @@ export default function App() {
         if (!day || !(num >= 1 && num <= 8) || !sub) return say(false, 'Не понял день, номер урока или предмет');
         if (!cls) return say(false, 'Сначала выбери класс');
         if (a.scope === 'class') {
-          if (!canShareClass) return say(false, 'Замены для класса — только с кодом класса');
+          if (!canShareClass) return say(false, 'Замены для класса могут публиковать только учителя и ученики с аккаунтом и кодом класса');
           const date = dateKeyForDay(day);
           if (!(await confirm(`🔄 Замена для всего ${cls} на ${date}: ${shown}-й урок — ${sub}${room ? `, ${roomLabel(room)}` : ''}?`))) return say(false, 'Замену отменили');
           const ok = await addClassReplacement(cls, { date, num, sub, room, author });
@@ -2616,7 +2616,7 @@ export default function App() {
             vibro={settings.vibro}
             classHomework={classHomework}
             myUid={myUid()}
-            canShare={classVerified || isTeacher}
+            canShare={isTeacher || (account?.role === 'student' && (classVerified || account.cls === cls))}
             isTeacher={isTeacher}
             onShareHomework={(h) =>
               teacher
@@ -2697,7 +2697,7 @@ export default function App() {
             onDeleteUpdate={handleDeleteUpdate}
             classReplacements={classReplacements}
             myUid={myUid()}
-            canShare={classVerified || isTeacher}
+            canShare={isTeacher || (account?.role === 'student' && (classVerified || account.cls === cls))}
             onAddClassReplacement={(r) => addClassReplacement(cls, { ...r, author: (teacher?.name || studentName || 'Ученик').slice(0, 60) })}
             onDeleteClassReplacement={(id) => {
               deleteClassReplacement(cls, id).then((ok) => showToast(ok ? 'Замена удалена' : 'Не получилось удалить. Проверь интернет.'));

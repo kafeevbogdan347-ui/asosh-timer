@@ -3,6 +3,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
   bumpPatchVersion,
@@ -91,7 +92,7 @@ test('insertReleaseIntoWhatsNew prepends new release, escapes quotes/newlines, a
   assert.doesNotMatch(replaced, /Новый \\'Асошик\\'/);
 });
 
-test('mergePackageJsonSafe merges dependencies without removing existing scripts', () => {
+test('mergePackageJsonSafe adds only brand-new dependencies without overwriting existing versions or scripts', () => {
   const current = JSON.stringify({
     name: 'asosh-timer',
     scripts: {
@@ -101,10 +102,12 @@ test('mergePackageJsonSafe merges dependencies without removing existing scripts
       build: 'vite build',
     },
     dependencies: {
-      react: '^19.0.0',
+      react: '^19.0.1',
+      vite: '^6.2.3',
     },
     devDependencies: {
-      typescript: '^5.8.0',
+      typescript: '~5.8.2',
+      '@types/qrcode': '^1.5.6',
     },
   });
 
@@ -114,10 +117,13 @@ test('mergePackageJsonSafe merges dependencies without removing existing scripts
       build: 'vite build',
     },
     dependencies: {
-      react: '^19.0.0',
+      react: '^19.0.1',
+      vite: '^8.3.0',
+      '@types/qrcode': '^1.5.6',
       ws: '^8.18.0',
     },
     devDependencies: {
+      typescript: '^7.0.2',
       '@types/ws': '^8.18.1',
     },
   });
@@ -127,6 +133,9 @@ test('mergePackageJsonSafe merges dependencies without removing existing scripts
   const parsed = JSON.parse(nextJson);
   assert.equal(parsed.dependencies.ws, '^8.18.0');
   assert.equal(parsed.devDependencies['@types/ws'], '^8.18.1');
+  assert.equal(parsed.dependencies.vite, '^6.2.3');
+  assert.equal(parsed.devDependencies.typescript, '~5.8.2');
+  assert.equal(parsed.dependencies['@types/qrcode'], undefined);
   assert.equal(parsed.scripts.test, 'node --test tests/*.mjs');
   assert.equal(parsed.scripts['test:stress'], 'npx tsx tests/stress.test.mjs');
 });
@@ -218,3 +227,21 @@ test('syncPromoSite updates native asosh-timer-site updates/index.html sections,
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('publish-asosh.bat is pure 7-bit ASCII with CRLF line endings to avoid cmd.exe UTF-8 seek corruption', () => {
+  const batPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'publish-asosh.bat');
+  const buf = readFileSync(batPath);
+  const nonAscii = [...buf].filter((b) => b > 127);
+  assert.equal(nonAscii.length, 0, 'publish-asosh.bat must contain only 7-bit ASCII bytes');
+  const str = buf.toString('ascii');
+  assert.ok(str.includes('\r\n'), 'publish-asosh.bat must use Windows CRLF line endings');
+  assert.equal(str.replace(/\r\n/g, '').includes('\n'), false, 'publish-asosh.bat must not contain bare LF');
+});
+
+test('scripts/publish.mjs uses non-terminal readline so Windows conhost cursor never jumps backwards', () => {
+  const pubPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'publish.mjs');
+  const src = readFileSync(pubPath, 'utf8');
+  assert.equal(src.includes('node:readline/promises'), false);
+  assert.match(src, /terminal:\s*false/);
+});
+

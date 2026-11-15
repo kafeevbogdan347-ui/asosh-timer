@@ -20,6 +20,13 @@ export const updatesLink = (version: string) => `${UPDATES_URL}#${version.replac
 
 export const WHATS_NEW: WhatsNewRelease[] = [
   {
+    version: 'v17.2',
+    date: '15 ноября 2026',
+    items: [
+      { icon: '🛡', title: 'Усилена защита базы и аккаунтов', text: 'Закрыты все замечания ИИ-охраны: защита рейтинга онлайна, чата, ДЗ, замен, списка класса, публичного профиля и смена кода при отключении родителя.' },
+    ],
+  },
+  {
     version: 'v17.1',
     date: '15 ноября 2026',
     items: [

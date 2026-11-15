@@ -100,14 +100,19 @@ async function writeMe(cls: string): Promise<boolean> {
   const uid = myUid();
   if (!uid) return false;
   const pending = loadPending();
-  const add = Math.round(pending.sec);
+  const add = Math.max(0, Math.min(600, Math.round(pending.sec)));
   const node = ref(db, path(cls, uid));
   const cur = (await get(node)).val() as { week?: string; sec?: number } | null;
   if (cur && cur.week === pending.week) {
-    const total = (Number(cur.sec) || 0) + add;
-    await update(node, { ...publicCard(), sec: total > 604800 ? 604800 : increment(add), last: serverTimestamp() });
+    const curSec = Math.max(0, Number(cur.sec) || 0);
+    const safeAdd = Math.max(0, Math.min(add, 604800 - curSec));
+    await update(node, {
+      ...publicCard(),
+      sec: curSec >= 604800 ? 604800 : safeAdd > 0 ? increment(safeAdd) : curSec,
+      last: serverTimestamp(),
+    });
   } else {
-    await set(node, { ...publicCard(), week: pending.week, sec: Math.min(add, 604800), last: serverTimestamp() });
+    await set(node, { ...publicCard(), week: pending.week, sec: add, last: serverTimestamp() });
   }
   // Отправленное вычитаем: пока шёл запрос, могли набежать новые секунды
   const after = loadPending();
@@ -171,7 +176,7 @@ export function startPresence(cls: string): () => void {
         const { db } = initFirebase();
         const uid = myUid();
         // Закрыл приложение или пропала сеть — сразу «не в сети». После переподключения ставим заново
-        if (db && uid) onDisconnect(ref(db, `${path(cls, uid)}/last`)).set(Date.now() - ONLINE_WINDOW_MS - 1000);
+        if (db && uid) onDisconnect(ref(db, `${path(cls, uid)}/last`)).set(Math.max(0, Date.now() - ONLINE_WINDOW_MS - 1000));
       }
     } catch {
       // нет сети — попробуем через минуту
@@ -186,7 +191,7 @@ export function startPresence(cls: string): () => void {
     const uid = myUid();
     if (!db || !uid) return;
     try {
-      await set(ref(db, `${path(cls, uid)}/last`), Date.now() - ONLINE_WINDOW_MS - 1000);
+      await set(ref(db, `${path(cls, uid)}/last`), Math.max(0, Date.now() - ONLINE_WINDOW_MS - 1000));
     } catch {
       // не вышло — через 2,5 минуты всё равно станет «не в сети»
     }

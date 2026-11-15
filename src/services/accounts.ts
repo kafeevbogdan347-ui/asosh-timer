@@ -457,6 +457,23 @@ export async function getMyParentCode(uid: string): Promise<string | null> {
   }
 }
 
+// Удаляет старый код только если он реально есть в базе (иначе правило !data && !newData отклонит null)
+async function collectExistingCodeNulls(
+  ctx: NonNullable<ReturnType<typeof authOrNull>>,
+  hashes: string[],
+  changes: Record<string, unknown>
+) {
+  for (const h of new Set(hashes.filter(Boolean))) {
+    try {
+      if ((await get(ref(ctx.db, `asosh_parent_codes/${h}`))).exists()) {
+        changes[`asosh_parent_codes/${h}`] = null;
+      }
+    } catch {
+      // код уже удалён или недоступен
+    }
+  }
+}
+
 // Новый код: старый перестаёт работать для новых привязок (уже привязанные родители остаются)
 export async function regenerateParentCode(uid: string): Promise<string | null> {
   const ctx = authOrNull();
@@ -468,7 +485,7 @@ export async function regenerateParentCode(uid: string): Promise<string | null> 
       [`asosh_parent_codes/${await parentCodeHash(code)}`]: { student: uid, t: Date.now() },
       [`asosh_private/${uid}`]: { pcode: code },
     };
-    if (old) changes[`asosh_parent_codes/${await parentCodeHash(old)}`] = null;
+    if (old) await collectExistingCodeNulls(ctx, [await parentCodeHash(old)], changes);
     await update(ref(ctx.db), changes);
     return code;
   } catch {
@@ -489,11 +506,28 @@ export function subscribeMyParents(sid: string, cb: (parents: ParentEntry[]) => 
   );
 }
 
+// Отключаем родителя и сразу меняем код ребёнка, чтобы старый код больше не работал
 export async function removeParent(sid: string, puid: string): Promise<boolean> {
   const ctx = authOrNull();
   if (!ctx) return false;
   try {
-    await remove(ref(ctx.db, `asosh_family/${sid}/${puid}`));
+    const [oldCode, famSnap] = await Promise.all([
+      getMyParentCode(sid),
+      get(ref(ctx.db, `asosh_family/${sid}/${puid}/h`)).catch(() => null),
+    ]);
+    const oldHashes: string[] = [];
+    if (oldCode) oldHashes.push(await parentCodeHash(oldCode));
+    const famHash = famSnap && famSnap.exists() ? famSnap.val() : null;
+    if (typeof famHash === 'string' && famHash.length === 64) oldHashes.push(famHash);
+
+    const nextCode = newParentCode();
+    const changes: Record<string, unknown> = {
+      [`asosh_family/${sid}/${puid}`]: null,
+      [`asosh_parent_codes/${await parentCodeHash(nextCode)}`]: { student: sid, t: Date.now() },
+      [`asosh_private/${sid}`]: { pcode: nextCode },
+    };
+    await collectExistingCodeNulls(ctx, oldHashes, changes);
+    await update(ref(ctx.db), changes);
     return true;
   } catch {
     return false;
