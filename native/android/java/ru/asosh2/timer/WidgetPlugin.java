@@ -20,6 +20,7 @@ public class WidgetPlugin extends Plugin {
         SharedPreferences prefs = ctx.getSharedPreferences(LessonWidget.PREFS, Context.MODE_PRIVATE);
         prefs.edit().putString(LessonWidget.KEY_LESSONS, json).putString(LessonWidget.KEY_CLASS, cls).apply();
         LessonWidget.updateAll(ctx);
+        DayWidget.updateAll(ctx);
         JSObject ret = new JSObject();
         ret.put("ok", true);
         call.resolve(ret);
