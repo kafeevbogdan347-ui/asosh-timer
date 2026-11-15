@@ -33,6 +33,7 @@ import {
   Plane,
   Rocket,
 } from 'lucide-react';
+import { RunnerGame } from '../components/RunnerGame';
 
 interface GamesScreenProps {
   lang: LanguageType;
@@ -50,7 +51,8 @@ type ActiveGameId =
   | 'memory'
   | 'reaction'
   | 'flappy'
-  | 'plane';
+  | 'plane'
+  | 'runner';
 
 export const GamesScreen: React.FC<GamesScreenProps> = ({
   lang,
@@ -59,7 +61,7 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
   onShowToast,
   onUnlockAchievement,
 }) => {
-  const [activeGame, setActiveGame] = useState<ActiveGameId>('snake');
+  const [activeGame, setActiveGame] = useState<ActiveGameId>('runner');
 
   // ==========================================
   // 1. SNAKE STATE & LOGIC
@@ -1256,14 +1258,15 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
             <span>Школьный игровой зал</span>
           </h2>
           <p className="text-xs text-amber-300 font-bold">
-            ⚡ 8 школьных мини-игр без интернета для веселой перемены!
+            ⚡ 9 школьных мини-игр без интернета для веселой перемены!
           </p>
         </div>
       </div>
 
       {/* Game Selector Tabs */}
-      <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 bg-slate-950/80 p-1.5 rounded-2xl border border-white/10">
+      <div className="grid grid-cols-3 sm:grid-cols-9 gap-1.5 bg-slate-950/80 p-1.5 rounded-2xl border border-white/10">
         {[
+          { id: 'runner', label: '🏃 Беги!' },
           { id: 'snake', label: '🐍 Змейка' },
           { id: 'flappy', label: '🚀 Флаппи' },
           { id: 'plane', label: '✈️ Самолётик' },
@@ -1290,6 +1293,10 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
           </button>
         ))}
       </div>
+
+      {activeGame === 'runner' && (
+        <RunnerGame soundProfile={soundProfile} vibro={vibro} onShowToast={onShowToast} />
+      )}
 
       {/* ========================================= */}
       {/* GAME 1: SNAKE */}
