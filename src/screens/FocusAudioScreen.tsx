@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { AppIcon } from '../components/AppIcon';
 import { LanguageType, SoundProfileType } from '../types';
 import { playSound, doVibro } from '../utils/audio';
 import {
@@ -240,7 +241,7 @@ export const FocusAudioScreen: React.FC<FocusAudioScreenProps> = ({
       {/* Header */}
       <div>
         <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2">
-          <span>🎧</span>
+          <AppIcon name="headphones" size={30} className="shrink-0" />
           <span>Фокус-Звуки & Школьный Метроном</span>
         </h2>
         <p className="text-xs text-white/70">

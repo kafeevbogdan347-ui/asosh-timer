@@ -16,6 +16,7 @@ const config: CapacitorConfig = {
       initialViewportFitValueHint: 'cover',
     },
     LocalNotifications: {
+      smallIcon: 'ic_stat_asosh', // native/android/res/drawable/ic_stat_asosh.xml
       iconColor: '#22d3ee',
     },
   },

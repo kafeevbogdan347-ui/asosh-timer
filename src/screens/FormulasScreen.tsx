@@ -1,4 +1,5 @@
 import { AskAsoshikButton } from '../components/AskAsoshikButton';
+import { AppIcon } from '../components/AppIcon';
 import React, { useState } from 'react';
 import { FORMULA_CARDS, CHEMICAL_ELEMENTS } from '../data/constants';
 import { FormulaCard, ChemicalElement, LanguageType } from '../types';
@@ -40,7 +41,7 @@ export const FormulasScreen: React.FC<FormulasScreenProps> = ({ lang, onAskAsosh
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2">
-            <span>📐</span>
+            <AppIcon name="formula" size={30} className="shrink-0" />
             <span>Школьные формулы & Справочник</span>
           </h2>
           <p className="text-xs text-white/70">

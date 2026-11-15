@@ -1,4 +1,5 @@
 import { lessonNo, roomLabel } from '../utils/lessonStatus';
+import { AppIcon } from '../components/AppIcon';
 import React, { useMemo, useState } from 'react';
 import { DAYS, DICT } from '../data/constants';
 import { LessonUpdate, LanguageType, SoundProfileType } from '../types';
@@ -114,7 +115,7 @@ export const AddUpdateScreen: React.FC<AddUpdateScreenProps> = ({
     <div className="card screen-enter space-y-4">
       <div>
         <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2">
-          <span>✏️</span>
+          <AppIcon name="swap" size={30} className="shrink-0" />
           <span>Замены и своё расписание — {cls}</span>
         </h2>
         <p className="text-xs text-white/70">

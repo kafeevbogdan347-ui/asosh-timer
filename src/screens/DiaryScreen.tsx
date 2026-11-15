@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { AppIcon } from '../components/AppIcon';
 import { RefreshCw, Trash2, Plus } from 'lucide-react';
 import {
   Account,
@@ -431,7 +432,7 @@ const ParentDiary: React.FC<DiaryScreenProps> = ({ account, posts, today, onShow
 
 export const DiaryScreen: React.FC<DiaryScreenProps> = (props) => (
   <div className="card screen-enter space-y-3">
-    <h2 className="text-xl font-black text-cyan-300">{props.account.role === 'parent' ? '👨‍👩‍👧 Дневник ребёнка' : '📒 Дневник'}</h2>
+    <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2"><AppIcon name="diary" size={30} className="shrink-0" />{props.account.role === 'parent' ? 'Дневник ребёнка' : 'Дневник'}</h2>
     {props.account.role === 'parent' ? <ParentDiary {...props} /> : <StudentDiary account={props.account} onShowToast={props.onShowToast} />}
   </div>
 );

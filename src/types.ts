@@ -126,6 +126,13 @@ export interface AppSettings {
   bellNotifications?: boolean; // системные уведомления о звонках
   hwReminder?: boolean; // вечернее напоминание о невыполненной домашке на завтра (по умолчанию включено)
   hwReminderTime?: string; // «19:00»
+  morningNotif?: boolean; // APK: утром — сколько уроков и какой первый (по умолчанию включено)
+  endNotif?: boolean; // APK: «Уроки закончились» после последнего урока (по умолчанию включено)
+  themeSchedule?: boolean; // тема по времени: днём одна, вечером другая
+  themeDay?: ThemeType;
+  themeNight?: ThemeType;
+  themeNightFrom?: string; // «20:00»
+  themeNightTo?: string; // «07:00»
   themeAuto?: boolean; // тема как в системе: светлая днём, тёмная ночью
   compact: boolean;
   devicePC: boolean;

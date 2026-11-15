@@ -173,7 +173,8 @@ export function addCertificateToProfile(myProfile: UserProfile, cert: Omit<Certi
   const newCert: CertificateItem = {
     ...cert,
     id: 'cert-' + Date.now(),
-    dateAdded: new Date().toISOString().split('T')[0],
+    // местная дата: toISOString давал вчерашнюю до 5 утра (Аргаяш UTC+5)
+    dateAdded: new Date().toLocaleDateString('sv-SE'),
   };
 
   const updated: UserProfile = {

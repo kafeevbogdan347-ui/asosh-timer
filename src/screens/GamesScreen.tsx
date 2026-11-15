@@ -34,6 +34,10 @@ import {
   Rocket,
 } from 'lucide-react';
 import { RunnerGame } from '../components/RunnerGame';
+import { MultiplyGame } from '../components/MultiplyGame';
+import { Game2048 } from '../components/Game2048';
+import { OnlineDuel } from '../components/OnlineDuel';
+import { AppIcon, LineIcon, AppIconName } from '../components/AppIcon';
 
 interface GamesScreenProps {
   lang: LanguageType;
@@ -41,6 +45,8 @@ interface GamesScreenProps {
   vibro: boolean;
   onShowToast: (msg: string) => void;
   onUnlockAchievement?: (id: string) => void;
+  playerName?: string; // для онлайн-дуэли
+  cls?: string;
 }
 
 type ActiveGameId =
@@ -52,7 +58,9 @@ type ActiveGameId =
   | 'reaction'
   | 'flappy'
   | 'plane'
-  | 'runner';
+  | 'runner'
+  | 'mult'
+  | 'g2048';
 
 export const GamesScreen: React.FC<GamesScreenProps> = ({
   lang,
@@ -60,8 +68,11 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
   vibro,
   onShowToast,
   onUnlockAchievement,
+  playerName = '',
+  cls = '',
 }) => {
   const [activeGame, setActiveGame] = useState<ActiveGameId>('runner');
+  const [duelMode, setDuelMode] = useState<'online' | 'local'>('online');
 
   // ==========================================
   // 1. SNAKE STATE & LOGIC
@@ -1254,48 +1265,87 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2">
-            <span>🎮</span>
+            <AppIcon name="gamepad" size={30} className="shrink-0" />
             <span>Школьный игровой зал</span>
           </h2>
           <p className="text-xs text-amber-300 font-bold">
-            ⚡ 9 школьных мини-игр без интернета для веселой перемены!
+            ⚡ 11 школьных мини-игр без интернета для веселой перемены!
           </p>
         </div>
       </div>
 
       {/* Game Selector Tabs */}
-      <div className="grid grid-cols-3 sm:grid-cols-9 gap-1.5 bg-slate-950/80 p-1.5 rounded-2xl border border-white/10">
-        {[
-          { id: 'runner', label: '🏃 Беги!' },
-          { id: 'snake', label: '🐍 Змейка' },
-          { id: 'flappy', label: '🚀 Флаппи' },
-          { id: 'plane', label: '✈️ Самолётик' },
-          { id: 'duel', label: '⚔️ Дуэль' },
-          { id: 'math', label: '🧠 Спринт' },
-          { id: 'tictactoe', label: '⭕ Крестики' },
-          { id: 'memory', label: '🎴 Память' },
-          { id: 'reaction', label: '⚡ Реакция' },
-        ].map((g) => (
+      <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-11 gap-1 bg-slate-950/80 p-1.5 rounded-2xl border border-white/10">
+        {(
+          [
+            { id: 'runner', icon: 'runner', label: 'Беги!' },
+            { id: 'mult', icon: 'multiply', label: 'Таблица' },
+            { id: 'g2048', icon: 'tiles', label: '2048' },
+            { id: 'duel', icon: 'swords', label: 'Дуэль' },
+            { id: 'snake', icon: 'snake', label: 'Змейка' },
+            { id: 'flappy', icon: 'rocket', label: 'Флаппи' },
+            { id: 'plane', icon: 'plane', label: 'Самолётик' },
+            { id: 'math', icon: 'brain', label: 'Спринт' },
+            { id: 'tictactoe', icon: 'tictactoe', label: 'Крестики' },
+            { id: 'memory', icon: 'cards', label: 'Память' },
+            { id: 'reaction', icon: 'zap', label: 'Реакция' },
+          ] as { id: ActiveGameId; icon: AppIconName; label: string }[]
+        ).map((g) => (
           <button
             key={g.id}
             type="button"
             onClick={() => {
-              setActiveGame(g.id as ActiveGameId);
+              setActiveGame(g.id);
               playSound('click', soundProfile);
             }}
-            className={`py-2 px-1 text-[11px] font-bold rounded-xl transition-all text-center truncate ${
+            className={`py-2 px-1 text-[11px] font-bold rounded-xl transition-all flex flex-col items-center gap-0.5 ${
               activeGame === g.id
                 ? 'bg-cyan-500 text-slate-950 font-extrabold shadow-md'
                 : 'text-white/70 hover:text-white hover:bg-white/5'
             }`}
           >
-            {g.label}
+            <LineIcon name={g.icon} size={20} />
+            <span className="truncate max-w-full">{g.label}</span>
           </button>
         ))}
       </div>
 
       {activeGame === 'runner' && (
         <RunnerGame soundProfile={soundProfile} vibro={vibro} onShowToast={onShowToast} />
+      )}
+      {activeGame === 'mult' && <MultiplyGame soundProfile={soundProfile} vibro={vibro} onShowToast={onShowToast} />}
+      {activeGame === 'g2048' && <Game2048 soundProfile={soundProfile} vibro={vibro} onShowToast={onShowToast} />}
+
+      {/* Дуэль: онлайн с другом на другом телефоне или вдвоём на одном */}
+      {activeGame === 'duel' && (
+        <div className="grid grid-cols-2 gap-1.5">
+          {(
+            [
+              ['online', 'Онлайн с другом'],
+              ['local', 'На одном телефоне'],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setDuelMode(id)}
+              className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${
+                duelMode === id ? 'bg-purple-500/30 border-purple-300 text-white' : 'bg-white/5 border-white/10 text-white/70'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {activeGame === 'duel' && duelMode === 'online' && (
+        <div className="p-4 bg-slate-900/90 rounded-3xl border border-purple-400/30 space-y-3 text-center">
+          <div className="text-sm font-black text-purple-300 flex items-center justify-center gap-1.5">
+            <Swords className="w-4 h-4" />
+            <span>Онлайн-дуэль: таблица на скорость</span>
+          </div>
+          <OnlineDuel soundProfile={soundProfile} vibro={vibro} onShowToast={onShowToast} playerName={playerName} cls={cls} />
+        </div>
       )}
 
       {/* ========================================= */}
@@ -1387,7 +1437,7 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({
       {/* ========================================= */}
       {/* GAME 2: DUEL ON DESK */}
       {/* ========================================= */}
-      {activeGame === 'duel' && (
+      {activeGame === 'duel' && duelMode === 'local' && (
         <div className="p-4 bg-slate-900/90 rounded-3xl border border-purple-400/30 space-y-3 text-center">
           <div className="flex justify-between items-center px-1">
             <div className="text-sm font-black text-purple-300 flex items-center gap-1.5">

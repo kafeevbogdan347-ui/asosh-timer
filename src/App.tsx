@@ -693,7 +693,26 @@ export default function App() {
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
-  const effectiveTheme = settings.themeAuto ? (systemDark ? 'dark' : 'minimal') : settings.theme;
+  // Тема по расписанию: днём одна, вечером и ночью другая (проверяем время раз в 30 секунд)
+  const [clockHm, setClockHm] = useState(() => new Date().toTimeString().slice(0, 5));
+  useEffect(() => {
+    if (!settings.themeSchedule) return;
+    setClockHm(new Date().toTimeString().slice(0, 5));
+    const id = setInterval(() => setClockHm(new Date().toTimeString().slice(0, 5)), 30_000);
+    return () => clearInterval(id);
+  }, [settings.themeSchedule]);
+  const nightFrom = settings.themeNightFrom || '20:00';
+  const nightTo = settings.themeNightTo || '07:00';
+  const isNightNow = nightFrom > nightTo ? clockHm >= nightFrom || clockHm < nightTo : clockHm >= nightFrom && clockHm < nightTo;
+  const effectiveTheme = settings.themeSchedule
+    ? isNightNow
+      ? settings.themeNight || 'dark'
+      : settings.themeDay || 'minimal'
+    : settings.themeAuto
+      ? systemDark
+        ? 'dark'
+        : 'minimal'
+      : settings.theme;
 
   // Splashes and Motivators
   const [currentSplash, setCurrentSplash] = useState('');
@@ -894,6 +913,36 @@ export default function App() {
       unsubH();
     };
   }, [cls, registered]);
+
+  // Новая замена в расписании своего класса (сегодня и дальше) — уведомление, кроме своих
+  const replIdsKey = classReplacements.map((r) => r.id).join(',');
+  useEffect(() => {
+    if (!cls || isTeacher || !replIdsKey) return;
+    const key = 'asosh_repl_notified';
+    let known: string[] | null = null;
+    try {
+      known = JSON.parse(localStorage.getItem(key) || 'null');
+    } catch {
+      known = null;
+    }
+    // Первый запуск: всё, что уже было, считаем известным
+    if (known) {
+      const today = toDateKey(new Date());
+      const fresh = classReplacements.filter((r) => !known!.includes(r.id) && r.date >= today && r.uid !== myUid() && Date.now() - r.created_at < 2 * 24 * 3600 * 1000);
+      fresh.slice(0, 3).forEach((r) => {
+        const when = r.date === today ? 'Сегодня' : r.date.split('-').reverse().slice(0, 2).join('.');
+        const what = r.sub === 'Урока не будет' ? 'урока не будет' : `${r.sub}${r.room ? ` · ${roomLabel(parseRoom(r.room))}` : ''}`;
+        showToast(`🔄 Замена: ${when}, ${r.num}-й урок — ${what}`);
+        notifyNow(`🔄 Замена в ${cls}`, `${when}, ${r.num}-й урок — ${what}`, `asosh-repl-${r.id}`);
+      });
+    }
+    try {
+      localStorage.setItem(key, JSON.stringify([...new Set([...(known || []), ...replIdsKey.split(',')])].slice(-300)));
+    } catch {
+      // нет места
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replIdsKey, cls]);
 
   // Объявления и события учителей (учитель видит ещё и записи «только учителям»)
   const [boardPosts, setBoardPosts] = useState<BoardPost[]>([]);
@@ -1148,7 +1197,7 @@ export default function App() {
       set_theme: async (a) => {
         const th = THEMES.find((x) => x.id === str(a.theme, 40) || x.name.toLowerCase() === str(a.theme, 40).toLowerCase());
         if (!th) return say(false, 'Такой темы нет');
-        handleUpdateSettings({ theme: th.id });
+        handleUpdateSettings({ theme: th.id, themeAuto: false, themeSchedule: false }); // иначе «как в системе»/«по расписанию» перебьют выбор
         return say(true, `Тема «${th.name}» включена`);
       },
       get_day_brief: async () => {
@@ -1490,18 +1539,42 @@ export default function App() {
       const at = new Date(activeTime.getFullYear(), activeTime.getMonth(), activeTime.getDate(), h || 19, m || 0);
       list.push({ at, ...reminderText(hwTomorrow) });
     }
-    if (!settings.bellNotifications || !cls) return list;
+    if (!cls || isTeacher) return list;
+    const morningOn = settings.morningNotif !== false;
+    const endOn = settings.endNotif !== false;
     for (let d = 0; d < 7; d++) {
       const date = new Date(activeTime.getFullYear(), activeTime.getMonth(), activeTime.getDate() + d);
       if (isDayOff(toDateKey(date))) continue;
       const dayName = DAYS[(dayIndex + d) % 7];
       const bells = getDayBells(dayName);
-      getLessonsForDay(dayName).forEach(([sub, room], i) => {
-        if (!bells[i] || sub === '—') return;
-        const [h, m] = bells[i][0].split(':').map(Number);
-        const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m - 5);
-        list.push({ at, title: `Через 5 минут: ${sub.replace('🔄 ', '')}`, body: `${lessonNo(shift, i)}-й урок в ${bells[i][0]}${room ? ` · ${roomLabel(room)}` : ''}` });
-      });
+      const at = (hm: string, shiftMin = 0) => {
+        const [h, m] = hm.split(':').map(Number);
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m + shiftMin);
+      };
+      const day = getLessonsForDay(dayName)
+        .map(([sub, room], i) => ({ sub: sub.replace('🔄 ', ''), room, i }))
+        .filter((l) => bells[l.i] && l.sub !== '—');
+      if (!day.length) continue;
+      const first = day[0];
+      const last = day[day.length - 1];
+      // Утро: за час до первого урока — сколько уроков и с чего начинается день
+      if (morningOn) {
+        const subs = [...new Set(day.map((l) => l.sub))];
+        list.push({
+          at: at(bells[first.i][0], -60),
+          title: `☀️ Сегодня ${day.length} ${day.length === 1 ? 'урок' : day.length < 5 ? 'урока' : 'уроков'}`,
+          body: `${lessonNo(shift, first.i)}-й в ${bells[first.i][0]}: ${first.sub}${first.room ? ` · ${roomLabel(first.room)}` : ''}. Дальше: ${subs.slice(1, 5).join(', ') || 'всё'}`,
+        });
+      }
+      // Звонок с последнего урока
+      if (endOn) {
+        list.push({ at: at(bells[last.i][1]), title: '🎉 Уроки закончились!', body: hwReminderOn ? 'Загляни в ДЗ на завтра 📘' : 'Хорошего вечера!' });
+      }
+      if (settings.bellNotifications) {
+        day.forEach(({ sub, room, i }) => {
+          list.push({ at: at(bells[i][0], -5), title: `Через 5 минут: ${sub}`, body: `${lessonNo(shift, i)}-й урок в ${bells[i][0]}${room ? ` · ${roomLabel(room)}` : ''}` });
+        });
+      }
     }
     return list;
   })();
@@ -1515,6 +1588,25 @@ export default function App() {
     scheduleNativeReminders(nativeReminders);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nativeRemindersKey]);
+
+  // APK: один раз спрашиваем разрешение на уведомления. Раньше его спрашивали только при включении
+  // «Уведомлений о звонках», и на Android 13+ напоминания о домашке и объявления молча не приходили
+  useEffect(() => {
+    if (!isNativeApp() || !registered) return;
+    try {
+      if (localStorage.getItem('asosh_notif_asked_v1')) return;
+      localStorage.setItem('asosh_notif_asked_v1', '1');
+    } catch {
+      return;
+    }
+    requestNotificationPermission()
+      .then((ok) => {
+        // Разрешили, а уведомления о звонках никто не выключал — включаем
+        if (ok && settings.bellNotifications === undefined) handleUpdateSettings({ bellNotifications: true });
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registered]);
 
   // Ключ текущего урока/перемены: предупреждение срабатывает один раз за период
   const periodKey = `${currentDayName}-${lessonStatus.type}-${lessonStatus.currentIdx}-${lessonStatus.nextIdx}`;
@@ -2625,6 +2717,8 @@ export default function App() {
             vibro={settings.vibro}
             onShowToast={showToast}
             onUnlockAchievement={handleUnlockAchievement}
+            playerName={(account?.name || studentName || '').split(' ')[0]}
+            cls={cls}
           />
         )}
 

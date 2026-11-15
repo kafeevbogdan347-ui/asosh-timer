@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AppIcon } from './AppIcon';
 import { X, Delete, History } from 'lucide-react';
 import { evaluateSafe } from '../utils/calculator';
 import { playSound, doVibro } from '../utils/audio';
@@ -86,7 +87,7 @@ export const CalcModal: React.FC<CalcModalProps> = ({
       >
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2 font-black text-cyan-300">
-            <span>🧮</span>
+            <AppIcon name="calc" size={26} className="shrink-0" />
             <span>Школьный Калькулятор</span>
           </div>
           <div className="flex items-center gap-1">

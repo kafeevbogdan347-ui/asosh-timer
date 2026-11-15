@@ -4,6 +4,7 @@ import { ScreenId, LanguageType, SoundProfileType } from '../types';
 import { DICT } from '../data/constants';
 import { playSound, doVibro } from '../utils/audio';
 import { AsoshikAvatar } from '../screens/AssistantScreen';
+import { LineIcon } from './AppIcon';
 
 interface NavBarProps {
   currentScreen: ScreenId;
@@ -32,12 +33,12 @@ export const NavBar: React.FC<NavBarProps> = ({
   if (hideOnScreens.includes(currentScreen)) return null;
 
   const navItems: { id: ScreenId; icon: React.ReactNode; label: string; badge?: number }[] = [
-    { id: 'main', icon: '🏠', label: d.main },
-    { id: 'today', icon: '⏱', label: d.now },
-    { id: 'schedule', icon: '📅', label: d.schedule },
-    { id: 'homework', icon: '📘', label: d.hw, badge: activeHwCount },
-    { id: 'games', icon: '🎮', label: d.games },
-    { id: 'settings', icon: '⚙️', label: d.settings },
+    { id: 'main', icon: <LineIcon name="home" />, label: d.main },
+    { id: 'today', icon: <LineIcon name="stopwatch" />, label: d.now },
+    { id: 'schedule', icon: <LineIcon name="calendar" />, label: d.schedule },
+    { id: 'homework', icon: <LineIcon name="book" />, label: d.hw, badge: activeHwCount },
+    { id: 'games', icon: <LineIcon name="gamepad" />, label: d.games },
+    { id: 'settings', icon: <LineIcon name="gear" />, label: d.settings },
     { id: 'assistant', icon: <AsoshikAvatar size={22} />, label: 'Асошик' },
   ];
 

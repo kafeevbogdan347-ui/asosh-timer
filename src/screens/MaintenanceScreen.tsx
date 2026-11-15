@@ -202,7 +202,7 @@ export const MaintenanceScreen: React.FC<MaintenanceScreenProps> = ({
         {/* Footer Note */}
         <div className="text-center pt-1 border-t border-white/5 space-y-1">
           <p className="text-[11px] text-white/50">
-            Весь локальный функционал (расписание, калькулятор, звонки, рюкзак, 9 игр и 60 тем) сохранён в полном объёме.
+            Весь локальный функционал (расписание, калькулятор, звонки, рюкзак, 11 игр и 60 тем) сохранён в полном объёме.
           </p>
           <p className="text-[10px] text-white/40 font-mono">
             Контакты разработчика: kafeevbogdan347@gmail.com
