@@ -529,6 +529,63 @@
           }
         }
       }
+    },
+    "asosh_duels": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && root.child('asosh_config').child('lockdown').val() !== true && (((!data.exists() || data.child('created').val() < now - 1800000) && newData.child('host').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('host').val() === auth.uid))",
+        ".validate": "$code.matches(/^[0-9]{4}$/) && newData.hasChildren(['host', 'created', 'seed', 'level'])",
+        "host": {
+          ".validate": "newData.isString() && newData.val().length <= 64"
+        },
+        "hostName": {
+          ".validate": "newData.isString() && newData.val().length <= 30"
+        },
+        "created": {
+          ".validate": "newData.isNumber() && newData.val() === now"
+        },
+        "seed": {
+          ".validate": "newData.isNumber()"
+        },
+        "level": {
+          ".validate": "newData.val() === 'easy' || newData.val() === 'mid' || newData.val() === 'hard'"
+        },
+        "guest": {
+          ".write": "auth != null && !data.exists() && newData.val() === auth.uid && data.parent().child('host').exists() && data.parent().child('host').val() !== auth.uid && root.child('asosh_config').child('lockdown').val() !== true",
+          ".validate": "newData.isString()"
+        },
+        "start": {
+          ".write": "auth != null && data.parent().child('host').val() === auth.uid && data.parent().child('guest').exists()",
+          ".validate": "newData.isNumber() && newData.val() === now"
+        },
+        "players": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && (data.parent().parent().child('host').val() === $uid || newData.parent().parent().child('guest').val() === $uid) && root.child('asosh_config').child('lockdown').val() !== true",
+            ".validate": "newData.hasChildren(['name', 'score'])",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length <= 30"
+            },
+            "cls": {
+              ".validate": "newData.isString() && newData.val().length <= 6"
+            },
+            "score": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10"
+            },
+            "done": {
+              ".validate": "newData.isBoolean()"
+            },
+            "ms": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 600000"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     }
   }
 }
