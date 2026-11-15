@@ -92,13 +92,13 @@ export type ThemeType =
   | 'ocean_morning';
 
 // Качество графики: экономия заряда, обычное или максимальное
-export type QualityType = 'eco' | 'normal' | 'ultra';
+export type QualityType = 'eco' | 'normal' | 'ultra' | 'xultra'; // ultra = «Максимум», xultra = «Ультра»
 
 export type FontSizeType = 'font-sm' | 'font-md' | 'font-lg' | 'font-xl';
 
 export type TimerStyleType = 'circle' | 'digital';
 
-export type SoundProfileType = '0' | '1' | '2' | '3' | '4'; // 0: Mute, 1: Classic, 2: 8-Bit Retro, 3: Soft, 4: Sci-Fi Bell
+export type SoundProfileType = '0' | '1' | '2' | '3' | '4' | '5'; // 0: Mute, 1: Classic, 2: 8-Bit Retro, 3: Soft, 4: Sci-Fi Bell, 5: ASOSH (own set)
 
 export type DeviceType = 'android' | 'ios' | 'pc';
 
