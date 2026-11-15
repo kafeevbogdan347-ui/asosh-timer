@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Bell, Volume2, Clock, Sparkles, Coffee, AlertCircle, Play, ShieldCheck, Sun, Moon, Zap } from 'lucide-react';
+import { AppIcon } from '../components/AppIcon';
+import { ArrowLeft, Volume2, Clock, Sparkles, Coffee, AlertCircle, Play, ShieldCheck, Sun, Moon, Zap } from 'lucide-react';
 import { LanguageType, SoundProfileType } from '../types';
 import { B1, B2, B2F, shortenBells, SHORT_LESSON_MIN } from '../data/constants';
 import { playBellSimulatorSound, doVibro, playSound } from '../utils/audio';
@@ -200,7 +201,7 @@ export const BellsScreen: React.FC<BellsScreenProps> = ({
 
         <div className="text-center">
           <h2 className="text-lg font-black text-amber-300 flex items-center justify-center gap-1.5">
-            <Bell className="w-5 h-5 text-amber-400" />
+            <AppIcon name="bell" size={30} className="shrink-0" />
             <span>Звонки & Симулятор</span>
           </h2>
           <div className="text-[11px] text-white/60 font-semibold">

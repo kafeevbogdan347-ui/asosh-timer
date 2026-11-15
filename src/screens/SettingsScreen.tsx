@@ -72,7 +72,7 @@ import { useOnline } from '../utils/useOnline';
 import QRCode from 'qrcode';
 import { createTransfer } from '../services/transfer';
 import { isOptedIn, setOptIn } from '../services/online';
-import { isNativeApp, requestNotificationPermission } from '../services/bellNotifications';
+import { isNativeApp, requestNotificationPermission, exactAlarmsAllowed, openExactAlarmSettings } from '../services/bellNotifications';
 
 interface SettingsScreenProps {
   settings: AppSettings;
@@ -208,6 +208,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [isApkModalOpen, setIsApkModalOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<SettingsSectionId>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  // APK на Android 12+: можно ли ставить напоминания точно в срок
+  const [exactDenied, setExactDenied] = useState(false);
+  useEffect(() => {
+    if (isNativeApp()) exactAlarmsAllowed().then((ok) => setExactDenied(!ok));
+  }, []);
   const quality = settings.quality ?? (settings.perfLow ? 'eco' : 'normal');
   const online = useOnline();
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -474,16 +479,81 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               type="checkbox"
               className="w-5 h-5 shrink-0"
               checked={Boolean(settings.themeAuto)}
-              onChange={(e) => onUpdateSettings({ themeAuto: e.target.checked })}
+              onChange={(e) => onUpdateSettings({ themeAuto: e.target.checked, ...(e.target.checked ? { themeSchedule: false } : {}) })}
             />
           </label>
+
+          {/* Тема по расписанию */}
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-2 !mt-2">
+            <label className="flex items-center justify-between gap-3 cursor-pointer">
+              <span>
+                <span className="block text-xs font-black text-white">🕗 По расписанию</span>
+                <span className="block text-[11px] text-white/60">Днём одна тема, вечером и ночью другая — сама по часам</span>
+              </span>
+              <input
+                type="checkbox"
+                className="w-5 h-5 shrink-0"
+                checked={Boolean(settings.themeSchedule)}
+                onChange={(e) =>
+                  onUpdateSettings({
+                    themeSchedule: e.target.checked,
+                    ...(e.target.checked ? { themeAuto: false, themeDay: settings.themeDay || 'minimal', themeNight: settings.themeNight || 'dark' } : {}),
+                  })
+                }
+              />
+            </label>
+            {settings.themeSchedule && (
+              <div className="grid grid-cols-2 gap-2 text-[11px] text-white/80">
+                <label className="space-y-1">
+                  <span className="block">☀️ Днём</span>
+                  <select className="w-full text-xs" value={settings.themeDay || 'minimal'} onChange={(e) => onUpdateSettings({ themeDay: e.target.value as ThemeType })}>
+                    {THEMES.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="block">🌙 Вечером</span>
+                  <select className="w-full text-xs" value={settings.themeNight || 'dark'} onChange={(e) => onUpdateSettings({ themeNight: e.target.value as ThemeType })}>
+                    {THEMES.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="block">Вечер с</span>
+                  <select className="w-full text-xs" value={settings.themeNightFrom || '20:00'} onChange={(e) => onUpdateSettings({ themeNightFrom: e.target.value })}>
+                    {['17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'].map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="block">Утро с</span>
+                  <select className="w-full text-xs" value={settings.themeNightTo || '07:00'} onChange={(e) => onUpdateSettings({ themeNightTo: e.target.value })}>
+                    {['05:00', '06:00', '07:00', '08:00', '09:00'].map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
+          </div>
 
           {/* Сетка тем с мини-превью */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
             {THEMES.filter(
               (t) => !searchQuery.trim() || `${t.name} ${t.desc}`.toLowerCase().includes(searchQuery.toLowerCase())
             ).map((t) => {
-              const active = !settings.themeAuto && settings.theme === t.id;
+              const active = !settings.themeAuto && !settings.themeSchedule && settings.theme === t.id;
               return (
                 <button
                   key={t.id}
@@ -493,7 +563,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                     active ? 'border-cyan-400 scale-[1.02] shadow-lg' : 'border-transparent hover:scale-[1.01]'
                   }`}
                   onClick={() => {
-                    onUpdateSettings({ theme: t.id, themeAuto: false });
+                    onUpdateSettings({ theme: t.id, themeAuto: false, themeSchedule: false });
                     playSound('settings', settings.soundProfile);
                     doVibro(settings.vibro, 15);
                     if (t.id === 'first') {
@@ -698,7 +768,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       ======================================================== */}
       {isSectionVisible(
         'sound',
-        'звук звонок аудио синтезатор колокольчик вибро отклик предупреждение'
+        'звук звонок аудио синтезатор колокольчик вибро отклик предупреждение уведомления напоминания утро домашка'
       ) && (
         <div className="p-4 bg-white/6 rounded-3xl border border-white/12 space-y-3.5 shadow-md">
           <div className="flex items-center justify-between">
@@ -884,6 +954,40 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 </div>
               )}
             </div>
+            {(
+              [
+                ['morningNotif', 'Утром: какие сегодня уроки ☀️', 'За час до первого урока: сколько уроков, с чего начинается день и кабинет'],
+                ['endNotif', 'Уроки закончились 🎉', 'Уведомление после звонка с последнего урока'],
+              ] as const
+            ).map(([key, title, desc]) => (
+              <label key={key} className="flex items-center justify-between text-xs font-bold text-white cursor-pointer select-none p-2.5 rounded-xl bg-white/5 border border-white/10">
+                <div>
+                  <div>{title}</div>
+                  <div className="text-[11px] text-white/60 font-normal">
+                    {desc}
+                    {isNativeApp() ? '' : '. Работает в APK для Android'}
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  className="w-5 h-5 shrink-0"
+                  checked={settings[key] !== false}
+                  onChange={async (e) => {
+                    if (e.target.checked) await requestNotificationPermission().catch(() => false);
+                    onUpdateSettings({ [key]: e.target.checked });
+                  }}
+                />
+              </label>
+            ))}
+            {exactDenied && (
+              <button
+                type="button"
+                onClick={() => openExactAlarmSettings().then(() => exactAlarmsAllowed().then((ok) => setExactDenied(!ok)))}
+                className="w-full text-left p-2.5 rounded-xl bg-amber-500/10 border border-amber-400/40 text-xs text-amber-100 cursor-pointer"
+              >
+                <b>⏰ Уведомления могут опаздывать.</b> Телефон не разрешает приложению будильники точно в срок. Нажми и включи «Будильники и напоминания» для АСОШ Таймера.
+              </button>
+            )}
             <label className="flex items-center justify-between text-xs font-bold text-white cursor-pointer select-none p-2.5 rounded-xl bg-white/5 border border-white/10">
               <div>
                 <div>Предупреждать за 2 минуты до звонка 🔔</div>

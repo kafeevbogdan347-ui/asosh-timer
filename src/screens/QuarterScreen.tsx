@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AppIcon } from '../components/AppIcon';
 import { SCHOOL_QUARTERS } from '../data/constants';
 import { LanguageType } from '../types';
 import { Calendar, Sparkles, Trophy, BookOpen } from 'lucide-react';
@@ -83,7 +84,7 @@ export const QuarterScreen: React.FC<QuarterScreenProps> = ({ lang }) => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2">
-            <span>📊</span>
+            <AppIcon name="chart" size={30} className="shrink-0" />
             <span>Счётчик четверти и дней до каникул</span>
           </h2>
           <p className="text-xs text-white/70">

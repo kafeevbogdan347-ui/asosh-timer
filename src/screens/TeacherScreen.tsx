@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { AppIcon } from '../components/AppIcon';
 import { Trash2 } from 'lucide-react';
 import { CLASS_LIST } from '../data/classCodes';
 import { toDateKey } from '../services/classShared';
@@ -128,7 +129,7 @@ export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, 
     return (
       <div className="card screen-enter space-y-4">
         <div>
-          <h2 className="text-xl font-black text-amber-300">👩‍🏫 Вход для учителя</h2>
+          <h2 className="text-xl font-black text-amber-300 flex items-center gap-2"><AppIcon name="teacher" size={30} className="shrink-0" />Вход для учителя</h2>
           <p className="text-xs text-white/70">
             Код учителя выдаёт администратор приложения. Он одноразовый: после входа им нельзя войти ещё раз на другом телефоне.
           </p>
@@ -203,7 +204,7 @@ export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, 
   return (
     <div className="card screen-enter space-y-4">
       <div>
-        <h2 className="text-xl font-black text-amber-300">👩‍🏫 Кабинет учителя</h2>
+        <h2 className="text-xl font-black text-amber-300 flex items-center gap-2"><AppIcon name="teacher" size={30} className="shrink-0" />Кабинет учителя</h2>
         <p className="text-xs text-white/70">Здравствуйте, {teacherName}!</p>
       </div>
 

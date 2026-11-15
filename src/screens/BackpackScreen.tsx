@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AppIcon } from '../components/AppIcon';
 import { BackpackItem, LanguageType, SoundProfileType } from '../types';
 import { DEFAULT_MANUAL_BACKPACK } from '../data/constants';
 import { playSound, doVibro } from '../utils/audio';
@@ -173,7 +174,7 @@ export const BackpackScreen: React.FC<BackpackScreenProps> = ({
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2">
-            <span>🎒</span>
+            <AppIcon name="backpack" size={30} className="shrink-0" />
             <span>Чек-лист портфеля на завтра</span>
           </h2>
           <p className="text-xs text-white/70">

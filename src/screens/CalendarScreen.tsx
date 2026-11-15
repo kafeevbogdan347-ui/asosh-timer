@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { AppIcon } from '../components/AppIcon';
 import { Plus, Trash2 } from 'lucide-react';
 import { HOLIDAYS, SCHOOL_QUARTERS } from '../data/constants';
 import { toDateKey } from '../services/classShared';
@@ -119,7 +120,8 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ today, onShowToa
   }, [events, boardEvents, todayKey]);
 
   const lastDay = SCHOOL_QUARTERS[SCHOOL_QUARTERS.length - 1].end;
-  const daysToSummer = dayDiff(todayKey, lastDay);
+  // Последний учебный день тоже считается (как на главной): в этот день — «1 дн.», а не «год закончился»
+  const daysToSummer = dayDiff(todayKey, lastDay) + 1;
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,7 +149,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ today, onShowToa
   return (
     <div className="card screen-enter space-y-4">
       <div>
-        <h2 className="text-xl font-black text-cyan-300">📅 Календарь</h2>
+        <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2"><AppIcon name="calendar" size={30} className="shrink-0" />Календарь</h2>
         <p className="text-xs text-white/70">
           {daysToSummer > 0 ? `До конца учебного года ${daysToSummer} дн.` : 'Учебный год закончился — ура, лето!'}
         </p>

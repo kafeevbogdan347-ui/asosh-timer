@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { AppIcon } from '../components/AppIcon';
 import { LanguageType, SoundProfileType } from '../types';
 import { playSound, doVibro } from '../utils/audio';
+import { isNativeApp, notifyNow, scheduleOneOff, cancelOneOff } from '../services/bellNotifications';
+
+const POMODORO_NOTIF_ID = 7990;
 import { Play, Pause, RotateCcw, Flame, CheckCircle, Coffee } from 'lucide-react';
 
 interface PomodoroScreenProps {
@@ -40,6 +44,13 @@ export const PomodoroScreen: React.FC<PomodoroScreenProps> = ({
   useEffect(() => {
     if (!isRunning) return;
     const endAt = Date.now() + timeLeftSec * 1000;
+    // APK: уведомление придёт, даже если экран погас и приложение уснуло
+    scheduleOneOff(
+      POMODORO_NOTIF_ID,
+      new Date(endAt),
+      mode === 'work' ? '🍅 Помодорка завершена!' : '⚡ Перерыв окончен!',
+      mode === 'work' ? 'Время отдохнуть 5 минут' : 'Возвращаемся к урокам'
+    );
     timerRef.current = setInterval(() => {
       const left = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
       setTimeLeftSec(left);
@@ -51,6 +62,8 @@ export const PomodoroScreen: React.FC<PomodoroScreenProps> = ({
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      // пауза, сброс или уход с экрана: таймер остановлен, напоминание больше не нужно
+      if (Date.now() < endAt - 1000) cancelOneOff(POMODORO_NOTIF_ID);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRunning, mode, durationMin]);
@@ -59,6 +72,8 @@ export const PomodoroScreen: React.FC<PomodoroScreenProps> = ({
     setIsRunning(false);
     playSound('pomodoro', soundProfile);
     doVibro(vibro, 80);
+    // В браузере: системное уведомление, если вкладка свёрнута (в APK его уже поставили заранее)
+    if (!isNativeApp()) notifyNow(mode === 'work' ? '🍅 Помодорка завершена!' : '⚡ Перерыв окончен!', mode === 'work' ? 'Время отдохнуть 5 минут' : 'Возвращаемся к урокам', 'asosh-pomodoro');
 
     if (mode === 'work') {
       setTomatoes((prev) => {
@@ -111,7 +126,7 @@ export const PomodoroScreen: React.FC<PomodoroScreenProps> = ({
     <div className="card text-center screen-enter space-y-4">
       <div>
         <h2 className="text-xl font-black text-cyan-300 flex items-center justify-center gap-2">
-          <span>🍅</span>
+          <AppIcon name="timer" size={30} className="shrink-0" />
           <span>Помодоро-таймер для ДЗ</span>
         </h2>
         <p className="text-xs text-white/70">

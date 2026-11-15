@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { AppIcon } from '../components/AppIcon';
 import { Achievement, ScreenId } from '../types';
-import { CheckCircle2, Lock, Sparkles, Trophy, Lightbulb, ChevronRight } from 'lucide-react';
+import { CheckCircle2, Lock, Sparkles, Lightbulb, ChevronRight } from 'lucide-react';
 
 interface AchievementsScreenProps {
   achievements: Achievement[];
@@ -22,7 +23,7 @@ export const AchievementsScreen: React.FC<AchievementsScreenProps> = ({ achievem
       <div className="flex justify-between items-start gap-3">
         <div className="min-w-0">
           <h2 className="text-xl font-black text-amber-300 flex items-center gap-2">
-            <Trophy className="w-6 h-6 text-amber-400" />
+            <AppIcon name="trophy" size={30} className="shrink-0" />
             <span>Школьные Достижения</span>
           </h2>
           <p className="text-xs text-white/70">

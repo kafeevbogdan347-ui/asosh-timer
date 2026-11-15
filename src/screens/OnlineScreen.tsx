@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { AppIcon } from '../components/AppIcon';
 import { ChevronRight } from 'lucide-react';
 import { OnlineEntry, formatDuration, isOptedIn, myWeekSec, presenceLabel, subscribeOnline, subscribeSchoolOnline } from '../services/online';
 import { CLASS_LIST } from '../data/classCodes';
@@ -136,7 +137,7 @@ export const OnlineScreen: React.FC<Props> = ({ cls, isGuest, onOpenStudentProfi
   if (isGuest) {
     return (
       <div className="card screen-enter space-y-3">
-        <h2 className="text-xl font-black text-cyan-300">🏆 Онлайн</h2>
+        <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2"><AppIcon name="people" size={30} className="shrink-0" />Онлайн</h2>
         <p className="text-sm text-white/75">Рейтинг виден только ученикам школы. Войди с кодом класса, чтобы его открыть.</p>
       </div>
     );
@@ -145,7 +146,7 @@ export const OnlineScreen: React.FC<Props> = ({ cls, isGuest, onOpenStudentProfi
   return (
     <div className="card screen-enter space-y-4">
       <div>
-        <h2 className="text-xl font-black text-cyan-300">{scope === 'school' ? '🏆 Онлайн школы' : `🏆 Онлайн класса ${cls}`}</h2>
+        <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2"><AppIcon name="people" size={30} className="shrink-0" />{scope === 'school' ? 'Онлайн школы' : `Онлайн класса ${cls}`}</h2>
         <p className="text-xs text-white/60">Кто больше всех в АСОШ Таймере на этой неделе. Сейчас в сети: {onlineCount}. Нажми на ученика, чтобы открыть его профиль.</p>
       </div>
 

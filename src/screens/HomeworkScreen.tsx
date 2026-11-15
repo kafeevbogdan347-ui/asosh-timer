@@ -1,4 +1,5 @@
 import { AskAsoshikButton } from '../components/AskAsoshikButton';
+import { AppIcon } from '../components/AppIcon';
 import { toDateKey } from '../services/classShared';
 import React, { useState, useRef } from 'react';
 import { HomeworkItem, LanguageType, SoundProfileType } from '../types';
@@ -197,7 +198,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
       {/* Карточка добавления ДЗ */}
       <div className="card">
         <h2 className="text-xl font-black text-cyan-300 mb-3 flex items-center gap-2">
-          <span>📘</span>
+          <AppIcon name="book" size={30} className="shrink-0" />
           <span>{d.hw} — {cls}</span>
         </h2>
 

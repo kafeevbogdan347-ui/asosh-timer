@@ -8,6 +8,7 @@ import { BoardPost, AUDIENCE_LABEL } from '../services/teacher';
 import { AsoshikAvatar } from './AssistantScreen';
 import { t, UIKey } from '../i18n';
 import { AskAsoshikButton } from '../components/AskAsoshikButton';
+import { AppIcon, AppIconName } from '../components/AppIcon';
 
 interface MainScreenProps {
   cls: string;
@@ -54,40 +55,40 @@ interface MainScreenProps {
 
 const ONLINE_TILE_SCREENS = new Set<string>(['diary', 'chat', 'online', 'profile', 'updates', 'teacher']);
 
-// Разделы, которых нет в нижнем меню (Уроки, ДЗ, Игры и Опции открываются оттуда)
-const QUICK_GROUPS: { title: UIKey; items: { icon: string; label: UIKey; screen: ScreenId | 'calc' | 'whatsnew' }[] }[] = [
+// Разделы, которых нет в нижнем меню (Уроки, ДЗ, Игры и Опции открываются оттуда).
+// Расписание — что и где будет; Учёба — оценки и помощники; Класс — общение и я сам.
+const QUICK_GROUPS: { title: UIKey; items: { icon: AppIconName; label: UIKey; screen: ScreenId | 'calc' }[] }[] = [
+  {
+    title: 'gSchedule',
+    items: [
+      { icon: 'bell', label: 'bells', screen: 'bells' },
+      { icon: 'tomorrow', label: 'tomorrowT', screen: 'tomorrow' },
+      { icon: 'swap', label: 'replacements', screen: 'updates' },
+      { icon: 'calendar', label: 'calendar', screen: 'calendar' },
+      { icon: 'door', label: 'rooms', screen: 'map' },
+      { icon: 'backpack', label: 'backpackT', screen: 'backpack' },
+    ],
+  },
   {
     title: 'gStudy',
     items: [
-      { icon: '🔔', label: 'bells', screen: 'bells' },
-      { icon: '🔮', label: 'tomorrowT', screen: 'tomorrow' },
-      { icon: '📊', label: 'quarterT', screen: 'quarter' },
-      { icon: '🗓️', label: 'calendar', screen: 'calendar' },
-      { icon: '📐', label: 'formulasT', screen: 'formulas' },
-      { icon: '🧮', label: 'calcT', screen: 'calc' },
+      { icon: 'diary', label: 'diary', screen: 'diary' },
+      { icon: 'chart', label: 'quarterT', screen: 'quarter' },
+      { icon: 'calc', label: 'calcT', screen: 'calc' },
+      { icon: 'formula', label: 'formulasT', screen: 'formulas' },
+      { icon: 'timer', label: 'pomodoroT', screen: 'pomodoro' },
+      { icon: 'headphones', label: 'focus', screen: 'focus' },
     ],
   },
   {
     title: 'gClass',
     items: [
-      { icon: '📒', label: 'diary', screen: 'diary' },
-      { icon: '💬', label: 'chat', screen: 'chat' },
-      { icon: '🏆', label: 'online', screen: 'online' },
-      { icon: '👤', label: 'profile', screen: 'profile' },
-      { icon: '🏅', label: 'portfolio', screen: 'portfolio' },
-      { icon: '🏆', label: 'achievements', screen: 'achievements' },
-    ],
-  },
-  {
-    title: 'gTools',
-    items: [
-      { icon: '🎒', label: 'backpackT', screen: 'backpack' },
-      { icon: '🍅', label: 'pomodoroT', screen: 'pomodoro' },
-      { icon: '🎧', label: 'focus', screen: 'focus' },
-      { icon: '🗺', label: 'rooms', screen: 'map' },
-      { icon: '✏️', label: 'replacements', screen: 'updates' },
-      { icon: '📺', label: 'tv', screen: 'board' },
-      { icon: '🎁', label: 'whatsnew', screen: 'whatsnew' },
+      { icon: 'chat', label: 'chat', screen: 'chat' },
+      { icon: 'people', label: 'online', screen: 'online' },
+      { icon: 'trophy', label: 'achievements', screen: 'achievements' },
+      { icon: 'user', label: 'profile', screen: 'profile' },
+      { icon: 'folderStar', label: 'portfolio', screen: 'portfolio' },
+      { icon: 'tv', label: 'tv', screen: 'board' },
     ],
   },
 ];
@@ -134,7 +135,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
   const d = DICT[lang] || DICT.ru;
   // Учителю — плитка кабинета в группе «Класс»
   const groups = isTeacher
-    ? QUICK_GROUPS.map((g) => (g.title === 'gClass' ? { ...g, items: [{ icon: '👩‍🏫', label: 'teacherCab' as UIKey, screen: 'teacher' as ScreenId }, ...g.items] } : g))
+    ? QUICK_GROUPS.map((g) => (g.title === 'gClass' ? { ...g, items: [{ icon: 'teacher' as AppIconName, label: 'teacherCab' as UIKey, screen: 'teacher' as ScreenId }, ...g.items] } : g))
     : QUICK_GROUPS;
   const [hiddenAnn, setHiddenAnn] = useState<string[]>(loadHiddenAnn);
   const hideAnn = (id: string) => {
@@ -402,7 +403,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
           onClick={() => onNavigate('backpack')}
         >
           <span className="flex items-center gap-2.5 text-left">
-            <span className="text-xl">🎒</span>
+            <AppIcon name="backpack" size={28} className="shrink-0" />
             <span>
               <span className="block font-bold text-emerald-200">{t('backpackHint', lang)}</span>
               <span className="block text-[11px] text-white/70">{t('backpackHintSub', lang)}</span>
@@ -423,7 +424,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
                 <button
                   key={item.label}
                   type="button"
-                  onClick={() => (item.screen === 'calc' ? onOpenCalc() : item.screen === 'whatsnew' ? onOpenWhatsNew() : onNavigate(item.screen))}
+                  onClick={() => (item.screen === 'calc' ? onOpenCalc() : onNavigate(item.screen))}
                   className={`glass-tile relative flex flex-col items-center justify-center gap-1 p-3 min-h-[72px] lg:min-h-[96px] rounded-2xl border active:scale-95 transition-all cursor-pointer ${
                     isLockedOnline
                       ? 'bg-rose-950/15 border-rose-500/35 hover:bg-rose-950/25'
@@ -440,7 +441,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({
                   ) : (
                     item.screen === 'diary' && diaryBadge > 0 && <span className="tile-badge">{diaryBadge}</span>
                   )}
-                  <span className={`text-xl lg:text-3xl ${isLockedOnline ? 'opacity-55 grayscale-[35%]' : ''}`}>{item.icon}</span>
+                  <AppIcon name={item.icon} size={34} className={`lg:w-12 lg:h-12 drop-shadow ${isLockedOnline ? 'opacity-55 grayscale-[35%]' : ''}`} />
                   <span
                     className={`text-[11px] lg:text-[13px] font-bold text-center leading-tight ${
                       isLockedOnline ? 'line-through decoration-rose-400 decoration-2 text-rose-200/80' : 'text-white/90'
@@ -454,6 +455,17 @@ export const MainScreen: React.FC<MainScreenProps> = ({
           </div>
         </div>
       ))}
+
+      {/* «Что нового» — строкой под разделами, а не отдельной плиткой */}
+      <button
+        type="button"
+        onClick={onOpenWhatsNew}
+        className="glass-tile w-full mt-4 p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-400/40 flex items-center gap-3 text-left active:scale-[0.99] transition-all cursor-pointer"
+      >
+        <AppIcon name="gift" size={30} className="shrink-0" />
+        <span className="flex-1 text-xs font-bold text-white/90">{t('whatsnew', lang)}</span>
+        <span className="text-cyan-300 font-bold">→</span>
+      </button>
     </div>
   );
 };

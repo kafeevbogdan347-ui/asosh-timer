@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AppIcon } from '../components/AppIcon';
 import { LanguageType, SoundProfileType } from '../types';
 import { playSound, doVibro } from '../utils/audio';
 import {
@@ -202,7 +203,7 @@ export const GpaCalculatorScreen: React.FC<GpaCalculatorScreenProps> = ({
       {/* Header */}
       <div>
         <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2">
-          <span>🎯</span>
+          <AppIcon name="calc" size={30} className="shrink-0" />
           <span>Калькулятор оценок</span>
         </h2>
         <p className="text-xs text-white/70">

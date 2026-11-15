@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AppIcon } from '../components/AppIcon';
 import { pushProfile, pushPublicProfile } from '../services/profileSync';
 import { getLocalAccount } from '../services/accounts';
 import { FriendsState, FriendCard, subscribeFriends, addFriend, acceptFriend, declineFriend, removeFriend } from '../services/friends';
@@ -364,7 +365,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           )}
           <div className="min-w-0">
             <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2">
-              <User className="w-6 h-6 text-cyan-400 shrink-0" />
+              <AppIcon name="user" size={30} className="shrink-0" />
               <span className="truncate">
                 {isViewingOther ? `Профиль ученика: ${activeProfile.fullName}` : 'Школьные Аккаунты & Профиль'}
               </span>

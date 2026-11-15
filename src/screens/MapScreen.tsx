@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AppIcon } from '../components/AppIcon';
 import { Search, Building } from 'lucide-react';
 import { roomFloor } from '../data/schoolSchedule';
 import { roomLabel } from '../utils/lessonStatus';
@@ -64,7 +65,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ cls, weekLessons, currentD
   return (
     <div className="card screen-enter space-y-4">
       <h2 className="text-xl font-black text-cyan-300 flex items-center gap-2">
-        <span>🗺</span>
+        <AppIcon name="door" size={30} className="shrink-0" />
         <span>Поиск кабинета</span>
       </h2>
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AppIcon } from '../components/AppIcon';
 import { PortfolioItem, LanguageType, SoundProfileType } from '../types';
 import { playSound, doVibro } from '../utils/audio';
 import { 
@@ -124,9 +125,7 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 text-slate-950 shadow-lg">
-              <Trophy className="w-5 h-5 font-black" />
-            </span>
+            <AppIcon name="folderStar" size={36} className="shrink-0" />
             <h2 className="text-xl font-black text-yellow-300">
               Школьное Портфолио & ВсОШ / ГТО
             </h2>
