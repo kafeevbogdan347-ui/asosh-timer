@@ -108,7 +108,7 @@ async function writeMe(cls: string): Promise<boolean> {
     const safeAdd = Math.max(0, Math.min(add, 604800 - curSec));
     await update(node, {
       ...publicCard(),
-      sec: curSec >= 604800 ? 604800 : safeAdd > 0 ? increment(safeAdd) : curSec,
+      sec: curSec >= 604800 ? 604800 : safeAdd > 0 ? increment(safeAdd) : Math.min(604800, Math.round(curSec)),
       last: serverTimestamp(),
     });
   } else {

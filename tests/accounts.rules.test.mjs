@@ -248,10 +248,10 @@ await check('рубильник: состояние видно приложен�
 await check('рубильник: чат остановлен', assertFails(sendChat(stu2, 'stu2', 'm7')));
 await check('рубильник: оценки остановлены', assertFails(set(ref(teacher, `asosh_journal/${cls}/stu1/g8`), grade(5))));
 await check('рубильник: профиль не меняется', assertFails(set(ref(stu1, 'asosh_users/stu1'), user('student', { cls: '5А' }))));
-await check('рубильник: онлайн не пишется', assertFails(set(ref(stu1, `asosh_online/${cls}/stu1`), card())));
+await check('рубильник: онлайн не пишется', assertFails(set(ref(stu1, `asosh_online/${cls}/stu1`), card({ sec: 3800, last: 5 }))));
 await check('рубильник: чтение работает', assertSucceeds(get(ref(stu1, 'asosh_timer'))));
 await env.withSecurityRulesDisabled(async (c) => { await remove(ref(c.database(), 'asosh_config/lockdown')); });
-await check('рубильник снят: онлайн снова пишется', assertSucceeds(set(ref(stu1, `asosh_online/${cls}/stu1`), card())));
+await check('рубильник снят: онлайн снова пишется', assertSucceeds(set(ref(stu1, `asosh_online/${cls}/stu1`), card({ sec: 3800, last: 5 }))));
 
 for (const [s, n] of results) console.log(s, n);
 const bad = results.filter(([s]) => s === '❌').length;

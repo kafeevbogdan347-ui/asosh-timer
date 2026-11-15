@@ -66,3 +66,11 @@ test('accounts.ts: removeParent отключает родителя и сраз�
   assert.match(body, /asosh_private\/\$\{sid\}/);
   assert.match(body, /collectExistingCodeNulls/);
 });
+
+test('accounts.rules.test.mjs: проверка снятия рубильника не уменьшает sec', () => {
+  const src = fs.readFileSync('tests/accounts.rules.test.mjs', 'utf8');
+  const line = src.split('\n').find((l) => l.includes('рубильник снят: онлайн снова пишется'));
+  assert.ok(line, 'строка проверки снятия рубильника должна существовать');
+  assert.doesNotMatch(line, /card\(\)\s*\)\s*\)/, 'card() со старым sec: 3600 меньше 3700');
+  assert.match(line, /sec:\s*3800/, 'нужен sec >= 3700 и +<= 600');
+});
