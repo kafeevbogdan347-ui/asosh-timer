@@ -1068,7 +1068,9 @@ export default function App() {
   const tomorrowBells = getDayBells(tomorrowDayName);
 
   // Что сейчас идёт: урок, перемена или ожидание первого урока (окна уроками не считаются)
-  const curSec = activeTime.getHours() * 3600 + activeTime.getMinutes() * 60 + activeTime.getSeconds();
+  // Отсчёт до звонка идёт на минуту «вперёд»: приложение показывает 45 мин, а до звонка на самом деле 46
+  const BELL_COUNTDOWN_SHIFT_SEC = 60;
+  const curSec = activeTime.getHours() * 3600 + activeTime.getMinutes() * 60 + activeTime.getSeconds() + BELL_COUNTDOWN_SHIFT_SEC;
   let lessonStatus: LessonStatus = computeLessonStatus(currentLessons, currentBells, curSec);
   const firstStartTime = firstLessonStart(currentLessons, currentBells);
   const firstStart = firstStartTime ? toSec(firstStartTime) : null;
@@ -1480,7 +1482,7 @@ export default function App() {
       `Домашка: ${hw.length ? hw.join(' | ') : 'не записана'}.`,
       gpaLine,
       calLine,
-      'Этаж кабинета — первая цифра номера (332 — 3 этаж). Актовый зал — 2 этаж, спортзал и мастерские — 1 этаж.',
+      'Этаж кабинета — первая цифра номера (332 — 3 этаж). Актовый зал и спортзал (физра) — 2 этаж, мастерские — 1 этаж.',
     ]
       .filter(Boolean)
       .join('\n');

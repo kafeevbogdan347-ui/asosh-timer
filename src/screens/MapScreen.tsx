@@ -29,7 +29,7 @@ const SHORT_DAY: Record<string, string> = {
 // Места без номера кабинета
 const PLACES: { keys: string[]; text: string }[] = [
   { keys: ['акт'], text: 'Актовый зал — 2 этаж' },
-  { keys: ['спорт', 'физкульт'], text: 'Спортзал — 1 этаж' },
+  { keys: ['спорт', 'физкульт'], text: 'Спортзал — 2 этаж' },
   { keys: ['мастер', 'технолог'], text: 'Мастерские — 1 этаж' },
   { keys: ['стол', 'буфет', 'еда'], text: 'Столовая — 1 этаж' },
   { keys: ['мед', 'врач'], text: 'Медицинский кабинет — 1 этаж' },
@@ -126,10 +126,10 @@ export const MapScreen: React.FC<MapScreenProps> = ({ cls, weekLessons, currentD
             Первая цифра номера — этаж: <b className="text-cyan-300">1xx</b> — 1 этаж, <b className="text-cyan-300">2xx</b> — 2 этаж, <b className="text-cyan-300">3xx</b> — 3 этаж.
           </div>
           <div className="p-2 rounded-xl bg-black/20 border border-white/5">
-            <b className="text-cyan-300">1 этаж:</b> вход, гардероб, столовая, медкабинет, спортзал, мастерские.
+            <b className="text-cyan-300">1 этаж:</b> вход, гардероб, столовая, медкабинет, мастерские.
           </div>
           <div className="p-2 rounded-xl bg-black/20 border border-white/5">
-            <b className="text-cyan-300">2 этаж:</b> актовый зал, библиотека, учительская.
+            <b className="text-cyan-300">2 этаж:</b> актовый зал, спортзал (физра), библиотека, учительская.
           </div>
         </div>
       </div>
