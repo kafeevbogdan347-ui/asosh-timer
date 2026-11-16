@@ -7,7 +7,7 @@ import { DICT } from '../data/constants';
 import { playSound, doVibro } from '../utils/audio';
 import { compressImage } from '../utils/image';
 import { checkBeforePublish } from '../components/HumanCheck';
-import { ClassHomework } from '../services/classShared';
+import { ClassHomework, classWriteErrorText } from '../services/classShared';
 import { Star, CheckCircle, Trash2, Plus, Sparkles, Filter, Camera, Image, X, Eye } from 'lucide-react';
 
 interface HomeworkScreenProps {
@@ -122,7 +122,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
           return;
         }
         onShareHomework(shared).then((ok) =>
-          onShowToast(ok ? 'ДЗ отправлено всему классу 📣' : 'ДЗ сохранено, но классу не отправилось: нет интернета')
+          onShowToast(ok ? 'ДЗ отправлено всему классу 📣' : `ДЗ сохранено у тебя, но классу не отправилось: ${classWriteErrorText()}`)
         );
       });
     }
@@ -327,6 +327,11 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
               {isTeacher ? `👩‍🏫 Задать классу ${cls} (увидят все ученики)` : '📣 Поделиться с классом (без фото)'}
             </label>
           </div>}
+          {!canShare && cls && (
+            <p className="text-[11px] text-white/60 leading-snug py-1">
+              🔒 Отправлять ДЗ всему классу могут учителя и ученики с аккаунтом своего класса. Войти: Опции → Аккаунт.
+            </p>
+          )}
 
           <button type="submit" className="btn green justify-center text-sm py-3 mt-1">
             <Plus className="w-4 h-4" />

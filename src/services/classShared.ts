@@ -89,10 +89,25 @@ function subscribe<T extends { id: string }>(
 const SHARE_COOLDOWN_MS = 10500;
 let lastShareAt = 0;
 
+// Почему последняя запись классу не прошла: нет сети или база не дала прав
+export type ClassWriteError = 'offline' | 'denied' | 'other' | null;
+let lastWriteError: ClassWriteError = null;
+export const getClassWriteError = () => lastWriteError;
+export const classWriteErrorText = (e: ClassWriteError = lastWriteError) =>
+  e === 'denied'
+    ? 'Нет прав: отправлять классу могут учителя и ученики с аккаунтом этого класса'
+    : e === 'offline'
+      ? 'нет интернета'
+      : 'попробуй ещё раз чуть позже';
+
 async function add(cls: string, section: Section, data: Record<string, unknown>): Promise<boolean> {
   const { db } = initFirebase();
+  lastWriteError = null;
   // Без сети запись ждала бы интернет бесконечно, и кнопка не отпускалась бы
-  if (!db || !navigator.onLine || !(await ensureSignedIn())) return false;
+  if (!db || !navigator.onLine || !(await ensureSignedIn())) {
+    lastWriteError = 'offline';
+    return false;
+  }
   try {
     // Сервер не даст делиться чаще раза в 10 секунд — если поделился только что, немного ждём
     const wait = SHARE_COOLDOWN_MS - (Date.now() - lastShareAt);
@@ -108,6 +123,7 @@ async function add(cls: string, section: Section, data: Record<string, unknown>)
     return true;
   } catch (err) {
     console.warn('Class data write error:', err);
+    lastWriteError = /permission/i.test(String((err as { code?: string })?.code || err)) ? 'denied' : 'other';
     return false;
   }
 }

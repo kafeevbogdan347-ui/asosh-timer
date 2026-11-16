@@ -552,6 +552,21 @@ export async function moveStudentToClass(account: Account, cls: string): Promise
   }
 }
 
+// Ученик пропал из списка своего класса (учитель убрал, запись потерялась) — правила базы
+// тогда не дают делиться ДЗ и заменами. Возвращаем себя в список (ждёт подтверждения учителя).
+export async function ensureMyRosterEntry(account: Account): Promise<boolean> {
+  const ctx = authOrNull();
+  if (!ctx || account.role !== 'student' || !account.cls) return false;
+  try {
+    const path = `asosh_roster/${classKey(account.cls)}/${account.uid}`;
+    if ((await get(ref(ctx.db, path))).exists()) return true;
+    await update(ref(ctx.db), { [path]: { name: account.name, t: Date.now() } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Статус ученика в классе: ждёт подтверждения / подтверждён / нет в списке
 export function subscribeMyRosterStatus(cls: string, sid: string, cb: (s: 'pending' | 'ok' | 'none') => void): () => void {
   const ctx = authOrNull();

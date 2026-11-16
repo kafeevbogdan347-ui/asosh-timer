@@ -227,6 +227,12 @@ await env.withSecurityRulesDisabled(async (c) => { await remove(ref(c.database()
 await check('домашка: лишнее поле отклоняется', assertFails(share(stu1, 'stu1', 'h4', { extra: 'big' })));
 await check('домашка: посторонний не пишет в чужой класс', assertFails(share(anonDev, 'anon_device', 'h5')));
 await check('домашка: родитель не пишет ДЗ в класс', assertFails(share(par1, 'par1', 'h6')));
+await check('домашка: учитель убрал ученика из списка', assertSucceeds(remove(ref(teacher, `asosh_roster/${cls}/stu2`))));
+await check('домашка: ученик не в списке класса — не пишет', assertFails(share(stu2, 'stu2', 'h7')));
+await check('домашка: ученик сам возвращается в список', assertSucceeds(set(ref(stu2, `asosh_roster/${cls}/stu2`), { name: 'Петя С.', t: 1 })));
+await env.withSecurityRulesDisabled(async (c) => { await remove(ref(c.database(), 'asosh_rate')); });
+await check('домашка: после возвращения в список — пишет', assertSucceeds(share(stu2, 'stu2', 'h8', { forDate: '', author: 'Петя С.' })));
+await env.withSecurityRulesDisabled(async (c) => { await remove(ref(c.database(), 'asosh_rate')); });
 await check('замены: учитель пишет замену классу', assertSucceeds(update(ref(teacher), {
   [`asosh_class/${cls}/replacements/r1`]: { date: '2026-11-12', num: 1, sub: 'Физика', room: '205', author: 'Мария Ивановна', uid: 'teacher1', created_at: 1 },
   'asosh_rate/teacher1/share': serverTimestamp(),

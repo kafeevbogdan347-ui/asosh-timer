@@ -5,7 +5,7 @@ import { DAYS, DICT } from '../data/constants';
 import { LessonUpdate, LanguageType, SoundProfileType } from '../types';
 import { playSound, doVibro } from '../utils/audio';
 import { Plus, Trash2, Users, User, Lock } from 'lucide-react';
-import { ClassReplacement, toDateKey } from '../services/classShared';
+import { ClassReplacement, toDateKey, classWriteErrorText } from '../services/classShared';
 import { checkBeforePublish } from '../components/HumanCheck';
 
 interface AddUpdateScreenProps {
@@ -96,7 +96,7 @@ export const AddUpdateScreen: React.FC<AddUpdateScreenProps> = ({
       const ok = await onAddClassReplacement({ date, num, sub: subject, room: room.trim() });
       setSaving(false);
       if (!ok) {
-        onShowToast('Не удалось отправить замену. Проверь интернет.');
+        onShowToast(`Не удалось отправить замену: ${classWriteErrorText()}`);
         return;
       }
       onShowToast('Замена отправлена всему классу 📣');
@@ -129,7 +129,7 @@ export const AddUpdateScreen: React.FC<AddUpdateScreenProps> = ({
         <button
           type="button"
           className={tabClass(mode === 'class')}
-          onClick={() => (canShare ? setMode('class') : onShowToast('🔒 Замены для класса — только с аккаунтом ученика и кодом класса'))}
+          onClick={() => (canShare ? setMode('class') : onShowToast('🔒 Замены для класса — только учителям и ученикам с аккаунтом этого класса'))}
         >
           {canShare ? <Users className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
           <span>Замена для класса</span>

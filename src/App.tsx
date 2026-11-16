@@ -81,7 +81,7 @@ import { PortfolioScreen } from './screens/PortfolioScreen';
 import { FocusAudioScreen } from './screens/FocusAudioScreen';
 import { ChatScreen } from './screens/ChatScreen';
 import { isClassUnlocked, saveClassUnlocked } from './data/classCodes';
-import { Account, getLocalAccount, logoutAccount, moveStudentToClass, verifyAccountSession, subscribeMyChildren } from './services/accounts';
+import { Account, getLocalAccount, logoutAccount, moveStudentToClass, verifyAccountSession, subscribeMyChildren, ensureMyRosterEntry } from './services/accounts';
 import type { AccountDone } from './components/AccountForms';
 import { AccountForms } from './components/AccountForms';
 import { DiaryScreen } from './screens/DiaryScreen';
@@ -124,6 +124,7 @@ import {
   deleteClassHomework,
   myUid,
   toDateKey,
+  classWriteErrorText,
 } from './services/classShared';
 import { isNativeApp, showSystemNotification, scheduleNativeReminders, cancelNativeReminders, notifyNow, requestNotificationPermission } from './services/bellNotifications';
 
@@ -1087,13 +1088,22 @@ export default function App() {
     return lessonStatus.type === 'lesson' ? { sub: '', replaced: false, room: '', floor: null, time: '' } : null;
   })();
 
+  // Делиться ДЗ и заменами с классом: учитель или ученик с аккаунтом именно этого класса
+  // (так же проверяют правила базы — иначе запись молча отклоняется)
+  const canShareToClass = isTeacher || (account?.role === 'student' && !!cls && account.cls === cls);
+  // Перед записью ученик возвращает себя в список класса, если запись там потерялась
+  const withRoster = async <T,>(write: () => Promise<T>): Promise<T> => {
+    if (account?.role === 'student' && account.cls === cls) await ensureMyRosterEntry(account);
+    return write();
+  };
+
   // Что знает Асошик: класс, время, уроки на сегодня и завтра, домашка. Имя ученика не передаём.
   // Действия Асошика в приложении. Права те же, что и без Асошика:
   // классу — только с кодом класса или учителю, объявления — только учителю, и всегда после подтверждения
   const makeAgentHandlers = (confirm: (text: string) => Promise<boolean>): AgentHandlers => {
     const str = (v: unknown, max = 200) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
     const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
-    const canShareClass = isTeacher || (account?.role === 'student' && (classVerified || account.cls === cls));
+    const canShareClass = canShareToClass;
     const author = (teacher?.name || studentName || 'Ученик').slice(0, 60);
     const say = (ok: boolean, summary: string): AgentResult => ({ ok, summary });
     const SCREENS: ScreenId[] = ['main', 'schedule', 'homework', 'diary', 'gpa', 'calendar', 'bells', 'map', 'updates', 'backpack', 'pomodoro', 'formulas', 'quarter', 'games', 'settings'];
@@ -1111,10 +1121,10 @@ export default function App() {
         if (!sub || !text) return say(false, 'Не понял предмет или задание');
         if (a.scope === 'class') {
           if (!cls) return say(false, 'Сначала выбери класс');
-          if (!canShareClass) return say(false, 'Публиковать ДЗ классу могут только учителя и ученики с аккаунтом и кодом класса');
+          if (!canShareClass) return say(false, 'Публиковать ДЗ классу могут только учителя и ученики с аккаунтом этого класса');
           if (!(await confirm(`📘 Опубликовать ДЗ для ${cls}?\n${sub}: ${text}${isDate(due) ? ` (к ${due})` : ''}`))) return say(false, 'Публикацию отменили');
-          const ok = await addClassHomework(cls, { sub, text, forDate: isDate(due) ? due : '', author, ...(isTeacher ? { teacher: true } : {}) });
-          return say(ok, ok ? `ДЗ по предмету «${sub}» опубликовано для ${cls}` : 'Не получилось опубликовать — нет интернета?');
+          const ok = await withRoster(() => addClassHomework(cls, { sub, text, forDate: isDate(due) ? due : '', author, ...(isTeacher ? { teacher: true } : {}) }));
+          return say(ok, ok ? `ДЗ по предмету «${sub}» опубликовано для ${cls}` : `Не получилось опубликовать: ${classWriteErrorText()}`);
         }
         handleAddHomework({ cls, sub, text, done: false, pinned: false, ...(isDate(due) ? { dueDate: due } : {}) });
         return say(true, `ДЗ по предмету «${sub}» записано в твой дневник`);
@@ -1169,11 +1179,11 @@ export default function App() {
         if (!day || !(num >= 1 && num <= 8) || !sub) return say(false, 'Не понял день, номер урока или предмет');
         if (!cls) return say(false, 'Сначала выбери класс');
         if (a.scope === 'class') {
-          if (!canShareClass) return say(false, 'Замены для класса могут публиковать только учителя и ученики с аккаунтом и кодом класса');
+          if (!canShareClass) return say(false, 'Замены для класса могут публиковать только учителя и ученики с аккаунтом этого класса');
           const date = dateKeyForDay(day);
           if (!(await confirm(`🔄 Замена для всего ${cls} на ${date}: ${shown}-й урок — ${sub}${room ? `, ${roomLabel(room)}` : ''}?`))) return say(false, 'Замену отменили');
-          const ok = await addClassReplacement(cls, { date, num, sub, room, author });
-          return say(ok, ok ? `Замена для ${cls}: ${shown}-й урок — ${sub}` : 'Не получилось отправить замену');
+          const ok = await withRoster(() => addClassReplacement(cls, { date, num, sub, room, author }));
+          return say(ok, ok ? `Замена для ${cls}: ${shown}-й урок — ${sub}` : `Не получилось отправить замену: ${classWriteErrorText()}`);
         }
         handleAddUpdate({ id: `${cls}-${day}-${num}-${Date.now()}`, cls, day, num, sub, room });
         return say(true, `Замена себе: ${day}, ${shown}-й урок — ${sub}`);
@@ -2618,12 +2628,14 @@ export default function App() {
             vibro={settings.vibro}
             classHomework={classHomework}
             myUid={myUid()}
-            canShare={isTeacher || (account?.role === 'student' && (classVerified || account.cls === cls))}
+            canShare={canShareToClass}
             isTeacher={isTeacher}
             onShareHomework={(h) =>
-              teacher
-                ? addClassHomework(cls, { sub: h.sub, text: h.text, forDate: h.forDate || '', author: teacher.name.slice(0, 60), teacher: true })
-                : addClassHomework(cls, { sub: h.sub, text: h.text, forDate: h.forDate || '', author: (studentName || 'Ученик').slice(0, 60) })
+              withRoster(() =>
+                teacher
+                  ? addClassHomework(cls, { sub: h.sub, text: h.text, forDate: h.forDate || '', author: teacher.name.slice(0, 60), teacher: true })
+                  : addClassHomework(cls, { sub: h.sub, text: h.text, forDate: h.forDate || '', author: (studentName || 'Ученик').slice(0, 60) })
+              )
             }
             onDeleteClassHomework={(id) => {
               deleteClassHomework(cls, id).then((ok) => showToast(ok ? 'Удалено у класса' : 'Не получилось удалить. Проверь интернет.'));
@@ -2699,8 +2711,8 @@ export default function App() {
             onDeleteUpdate={handleDeleteUpdate}
             classReplacements={classReplacements}
             myUid={myUid()}
-            canShare={isTeacher || (account?.role === 'student' && (classVerified || account.cls === cls))}
-            onAddClassReplacement={(r) => addClassReplacement(cls, { ...r, author: (teacher?.name || studentName || 'Ученик').slice(0, 60) })}
+            canShare={canShareToClass}
+            onAddClassReplacement={(r) => withRoster(() => addClassReplacement(cls, { ...r, author: (teacher?.name || studentName || 'Ученик').slice(0, 60) }))}
             onDeleteClassReplacement={(id) => {
               deleteClassReplacement(cls, id).then((ok) => showToast(ok ? 'Замена удалена' : 'Не получилось удалить. Проверь интернет.'));
             }}
