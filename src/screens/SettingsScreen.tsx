@@ -1031,7 +1031,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className="p-3 bg-white/5 rounded-2xl border border-white/10 space-y-1">
               <b className="text-xs text-white block">1-я Смена (Утренняя):</b>
-              <p className="text-[11px] text-white/60">08:00 – 14:40 • 5, 9, 10, 11 классы</p>
+              <p className="text-[11px] text-white/60">08:00 – 14:20 • 5, 9, 10, 11 классы</p>
               <span className="badge bg-emerald-500/20 text-emerald-300 border-emerald-400/30 text-[10px] font-bold">
                 Штатное расписание
               </span>

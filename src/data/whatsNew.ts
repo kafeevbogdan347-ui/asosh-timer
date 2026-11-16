@@ -20,6 +20,13 @@ export const updatesLink = (version: string) => `${UPDATES_URL}#${version.replac
 
 export const WHATS_NEW: WhatsNewRelease[] = [
   {
+    version: 'v17.4',
+    date: '16 ноября 2026',
+    items: [
+      { icon: '🔔', title: 'Новые звонки 1-й смены', text: 'Звонки 1-й смены сверены с карточкой школы: 08:00, 08:45, 09:35, 10:25, 11:15, 12:05. 7-й урок — в пересменку 12:50–13:30. Таймер, уведомления и виджет считают по новым звонкам.' },
+    ],
+  },
+  {
     version: 'v17.3',
     date: '16 ноября 2026',
     items: [
