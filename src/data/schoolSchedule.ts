@@ -285,9 +285,15 @@ export const OFFICIAL_CHANGES: Record<string, Record<string, LessonEntry[]>> = {
 // Расписание класса на конкретную дату: если на эту дату есть лист изменений — он заменяет день целиком.
 // Урок, предмет которого отличается от основного расписания, помечается «🔄 » (как замена); если
 // поменялся только кабинет, пометки нет.
-export const getLessonsForDate = (className: string, dayName: string, dateKey: string): [string, string][] => {
+// extra — изменения из базы (их вносят учителя в приложении); они важнее записанных в код.
+export const getLessonsForDate = (
+  className: string,
+  dayName: string,
+  dateKey: string,
+  extra?: Record<string, Record<string, LessonEntry[]>>
+): [string, string][] => {
   const base = getBaseLessonsForClass(className, dayName);
-  const changed = OFFICIAL_CHANGES[dateKey]?.[className];
+  const changed = extra?.[dateKey]?.[className] ?? OFFICIAL_CHANGES[dateKey]?.[className];
   if (!changed) return base;
   return changed.map(([subject, room], i): [string, string] => {
     if (!subject) return ['—', ''];

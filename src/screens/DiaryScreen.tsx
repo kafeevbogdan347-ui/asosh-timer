@@ -17,11 +17,14 @@ import {
 import { pickQuarter, quarterSummary } from '../utils/quarterGrades';
 import { SCHOOL_QUARTERS } from '../data/constants';
 import { Grade, bySubject, average, markColor, subscribeStudentGrades, newGrades, markGradesSeen } from '../services/journal';
-import { ClassHomework, subscribeClassHomework, toDateKey } from '../services/classShared';
+import { ClassHomework, ClassReplacement, subscribeClassHomework, subscribeClassReplacements, toDateKey } from '../services/classShared';
 import { BoardPost, postsFor } from '../services/teacher';
-import { getLessonsForDate } from '../data/schoolSchedule';
+import { roomFloor } from '../data/schoolSchedule';
+import type { ChangesMap } from '../services/scheduleChanges';
+import { bellsFor, classDay, cleanSub, isRealLesson, lessonsOnly, shiftOfClass, shortDay, upcomingDate } from '../utils/daySchedule';
+import { LiveLessonCard } from '../components/LiveLessonCard';
 import { DAYS } from '../data/constants';
-import { roomLabel } from '../utils/lessonStatus';
+import { lessonNo, roomLabel } from '../utils/lessonStatus';
 
 interface DiaryScreenProps {
   account: Account;
@@ -29,6 +32,9 @@ interface DiaryScreenProps {
   today: Date;
   onShowToast: (msg: string) => void;
   onChildClass?: (cls: string) => void; // родитель выбрал ребёнка — расписание в приложении по его классу
+  changes?: ChangesMap; // лист изменений расписания из базы
+  onOpenTimer?: () => void; // большой таймер (по классу ребёнка)
+  onOpenBells?: () => void;
 }
 
 const fmtDate = (key: string) => new Date(key + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
@@ -254,14 +260,16 @@ const StudentDiary: React.FC<{ account: Account; onShowToast: (m: string) => voi
 };
 
 // Родитель: дети, их оценки, расписание, домашка от учителей, объявления
-const ParentDiary: React.FC<DiaryScreenProps> = ({ account, posts, today, onShowToast, onChildClass }) => {
+const ParentDiary: React.FC<DiaryScreenProps> = ({ account, posts, today, onShowToast, onChildClass, changes, onOpenTimer, onOpenBells }) => {
   const [children, setChildren] = useState<ChildLink[] | null>(null);
   const [sel, setSel] = useState<string>('');
   const [grades, setGrades] = useState<Grade[]>([]);
   const [homework, setHomework] = useState<ClassHomework[]>([]);
   const [adding, setAdding] = useState(false);
   const [code, setCode] = useState('');
-  const [tab, setTab] = useState<'grades' | 'hw' | 'sched' | 'news'>('grades');
+  const [tab, setTab] = useState<'grades' | 'hw' | 'sched' | 'news'>('sched');
+  const [replacements, setReplacements] = useState<ClassReplacement[]>([]);
+  const [schedDay, setSchedDay] = useState<string>(() => DAYS[(today.getDay() + 6) % 7] === 'Воскресенье' ? 'Понедельник' : DAYS[(today.getDay() + 6) % 7]);
   const [denied, setDenied] = useState(false);
   const [fresh, trackFresh] = useFreshMarks();
 
@@ -281,22 +289,24 @@ const ParentDiary: React.FC<DiaryScreenProps> = ({ account, posts, today, onShow
       () => setDenied(true)
     );
     const b = subscribeClassHomework(child.cls, setHomework);
+    const c = subscribeClassReplacements(child.cls, setReplacements);
     return () => {
       a();
       b();
+      c();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [child?.sid, child?.cls]);
 
   const todayKey = toDateKey(today);
   const dayIdx = (today.getDay() + 6) % 7;
-  const schedule = child
-    ? [0, 1].map((off) => {
-        const day = DAYS[(dayIdx + off) % 7];
-        const date = toDateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() + off));
-        return { label: off ? 'Завтра' : 'Сегодня', day, lessons: getLessonsForDate(child.cls, day, date).filter(([s]) => s && s !== '—') };
-      })
-    : [];
+  // Расписание ребёнка: выбранный день недели (ближайшая дата), с листом изменений и заменами класса
+  const childShift = child ? shiftOfClass(child.cls) : '1';
+  const schedDate = upcomingDate(schedDay, today);
+  const schedLessons = child ? classDay(child.cls, schedDate, changes, replacements) : [];
+  const schedBells = bellsFor(childShift, schedDay);
+  const todayLessons = child ? classDay(child.cls, today, changes, replacements) : [];
+  const todayBells = bellsFor(childShift, DAYS[(today.getDay() + 6) % 7]);
   const hw = [...homework]
     .filter((h) => !h.forDate || h.forDate >= todayKey)
     .sort((a, b) => Number(!!b.teacher) - Number(!!a.teacher) || b.created_at - a.created_at);
@@ -341,12 +351,19 @@ const ParentDiary: React.FC<DiaryScreenProps> = ({ account, posts, today, onShow
         <div className="text-center text-sm text-white/60 py-6">Добавьте ребёнка по его коду из «Дневника».</div>
       ) : (
         <>
+          <LiveLessonCard
+            title={`Сейчас у ${child.name.split(' ')[0]} · ${child.cls}`}
+            lessons={todayLessons}
+            bells={todayBells}
+            emptyText="Сейчас уроков нет"
+            onOpen={onOpenTimer}
+          />
           <div className="flex gap-1 p-1 rounded-2xl bg-white/5 border border-white/10">
             {(
               [
+                ['sched', '📅 Уроки'],
                 ['grades', '📊 Оценки'],
                 ['hw', '📘 ДЗ'],
-                ['sched', '📅 Уроки'],
                 ['news', '📢 Новости'],
               ] as const
             ).map(([id, label]) => (
@@ -382,25 +399,41 @@ const ParentDiary: React.FC<DiaryScreenProps> = ({ account, posts, today, onShow
 
           {tab === 'sched' && (
             <div className="space-y-2">
-              {schedule.map((d) => (
-                <div key={d.label} className="p-2.5 rounded-2xl bg-white/5 border border-white/10">
-                  <b className="text-sm">
-                    {d.label} · {d.day}
-                  </b>
-                  {d.lessons.length === 0 ? (
-                    <div className="text-xs text-white/60 mt-1">Уроков нет</div>
-                  ) : (
-                    <ol className="text-xs mt-1 space-y-0.5 list-decimal list-inside">
-                      {d.lessons.map(([sub, room], i) => (
-                        <li key={i}>
-                          {sub}
-                          {room && <span className="text-white/55"> · {roomLabel(room)}</span>}
-                        </li>
-                      ))}
-                    </ol>
+              <div className="flex gap-1 flex-wrap">
+                {DAYS.slice(0, 6).map((d) => (
+                  <button key={d} type="button" className={`choice !py-1 !px-2.5 !text-[11px] ${schedDay === d ? 'active' : ''}`} onClick={() => setSchedDay(d)}>
+                    {shortDay(d)} {upcomingDate(d, today).getDate()}
+                  </button>
+                ))}
+              </div>
+              {lessonsOnly(schedLessons).length === 0 ? (
+                <div className="text-center text-sm text-white/60 py-4">Уроков нет</div>
+              ) : (
+                <div className="space-y-1">
+                  {schedLessons.map((l, i) =>
+                    isRealLesson(l) ? (
+                      <div key={i} className={`flex items-center gap-2 p-2 rounded-xl text-xs border ${l[0].startsWith('🔄') ? 'bg-amber-500/10 border-amber-400/35' : 'bg-white/5 border-white/10'}`}>
+                        <b className="w-5 text-center text-white/60">{lessonNo(childShift, i)}</b>
+                        <span className="w-[86px] shrink-0 tabular-nums text-white/60">{schedBells[i] ? `${schedBells[i][0]}–${schedBells[i][1]}` : '—'}</span>
+                        <span className="flex-1 min-w-0">
+                          <b className="block truncate text-sm">{cleanSub(l[0])}</b>
+                          <span className="text-white/55">
+                            {l[1] ? roomLabel(l[1]) : 'кабинет не указан'}
+                            {roomFloor(l[1]) && ` · ${roomFloor(l[1])} этаж`}
+                            {l[0].startsWith('🔄') && ' · замена'}
+                          </span>
+                        </span>
+                      </div>
+                    ) : null
                   )}
                 </div>
-              ))}
+              )}
+              <p className="text-[11px] text-white/50">Смена: {childShift === '2' ? '2-я' : '1-я'} · жёлтым — замены и изменения в расписании.</p>
+              {onOpenBells && (
+                <button type="button" className="btn darkBtn w-full justify-center text-xs" onClick={onOpenBells}>
+                  🔔 Все звонки
+                </button>
+              )}
             </div>
           )}
 

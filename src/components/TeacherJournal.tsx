@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
-import { Account, RosterEntry, confirmStudent, removeFromRoster, subscribeRoster } from '../services/accounts';
+import { Account, BannedEntry, RosterEntry, confirmStudent, removeFromRoster, subscribeRoster, subscribeRosterBans, unbanStudent } from '../services/accounts';
 import { Grade, MARKS, Mark, average, deleteGrade, markColor, saveGrade, subscribeClassJournal } from '../services/journal';
 import { toDateKey } from '../services/classShared';
 import { ALL_SUBJECTS, hasOfficialSchedule } from '../data/schoolSchedule';
@@ -28,6 +28,8 @@ export const TeacherJournal: React.FC<Props> = ({ account, defaultCls, onShowToa
   const [note, setNote] = useState('');
 
   useEffect(() => subscribeRoster(cls, setRoster), [cls]);
+  const [banned, setBanned] = useState<BannedEntry[]>([]);
+  useEffect(() => subscribeRosterBans(cls, setBanned), [cls]);
   useEffect(() => subscribeClassJournal(cls, setGrades), [cls]);
 
   const pending = roster.filter((r) => !r.ok);
@@ -81,13 +83,29 @@ export const TeacherJournal: React.FC<Props> = ({ account, defaultCls, onShowToa
                 <button type="button" className="btn green !py-1 !px-3 text-xs" onClick={async () => onShowToast((await confirmStudent(cls, r.sid, account.uid)) ? `${r.name} подтверждён` : 'Не получилось')}>
                   ✓ Мой ученик
                 </button>
-                <button type="button" className="btn darkBtn !py-1 !px-3 text-xs" onClick={async () => onShowToast((await removeFromRoster(cls, r.sid)) ? 'Убран из списка' : 'Не получилось')}>
+                <button type="button" className="btn darkBtn !py-1 !px-3 text-xs" onClick={async () => onShowToast((await removeFromRoster(cls, r.sid, r.name)) ? 'Убран из списка: сам вернуться не сможет' : 'Не получилось')}>
                   ✗
                 </button>
               </span>
             </div>
           ))}
         </div>
+      )}
+
+      {banned.length > 0 && (
+        <details className="p-3 rounded-2xl bg-white/5 border border-white/10 text-sm">
+          <summary className="cursor-pointer font-bold text-xs text-white/75">Убраны из {cls}: {banned.length}</summary>
+          <div className="space-y-1.5 mt-2">
+            {banned.map((b) => (
+              <div key={b.sid} className="flex items-center justify-between gap-2">
+                <span>{b.name}</span>
+                <button type="button" className="btn darkBtn !py-1 !px-3 text-xs" onClick={async () => onShowToast((await unbanStudent(cls, b.sid)) ? `${b.name} может снова записаться в класс` : 'Не получилось')}>
+                  ↩ Вернуть
+                </button>
+              </div>
+            ))}
+          </div>
+        </details>
       )}
 
       {students.length === 0 ? (

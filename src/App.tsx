@@ -30,6 +30,7 @@ import {
   DEFAULT_MANUAL_BACKPACK,
   isVacationDay,
   isHolidayDay,
+  BELL_SHIFT_SEC,
 } from './data/constants';
 import { getLessonsForDate, hasOfficialSchedule, roomFloor, SECOND_SHIFT_CLASSES, OFFICIAL_SCHEDULE_2026 } from './data/schoolSchedule';
 import { migrateTheme } from './data/themes';
@@ -125,7 +126,9 @@ import {
   myUid,
   toDateKey,
   classWriteErrorText,
+  ClassWriteResult,
 } from './services/classShared';
+import { subscribeScheduleChanges, ChangesMap } from './services/scheduleChanges';
 import { isNativeApp, showSystemNotification, scheduleNativeReminders, cancelNativeReminders, notifyNow, requestNotificationPermission } from './services/bellNotifications';
 
 export default function App() {
@@ -994,11 +997,20 @@ export default function App() {
 
   // (verifyTeacher above)
 
+  // Лист изменений расписания из базы (вносят учителя) — на все дни ближайшей недели
+  const [dbChanges, setDbChanges] = useState<ChangesMap>({});
+  const changeDatesKey = DAYS.map((d) => dateKeyForDay(d)).sort().join(',');
+  const changesOn = registered || !!account || !!teacher;
+  useEffect(() => {
+    if (!changesOn) return;
+    return subscribeScheduleChanges(changeDatesKey.split(','), setDbChanges);
+  }, [changeDatesKey, changesOn]);
+
   // Get active lessons for day (official base schedule + custom updates)
   const getLessonsForDay = (dayName: string): [string, string][] => {
     // 1. Основное расписание класса; если на эту дату есть лист изменений школы — он заменяет день
     const dateKey = dateKeyForDay(dayName);
-    const baseLessons = getLessonsForDate(cls, dayName, dateKey);
+    const baseLessons = getLessonsForDate(cls, dayName, dateKey, dbChanges);
     
     // 2. Build indexed map starting with base lessons
     const map: Record<number, [string, string]> = {};
@@ -1069,9 +1081,8 @@ export default function App() {
   const tomorrowBells = getDayBells(tomorrowDayName);
 
   // Что сейчас идёт: урок, перемена или ожидание первого урока (окна уроками не считаются)
-  // Отсчёт до звонка идёт на минуту «вперёд»: приложение показывает 45 мин, а до звонка на самом деле 46
-  const BELL_COUNTDOWN_SHIFT_SEC = 60;
-  const curSec = activeTime.getHours() * 3600 + activeTime.getMinutes() * 60 + activeTime.getSeconds() + BELL_COUNTDOWN_SHIFT_SEC;
+  // Отсчёт до звонка идёт на минуту «вперёд» (BELL_SHIFT_SEC): приложение показывает 45 мин, а до звонка на самом деле 46
+  const curSec = activeTime.getHours() * 3600 + activeTime.getMinutes() * 60 + activeTime.getSeconds() + BELL_SHIFT_SEC;
   let lessonStatus: LessonStatus = computeLessonStatus(currentLessons, currentBells, curSec);
   const firstStartTime = firstLessonStart(currentLessons, currentBells);
   const firstStart = firstStartTime ? toSec(firstStartTime) : null;
@@ -1091,9 +1102,12 @@ export default function App() {
   // Делиться ДЗ и заменами с классом: учитель или ученик с аккаунтом именно этого класса
   // (так же проверяют правила базы — иначе запись молча отклоняется)
   const canShareToClass = isTeacher || (account?.role === 'student' && !!cls && account.cls === cls);
-  // Перед записью ученик возвращает себя в список класса, если запись там потерялась
-  const withRoster = async <T,>(write: () => Promise<T>): Promise<T> => {
-    if (account?.role === 'student' && account.cls === cls) await ensureMyRosterEntry(account);
+  // Перед записью ученик возвращает себя в список класса, если запись там потерялась.
+  // Если его убрал учитель — не возвращаем и сразу говорим почему.
+  const withRoster = async (write: () => Promise<ClassWriteResult>): Promise<ClassWriteResult> => {
+    if (account?.role === 'student' && account.cls === cls && (await ensureMyRosterEntry(account)) === 'banned') {
+      return { ok: false, error: 'banned' };
+    }
     return write();
   };
 
@@ -1103,7 +1117,6 @@ export default function App() {
   const makeAgentHandlers = (confirm: (text: string) => Promise<boolean>): AgentHandlers => {
     const str = (v: unknown, max = 200) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
     const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
-    const canShareClass = canShareToClass;
     const author = (teacher?.name || studentName || 'Ученик').slice(0, 60);
     const say = (ok: boolean, summary: string): AgentResult => ({ ok, summary });
     const SCREENS: ScreenId[] = ['main', 'schedule', 'homework', 'diary', 'gpa', 'calendar', 'bells', 'map', 'updates', 'backpack', 'pomodoro', 'formulas', 'quarter', 'games', 'settings'];
@@ -1121,10 +1134,10 @@ export default function App() {
         if (!sub || !text) return say(false, 'Не понял предмет или задание');
         if (a.scope === 'class') {
           if (!cls) return say(false, 'Сначала выбери класс');
-          if (!canShareClass) return say(false, 'Публиковать ДЗ классу могут только учителя и ученики с аккаунтом этого класса');
+          if (!canShareToClass) return say(false, 'Публиковать ДЗ классу могут только учителя и ученики с аккаунтом этого класса');
           if (!(await confirm(`📘 Опубликовать ДЗ для ${cls}?\n${sub}: ${text}${isDate(due) ? ` (к ${due})` : ''}`))) return say(false, 'Публикацию отменили');
-          const ok = await withRoster(() => addClassHomework(cls, { sub, text, forDate: isDate(due) ? due : '', author, ...(isTeacher ? { teacher: true } : {}) }));
-          return say(ok, ok ? `ДЗ по предмету «${sub}» опубликовано для ${cls}` : `Не получилось опубликовать: ${classWriteErrorText()}`);
+          const res = await withRoster(() => addClassHomework(cls, { sub, text, forDate: isDate(due) ? due : '', author, ...(isTeacher ? { teacher: true } : {}) }));
+          return say(res.ok, res.ok ? `ДЗ по предмету «${sub}» опубликовано для ${cls}` : `Не получилось опубликовать: ${classWriteErrorText(res.error)}`);
         }
         handleAddHomework({ cls, sub, text, done: false, pinned: false, ...(isDate(due) ? { dueDate: due } : {}) });
         return say(true, `ДЗ по предмету «${sub}» записано в твой дневник`);
@@ -1179,11 +1192,11 @@ export default function App() {
         if (!day || !(num >= 1 && num <= 8) || !sub) return say(false, 'Не понял день, номер урока или предмет');
         if (!cls) return say(false, 'Сначала выбери класс');
         if (a.scope === 'class') {
-          if (!canShareClass) return say(false, 'Замены для класса могут публиковать только учителя и ученики с аккаунтом этого класса');
+          if (!canShareToClass) return say(false, 'Замены для класса могут публиковать только учителя и ученики с аккаунтом этого класса');
           const date = dateKeyForDay(day);
           if (!(await confirm(`🔄 Замена для всего ${cls} на ${date}: ${shown}-й урок — ${sub}${room ? `, ${roomLabel(room)}` : ''}?`))) return say(false, 'Замену отменили');
-          const ok = await withRoster(() => addClassReplacement(cls, { date, num, sub, room, author }));
-          return say(ok, ok ? `Замена для ${cls}: ${shown}-й урок — ${sub}` : `Не получилось отправить замену: ${classWriteErrorText()}`);
+          const res = await withRoster(() => addClassReplacement(cls, { date, num, sub, room, author }));
+          return say(res.ok, res.ok ? `Замена для ${cls}: ${shown}-й урок — ${sub}` : `Не получилось отправить замену: ${classWriteErrorText(res.error)}`);
         }
         handleAddUpdate({ id: `${cls}-${day}-${num}-${Date.now()}`, cls, day, num, sub, room });
         return say(true, `Замена себе: ${day}, ${shown}-й урок — ${sub}`);
@@ -1480,7 +1493,7 @@ export default function App() {
     const bellRemain = lessonStatus.remainSec > 0 ? `До звонка: ${Math.ceil(lessonStatus.remainSec / 60)} мин.` : '';
 
     return [
-      `Роль: ${isTeacher ? `учитель (${teacher?.name})` : account?.role === 'parent' ? 'родитель' : 'ученик'}. Класс: ${cls || 'не выбран'}, ${shift} смена, подгруппа ${subGroup}. Может публиковать для класса: ${classVerified || isTeacher ? 'да' : 'нет'}.`,
+      `Роль: ${isTeacher ? `учитель (${teacher?.name})` : account?.role === 'parent' ? 'родитель' : 'ученик'}. Класс: ${cls || 'не выбран'}, ${shift} смена, подгруппа ${subGroup}. Может публиковать для класса: ${canShareToClass ? 'да' : 'нет'}.`,
       lang !== 'ru' ? `Язык интерфейса: ${LANGS.find((l) => l.id === lang)?.ru || lang}. Отвечай на этом языке (термины и формулы можно по-русски).` : '',
       `Сегодня: ${todayDateKey}. Темы оформления: ${THEMES.map((t) => `${t.id} («${t.name}»)`).join(', ')}.`,
       `Сейчас: ${currentDayName}, ${activeTime.toLocaleDateString('ru-RU')} ${activeTime.toTimeString().slice(0, 5)}. ${bellRemain}`,
@@ -1508,7 +1521,7 @@ export default function App() {
     ].forEach(({ date, lessons, bells }) =>
       lessons.forEach(([sub, room], i) => {
         if (!bells[i] || !sub || sub === '—') return;
-        out.push({ start: atTime(date, bells[i][0]), end: atTime(date, bells[i][1]), num: lessonNo(shift, i), sub: sub.replace('🔄 ', ''), room });
+        out.push({ start: atTime(date, bells[i][0]) - BELL_SHIFT_SEC * 1000, end: atTime(date, bells[i][1]) - BELL_SHIFT_SEC * 1000, num: lessonNo(shift, i), sub: sub.replace('🔄 ', ''), room });
       })
     );
     return out;
@@ -1561,7 +1574,7 @@ export default function App() {
       const bells = getDayBells(dayName);
       const at = (hm: string, shiftMin = 0) => {
         const [h, m] = hm.split(':').map(Number);
-        return new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m + shiftMin);
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m + shiftMin, -BELL_SHIFT_SEC);
       };
       const day = getLessonsForDay(dayName)
         .map(([sub, room], i) => ({ sub: sub.replace('🔄 ', ''), room, i }))
@@ -2656,6 +2669,9 @@ export default function App() {
                 setAccountVault(saveAccountVault({ cls: c }));
               }
             }}
+            changes={dbChanges}
+            onOpenTimer={() => setCurrentScreen('today')}
+            onOpenBells={() => setCurrentScreen('bells')}
           />
         )}
 
@@ -2863,6 +2879,8 @@ export default function App() {
               setCurrentScreen(cls ? 'main' : 'select');
             }}
             onPickClass={() => setCurrentScreen('select')}
+            changes={dbChanges}
+            onOpenBells={() => setCurrentScreen('bells')}
             onBack={() => setCurrentScreen(cls ? 'main' : 'select')}
             onShowToast={showToast}
             account={account}
@@ -2937,7 +2955,7 @@ export default function App() {
 
         {currentScreen === 'bells' && (
           <BellsScreen
-            onBack={() => setCurrentScreen('main')}
+            onBack={() => setCurrentScreen(isTeacher && !cls ? 'teacher' : account?.role === 'parent' ? 'diary' : 'main')}
             onShowToast={showToast}
             lang={lang}
             soundProfile={settings.soundProfile}

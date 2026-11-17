@@ -7,7 +7,7 @@ import { DICT } from '../data/constants';
 import { playSound, doVibro } from '../utils/audio';
 import { compressImage } from '../utils/image';
 import { checkBeforePublish } from '../components/HumanCheck';
-import { ClassHomework, classWriteErrorText } from '../services/classShared';
+import { ClassHomework, ClassWriteResult, classWriteErrorText } from '../services/classShared';
 import { Star, CheckCircle, Trash2, Plus, Sparkles, Filter, Camera, Image, X, Eye } from 'lucide-react';
 
 interface HomeworkScreenProps {
@@ -23,7 +23,7 @@ interface HomeworkScreenProps {
   onOpenAi?: () => void;
   classHomework: ClassHomework[];
   myUid: string;
-  onShareHomework: (h: { sub: string; text: string; forDate?: string }) => Promise<boolean>;
+  onShareHomework: (h: { sub: string; text: string; forDate?: string }) => Promise<ClassWriteResult>;
   onDeleteClassHomework: (id: string) => void;
   onShowToast: (msg: string) => void;
   // Гость без кода класса не может делиться ДЗ с классом
@@ -121,8 +121,8 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
           onShowToast(`ДЗ сохранено у тебя, но классу не отправлено. ${modError}`);
           return;
         }
-        onShareHomework(shared).then((ok) =>
-          onShowToast(ok ? 'ДЗ отправлено всему классу 📣' : `ДЗ сохранено у тебя, но классу не отправилось: ${classWriteErrorText()}`)
+        onShareHomework(shared).then((res) =>
+          onShowToast(res.ok ? 'ДЗ отправлено всему классу 📣' : `ДЗ сохранено у тебя, но классу не отправилось: ${classWriteErrorText(res.error)}`)
         );
       });
     }

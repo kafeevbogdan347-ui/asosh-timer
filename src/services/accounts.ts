@@ -554,16 +554,19 @@ export async function moveStudentToClass(account: Account, cls: string): Promise
 
 // Ученик пропал из списка своего класса (учитель убрал, запись потерялась) — правила базы
 // тогда не дают делиться ДЗ и заменами. Возвращаем себя в список (ждёт подтверждения учителя).
-export async function ensureMyRosterEntry(account: Account): Promise<boolean> {
+// Если ученика убрал учитель (есть отметка в asosh_roster_ban), сам вернуться он не может — 'banned'.
+export async function ensureMyRosterEntry(account: Account): Promise<'ok' | 'banned' | 'failed'> {
   const ctx = authOrNull();
-  if (!ctx || account.role !== 'student' || !account.cls) return false;
+  if (!ctx || account.role !== 'student' || !account.cls) return 'failed';
+  const key = classKey(account.cls);
   try {
-    const path = `asosh_roster/${classKey(account.cls)}/${account.uid}`;
-    if ((await get(ref(ctx.db, path))).exists()) return true;
+    const path = `asosh_roster/${key}/${account.uid}`;
+    if ((await get(ref(ctx.db, path))).exists()) return 'ok';
+    if ((await get(ref(ctx.db, `asosh_roster_ban/${key}/${account.uid}`))).exists()) return 'banned';
     await update(ref(ctx.db), { [path]: { name: account.name, t: Date.now() } });
-    return true;
+    return 'ok';
   } catch {
-    return false;
+    return 'failed';
   }
 }
 
@@ -618,11 +621,49 @@ export async function confirmStudent(cls: string, sid: string, teacherUid: strin
   }
 }
 
-export async function removeFromRoster(cls: string, sid: string): Promise<boolean> {
+// Учитель убирает ученика из класса: запись в списке удаляется, и ставится отметка,
+// чтобы ученик не вписал себя обратно сам (правила базы это проверяют)
+export async function removeFromRoster(cls: string, sid: string, name = ''): Promise<boolean> {
+  const ctx = authOrNull();
+  if (!ctx) return false;
+  const key = classKey(cls);
+  try {
+    await update(ref(ctx.db), {
+      [`asosh_roster/${key}/${sid}`]: null,
+      [`asosh_roster_ban/${key}/${sid}`]: { name: (name || 'Ученик').slice(0, 60), t: Date.now() },
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export interface BannedEntry {
+  sid: string;
+  name: string;
+  t: number;
+}
+
+// Учитель: кого из класса убрали (можно вернуть)
+export function subscribeRosterBans(cls: string, cb: (list: BannedEntry[]) => void): () => void {
+  const ctx = authOrNull();
+  if (!ctx) return () => {};
+  return onValue(
+    ref(ctx.db, `asosh_roster_ban/${classKey(cls)}`),
+    (snap) => {
+      const v = (snap.val() || {}) as Record<string, { name?: string; t?: number }>;
+      cb(Object.entries(v).map(([sid, e]) => ({ sid, name: e.name || 'Ученик', t: e.t || 0 })).sort((a, b) => b.t - a.t));
+    },
+    () => cb([])
+  );
+}
+
+// Учитель снимает отметку: ученик снова может записаться в класс (сам, при выборе класса или отправке ДЗ)
+export async function unbanStudent(cls: string, sid: string): Promise<boolean> {
   const ctx = authOrNull();
   if (!ctx) return false;
   try {
-    await remove(ref(ctx.db, `asosh_roster/${classKey(cls)}/${sid}`));
+    await remove(ref(ctx.db, `asosh_roster_ban/${classKey(cls)}/${sid}`));
     return true;
   } catch {
     return false;

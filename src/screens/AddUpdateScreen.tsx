@@ -5,7 +5,7 @@ import { DAYS, DICT } from '../data/constants';
 import { LessonUpdate, LanguageType, SoundProfileType } from '../types';
 import { playSound, doVibro } from '../utils/audio';
 import { Plus, Trash2, Users, User, Lock } from 'lucide-react';
-import { ClassReplacement, toDateKey, classWriteErrorText } from '../services/classShared';
+import { ClassReplacement, ClassWriteResult, toDateKey, classWriteErrorText } from '../services/classShared';
 import { checkBeforePublish } from '../components/HumanCheck';
 
 interface AddUpdateScreenProps {
@@ -15,7 +15,7 @@ interface AddUpdateScreenProps {
   onDeleteUpdate: (id: string) => void;
   classReplacements: ClassReplacement[];
   myUid: string;
-  onAddClassReplacement: (r: Pick<ClassReplacement, 'date' | 'num' | 'sub' | 'room'>) => Promise<boolean>;
+  onAddClassReplacement: (r: Pick<ClassReplacement, 'date' | 'num' | 'sub' | 'room'>) => Promise<ClassWriteResult>;
   onDeleteClassReplacement: (id: string) => void;
   today: Date;
   lang: LanguageType;
@@ -93,10 +93,10 @@ export const AddUpdateScreen: React.FC<AddUpdateScreenProps> = ({
         return;
       }
       setSaving(true);
-      const ok = await onAddClassReplacement({ date, num, sub: subject, room: room.trim() });
+      const res = await onAddClassReplacement({ date, num, sub: subject, room: room.trim() });
       setSaving(false);
-      if (!ok) {
-        onShowToast(`Не удалось отправить замену: ${classWriteErrorText()}`);
+      if (!res.ok) {
+        onShowToast(`Не удалось отправить замену: ${classWriteErrorText(res.error)}`);
         return;
       }
       onShowToast('Замена отправлена всему классу 📣');

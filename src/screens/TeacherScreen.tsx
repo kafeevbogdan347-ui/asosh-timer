@@ -15,6 +15,9 @@ import {
 import { Account, RosterEntry, subscribeRoster } from '../services/accounts';
 import { ReadMark, subscribeReadMarks } from '../services/boardRead';
 import { TeacherJournal } from '../components/TeacherJournal';
+import { TeacherSchedule } from '../components/TeacherSchedule';
+import { ScheduleChangesEditor } from '../components/ScheduleChangesEditor';
+import type { ChangesMap } from '../services/scheduleChanges';
 
 // Кабинет учителя: вход по одноразовому коду, объявления и события для классов
 interface TeacherScreenProps {
@@ -29,6 +32,8 @@ interface TeacherScreenProps {
   onShowToast: (msg: string) => void;
   account?: Account | null;
   onOpenAccount?: () => void;
+  changes?: ChangesMap;
+  onOpenBells?: () => void;
 }
 
 const fmtDate = (key: string) => new Date(key + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
@@ -98,8 +103,8 @@ const PostRow: React.FC<{ p: BoardPost; canDelete: boolean; onShowToast: (msg: s
   </div>
 );
 
-export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, posts, myUid, onLoggedIn, onLogout, onPickClass, onBack, onShowToast, account, onOpenAccount }) => {
-  const [section, setSection] = useState<'journal' | 'board'>('journal');
+export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, posts, myUid, onLoggedIn, onLogout, onPickClass, onBack, onShowToast, account, onOpenAccount, changes, onOpenBells }) => {
+  const [section, setSection] = useState<'schedule' | 'changes' | 'journal' | 'board'>('schedule');
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -208,7 +213,13 @@ export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, 
         <p className="text-xs text-white/70">Здравствуйте, {teacherName}!</p>
       </div>
 
-      <div className="flex gap-1 p-1 rounded-2xl bg-white/5 border border-white/10">
+      <div className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-white/5 border border-white/10">
+        <button type="button" className={`diary-tab ${section === 'schedule' ? 'active' : ''}`} onClick={() => setSection('schedule')}>
+          📅 Моё расписание
+        </button>
+        <button type="button" className={`diary-tab ${section === 'changes' ? 'active' : ''}`} onClick={() => setSection('changes')}>
+          📋 Изменения
+        </button>
         <button type="button" className={`diary-tab ${section === 'journal' ? 'active' : ''}`} onClick={() => setSection('journal')}>
           📒 Журнал
         </button>
@@ -216,6 +227,10 @@ export const TeacherScreen: React.FC<TeacherScreenProps> = ({ teacherName, cls, 
           📢 Объявления
         </button>
       </div>
+
+      {section === 'schedule' && <TeacherSchedule defaultSubjects={account?.subjects || []} changes={changes} onOpenBells={onOpenBells} />}
+
+      {section === 'changes' && <ScheduleChangesEditor teacherName={teacherName} defaultCls={cls} onShowToast={onShowToast} />}
 
       {section === 'journal' &&
         (account?.role === 'teacher' ? (

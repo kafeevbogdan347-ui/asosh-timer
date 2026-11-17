@@ -32,5 +32,21 @@ const l6 = getLessonsForDate('6А', day, date);
 ok('6А: нулевой урок — литература, каб. 324', l6[0][0].replace('🔄 ', '') === 'Литература' && l6[0][1] === '324', JSON.stringify(l6[0]));
 ok('класс без листа: основное расписание', JSON.stringify(getLessonsForDate('2Б', day, date)) === JSON.stringify(getLessonsForDate('2Б', day, '1999-01-01')));
 
+// --- Лист изменений из базы, день класса и расписание учителя ---
+const { classDay, teacherDay } = await import('../src/utils/daySchedule.ts');
+const { encodeLessons, decodeLessons } = await import('../src/utils/changesFormat.ts');
+const tue = new Date(2026, 10, 17);
+const db = { '2026-11-17': { '5А': [['Химия', '214'], ['', '']] } };
+ok('лист из базы важнее записанного в код', getLessonsForDate('5А', day, date, db)[0][0] === '🔄 Химия');
+ok('лист из базы: пустая строка — урока нет', getLessonsForDate('5А', day, date, db)[1][0] === '—');
+ok('кодирование листа туда-обратно', JSON.stringify(decodeLessons(encodeLessons([['Химия', '214'], ['', ''], ['Физика', ''], ['', '']]))) === JSON.stringify([['Химия', '214'], ['', ''], ['Физика', '']]));
+const repl = [{ id: 'r', date, num: 2, sub: 'Химия', room: '214', author: '', uid: '', created_at: 1 }];
+const cd = classDay('5А', tue, undefined, repl);
+ok('день класса: замена класса поверх листа', cd[1][0] === '🔄 Химия' && cd[1][1] === '214', JSON.stringify(cd[1]));
+const td = teacherDay(['5А', '5Б', '6А'], ['История'], tue);
+ok('учитель: уроки истории 5А и 5Б по времени', td.length >= 2 && td.every((l) => l.sub === 'История') && td.map((l) => l.start).join() === [...td.map((l) => l.start)].sort().join(), JSON.stringify(td));
+ok('учитель: у урока есть класс, кабинет и номер', td[0].cls && td[0].num >= 1 && td[0].start.includes(':'));
+ok('учитель: чужие предметы не попадают', teacherDay(['5А'], ['Химия'], tue).length === 0);
+
 if (fails) { console.log(`\nПровалено: ${fails}`); process.exit(1); }
 console.log('\nЗамены на день: все проверки пройдены');
