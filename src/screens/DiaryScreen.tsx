@@ -19,7 +19,7 @@ import { SCHOOL_QUARTERS } from '../data/constants';
 import { Grade, bySubject, average, markColor, subscribeStudentGrades, newGrades, markGradesSeen } from '../services/journal';
 import { ClassHomework, subscribeClassHomework, toDateKey } from '../services/classShared';
 import { BoardPost, postsFor } from '../services/teacher';
-import { getBaseLessonsForClass } from '../data/schoolSchedule';
+import { getLessonsForDate } from '../data/schoolSchedule';
 import { DAYS } from '../data/constants';
 import { roomLabel } from '../utils/lessonStatus';
 
@@ -293,7 +293,8 @@ const ParentDiary: React.FC<DiaryScreenProps> = ({ account, posts, today, onShow
   const schedule = child
     ? [0, 1].map((off) => {
         const day = DAYS[(dayIdx + off) % 7];
-        return { label: off ? 'Завтра' : 'Сегодня', day, lessons: getBaseLessonsForClass(child.cls, day).filter(([s]) => s && s !== '—') };
+        const date = toDateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() + off));
+        return { label: off ? 'Завтра' : 'Сегодня', day, lessons: getLessonsForDate(child.cls, day, date).filter(([s]) => s && s !== '—') };
       })
     : [];
   const hw = [...homework]

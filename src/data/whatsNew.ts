@@ -20,6 +20,13 @@ export const updatesLink = (version: string) => `${UPDATES_URL}#${version.replac
 
 export const WHATS_NEW: WhatsNewRelease[] = [
   {
+    version: 'v17.5',
+    date: '17 ноября 2026',
+    items: [
+      { icon: '📋', title: 'Замены на 17 ноября', text: 'Загружен лист школы «Изменения в основном расписании» на вторник, 17 ноября: поменялись уроки и кабинеты у 5, 9, 10 и 11 классов, у 7Г — кабинет музыки. Другой предмет помечен значком 🔄.' },
+    ],
+  },
+  {
     version: 'v17.4',
     date: '16 ноября 2026',
     items: [

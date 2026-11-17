@@ -31,7 +31,7 @@ import {
   isVacationDay,
   isHolidayDay,
 } from './data/constants';
-import { getBaseLessonsForClass, hasOfficialSchedule, roomFloor, SECOND_SHIFT_CLASSES, OFFICIAL_SCHEDULE_2026 } from './data/schoolSchedule';
+import { getLessonsForDate, hasOfficialSchedule, roomFloor, SECOND_SHIFT_CLASSES, OFFICIAL_SCHEDULE_2026 } from './data/schoolSchedule';
 import { migrateTheme } from './data/themes';
 import { reportVisit } from './services/stats';
 import { playSound, doVibro } from './utils/audio';
@@ -996,8 +996,9 @@ export default function App() {
 
   // Get active lessons for day (official base schedule + custom updates)
   const getLessonsForDay = (dayName: string): [string, string][] => {
-    // 1. Get official base lessons for selected class & day
-    const baseLessons = getBaseLessonsForClass(cls, dayName);
+    // 1. Основное расписание класса; если на эту дату есть лист изменений школы — он заменяет день
+    const dateKey = dateKeyForDay(dayName);
+    const baseLessons = getLessonsForDate(cls, dayName, dateKey);
     
     // 2. Build indexed map starting with base lessons
     const map: Record<number, [string, string]> = {};
@@ -1019,7 +1020,6 @@ export default function App() {
     });
 
     // 4. Замены класса на эту дату важнее всего; при нескольких побеждает самая новая
-    const dateKey = dateKeyForDay(dayName);
     classReplacements
       .filter((r) => r.date === dateKey && r.num >= 1 && r.num <= 12)
       .sort((a, b) => a.created_at - b.created_at)
