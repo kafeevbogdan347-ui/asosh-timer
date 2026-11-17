@@ -1,8 +1,10 @@
 name: Deploy to GitHub Pages
 
 on:
+  # Выпуск только по тегу версии (например, v17.6) или вручную из вкладки Actions.
+  # Обычный push в main ничего не выпускает — правки копятся до выпуска.
   push:
-    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
